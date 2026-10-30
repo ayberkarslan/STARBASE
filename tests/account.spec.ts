@@ -1,6 +1,10 @@
+import { join } from "node:path";
+import { readdirSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
+import { createServer } from "node:net";
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 test("real Firebase account and administration", async ({ page, request }) => {
   test.skip(
     process.env.STARBASE_LIVE_TEST !== "1",
@@ -11,12 +15,29 @@ test("real Firebase account and administration", async ({ page, request }) => {
   const password = randomBytes(24).toString("base64url");
   const email = username + "@example.com";
   let uid = "";
-  const sql = (query: string) =>
-    execFileSync(
-      "npx",
-      ["wrangler", "d1", "execute", "starbase", "--local", "--command", query],
-      { cwd: "apps/api", stdio: "ignore" },
-    );
+  const servers: ChildProcess[] = [];
+  test.setTimeout(60000);
+  const sql = (query: string) => {
+    const directory =
+      "apps/api/.wrangler/state/v3/d1/miniflare-D1DatabaseObject";
+    for (const filename of readdirSync(directory).filter(
+      (f) => f.endsWith(".sqlite") && f !== "metadata.sqlite",
+    )) {
+      const db = new DatabaseSync(join(directory, filename));
+      try {
+        if (
+          db.prepare("SELECT 1 FROM sqlite_master WHERE name='users'").get()
+        ) {
+          db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;");
+          db.exec(query);
+          return;
+        }
+      } finally {
+        db.close();
+      }
+    }
+    throw new Error("local STARBASE database not found; run db:migrate first");
+  };
   try {
     const r = await request.post(origin + "/api/v1/auth/register", {
       data: {
@@ -79,8 +100,17 @@ test("real Firebase account and administration", async ({ page, request }) => {
     await expect(
       page.getByRole("heading", { name: "Rol oluştur", exact: true }),
     ).toBeVisible();
-    for (const suffix of ["one", "two"]) {
+    for (const [i, suffix] of ["one", "two"].entries()) {
       const clientId = username.replaceAll("_", "-") + "-" + suffix;
+      const port = await new Promise<number>((resolve, reject) => {
+        const probe = createServer();
+        probe.on("error", reject);
+        probe.listen(0, "127.0.0.1", () => {
+          const port = (probe.address() as { port: number }).port;
+          probe.close(() => resolve(port));
+        });
+      });
+      const appOrigin = `http://127.0.0.1:${port}`;
       const registered = await page.request.post(
         origin + "/api/v1/admin/apps",
         {
@@ -88,48 +118,69 @@ test("real Firebase account and administration", async ({ page, request }) => {
           data: {
             id: clientId,
             name: "Fixture " + suffix,
-            redirects: [origin + "/callback"],
-            origins: [origin],
+            redirects: [appOrigin + "/callback"],
+            origins: [appOrigin],
             scopes: ["profile"],
           },
         },
       );
       expect(registered.status()).toBe(201);
-      await page.evaluate(
-        async ({ origin, clientId }) => {
-          const sdk = await import("/@starbase-sdk");
-          const client = new sdk.Starbase({
-            baseUrl: origin,
-            clientId,
-            redirectUri: origin + "/callback",
-            storage: sessionStorage,
-          });
-          await client.login(["profile"]);
-        },
-        { origin, clientId },
+      servers.push(
+        spawn(
+          process.execPath,
+          [
+            "node_modules/vite/bin/vite.js",
+            "examples/vite",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            String(port),
+            "--strictPort",
+          ],
+          {
+            env: {
+              ...process.env,
+              VITE_STARBASE_URL: origin,
+              VITE_STARBASE_CLIENT_ID: clientId,
+              VITE_STARBASE_SCOPES: "profile",
+            },
+            stdio: "ignore",
+          },
+        ),
       );
+      await expect
+        .poll(
+          async () => {
+            try {
+              return (await fetch(appOrigin)).status;
+            } catch {
+              return 0;
+            }
+          },
+          { timeout: 15000 },
+        )
+        .toBe(200);
+      await page.goto(appOrigin);
+      await page
+        .getByRole("button", { name: "STARBASE ile giriş yap" })
+        .click();
       await expect(
         page.getByRole("heading", {
           name: "Fixture " + suffix + " ile bağlantı kur",
         }),
       ).toBeVisible();
       await page.getByRole("button", { name: "İzin ver ve devam et" }).click();
-      await page.waitForURL("**/callback?**");
-      const profile = await page.evaluate(
-        async ({ origin, clientId }) => {
-          const sdk = await import("/@starbase-sdk");
-          return new sdk.Starbase({
-            baseUrl: origin,
-            clientId,
-            redirectUri: origin + "/callback",
-            storage: sessionStorage,
-          }).handleCallback();
-        },
-        { origin, clientId },
-      );
+      await expect(page.locator("#app")).toContainText("applicationId");
+      const profile = JSON.parse(await page.locator("#app").innerText());
       expect(profile.username).toBe(username);
       expect(profile.applicationId).toBe(clientId);
       expect(profile.email).toBeUndefined();
+      // Existing approval and central session complete the second visit automatically.
+      await page.goto(appOrigin);
+      await page
+        .getByRole("button", { name: "STARBASE ile giriş yap" })
+        .click();
+      await expect(page.locator("#app")).toContainText("applicationId");
       await page.goto(origin);
     }
     const temporary = randomBytes(24).toString("base64url");
@@ -169,6 +220,7 @@ test("real Firebase account and administration", async ({ page, request }) => {
       page.getByRole("heading", { name: "Tekrar hoş geldin." }),
     ).toBeVisible();
   } finally {
+    for (const server of servers) server.kill();
     if (uid) {
       await request.post(
         "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=demo-key",

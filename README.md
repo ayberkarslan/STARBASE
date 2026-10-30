@@ -42,7 +42,7 @@ npm run test:ui
 cargo check --locked --manifest-path examples/tauri/native/Cargo.toml
 ```
 
-Tarayıcı testleri için `npx playwright install chromium` çalıştır. Test adresi `STARBASE_TEST_URL` ile değiştirilebilir.
+Tarayıcı testleri için `npx playwright install chromium` çalıştır. Test adresi `STARBASE_TEST_URL` ile değiştirilebilir. Gerçek yerel Firebase/D1 entegrasyon senaryosu için üç servis açıkken `STARBASE_LIVE_TEST=1 npm run test:ui` çalıştır; bu test iki Vite örneğini boş portlarda başlatır ve kendi test hesaplarını temizler. Testi üretim verisine karşı çalıştırma.
 
 ## Belgeler
 

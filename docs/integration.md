@@ -49,7 +49,7 @@ Tüm yollar `/api/v1` ile başlar. Cookie kullanan yazma istekleri aynı origin 
 
 ## Çalışan Vite örneği
 
-`examples/vite/main.ts` içindeki adresi yerel STARBASE arayüz adresinle eşleştir. `starlab-web` uygulamasında `http://127.0.0.1:5180/callback` ve origin `http://127.0.0.1:5180` kaydet. `npm run example:web` ile aç. İkinci uygulamayı farklı kimlik ve portla kaydederek tarayıcı merkezi oturumunun yeniden şifre istemediğini doğrula.
+`VITE_STARBASE_URL` ortam değişkenini yerel STARBASE arayüz adresinle eşleştir (varsayılan `http://127.0.0.1:5173`). `VITE_STARBASE_CLIENT_ID` varsayılanı `starlab-web`; `VITE_STARBASE_SCOPES` virgülle ayrılmış kapsamları belirler. `starlab-web` uygulamasında `http://127.0.0.1:5180/callback` ve origin `http://127.0.0.1:5180` kaydet. `npm run example:web` ile aç. İkinci uygulamayı farklı kimlik ve portla kaydederek tarayıcı merkezi oturumunun yeniden şifre istemediğini doğrula.
 
 ## Tauri
 

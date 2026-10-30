@@ -518,6 +518,7 @@ function App() {
               act(async () => {
                 await api("/auth/logout", {});
                 setUser(null);
+                location.assign("/");
               })
             }
           >

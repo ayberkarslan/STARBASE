@@ -1,3 +1,4 @@
+import { localVerificationUrl } from "../local-actions";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
@@ -73,7 +74,17 @@ export function register(app: App) {
       } catch {
         verificationDelivered = false;
       }
-      return c.json({ verificationRequired: true, verificationDelivered }, 201);
+      return c.json(
+        {
+          verificationRequired: true,
+          verificationDelivered,
+          developmentVerificationUrl: await localVerificationUrl(
+            c.env,
+            b.email,
+          ),
+        },
+        201,
+      );
     } catch {
       await c.env.DB.prepare("DELETE FROM users WHERE id=?").bind(uid).run();
       return fail(400, "registration_incomplete");
@@ -353,6 +364,7 @@ export function register(app: App) {
     c.json({ turnstileSiteKey: c.env.TURNSTILE_SITE_KEY ?? null }),
   );
   app.post("/api/v1/auth/resend", async (c) => {
+    let developmentVerificationUrl: string | undefined;
     await rate(c);
     const b = await body(c, credentials);
     const u = await c.env.DB.prepare("SELECT email FROM users WHERE username=?")
@@ -368,7 +380,9 @@ export function register(app: App) {
         requestType: "VERIFY_EMAIL",
         idToken: result.idToken,
       });
+      if (u)
+        developmentVerificationUrl = await localVerificationUrl(c.env, u.email);
     } catch {}
-    return c.json({ ok: true });
+    return c.json({ ok: true, developmentVerificationUrl });
   });
 }

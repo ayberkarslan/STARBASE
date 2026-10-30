@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   font-family: Michroma, sans-serif;
   color: #fff;
   background: #000;
@@ -583,4 +584,11 @@ footer {
 }
 .members-heading h1 {
   margin: 0;
+}
+
+/* Keep saved credentials in the same black-and-white theme as normal inputs. */
+input:is(:autofill, :-webkit-autofill) {
+  -webkit-text-fill-color: var(--sd-white, #fff) !important;
+  caret-color: var(--sd-white, #fff);
+  box-shadow: 0 0 0 1000px var(--sd-black, #000) inset !important;
 }

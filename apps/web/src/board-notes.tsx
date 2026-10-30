@@ -516,15 +516,17 @@ export function BoardNotes({
           if (!saving) setEditor(null);
         }}
       >
-        <NoteForm
-          key={editing?.id ?? "new"}
-          note={editing}
-          teams={teams}
-          onSubmit={save}
-          dateValue={dateValue}
-          error={editorError}
-          saving={saving}
-        />
+        {editor !== null && (
+          <NoteForm
+            key={editing?.id ?? "new"}
+            note={editing}
+            teams={teams}
+            onSubmit={save}
+            dateValue={dateValue}
+            error={editorError}
+            saving={saving}
+          />
+        )}
       </Dialog>
       <Dialog
         open={!!deleteNote}

@@ -197,6 +197,14 @@ test("real Firebase account and administration", async ({
       .locator(".sticky-note")
       .filter({ hasText: username + " test duyurusu" });
     await expect(remoteNote).toBeVisible();
+    await page.getByRole("button", { name: "Not ekle", exact: true }).click();
+    const freshNote = page.getByRole("dialog", { name: "Panoya not ekle" });
+    await expect(freshNote.getByLabel("Başlık", { exact: true })).toHaveValue(
+      "",
+    );
+    await expect(freshNote.getByLabel("Not", { exact: true })).toHaveValue("");
+    await freshNote.getByRole("button", { name: "Kapat", exact: true }).click();
+
     await expect(
       remoteNote.getByRole("button", { name: "Notu düzenle" }),
     ).toHaveCount(0);

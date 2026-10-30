@@ -5,7 +5,11 @@ import { createServer } from "node:net";
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
-test("real Firebase account and administration", async ({ page, request }) => {
+test("real Firebase account and administration", async ({
+  page,
+  request,
+  browser,
+}) => {
   test.skip(
     process.env.STARBASE_LIVE_TEST !== "1",
     "Requires local Firebase Auth Emulator and D1",
@@ -16,6 +20,8 @@ test("real Firebase account and administration", async ({ page, request }) => {
   const email = username + "@example.com";
   let uid = "";
   const addedMembers: string[] = [];
+  let notesContext: import("@playwright/test").BrowserContext | undefined;
+  const memberPassword = randomBytes(24).toString("base64url");
   const servers: ChildProcess[] = [];
   test.setTimeout(60000);
   const sql = (query: string) => {
@@ -115,7 +121,7 @@ test("real Firebase account and administration", async ({ page, request }) => {
       .click();
     await memberDialog
       .getByLabel("Geçici şifre", { exact: true })
-      .fill(randomBytes(24).toString("base64url"));
+      .fill(memberPassword);
     await memberDialog
       .getByLabel("Yönetici şifren", { exact: true })
       .fill(password);
@@ -141,6 +147,122 @@ test("real Firebase account and administration", async ({ page, request }) => {
     await page
       .locator(".workspace-body>aside")
       .getByRole("button", { name: "Pano", exact: true })
+      .click();
+    notesContext = await browser.newContext();
+    const memberPage = await notesContext.newPage();
+    await memberPage.goto(createdMember.developmentVerificationUrl);
+    await memberPage
+      .getByRole("button", { name: "E-postayı doğrula", exact: true })
+      .click();
+    await memberPage.getByLabel("Kullanıcı adı").fill(username + "_member");
+    await memberPage.getByLabel("Şifre", { exact: true }).fill(memberPassword);
+    await memberPage
+      .getByRole("button", { name: "Giriş yap", exact: true })
+      .click();
+    await memberPage.getByLabel("Mevcut / geçici şifre").fill(memberPassword);
+    const personalPassword = randomBytes(24).toString("base64url");
+    await memberPage.getByLabel("Yeni şifre").fill(personalPassword);
+    await memberPage
+      .getByRole("button", { name: "Şifreyi değiştir", exact: true })
+      .click();
+    await memberPage.getByLabel("Kullanıcı adı").fill(username + "_member");
+    await memberPage
+      .getByLabel("Şifre", { exact: true })
+      .fill(personalPassword);
+    await memberPage
+      .getByRole("button", { name: "Giriş yap", exact: true })
+      .click();
+    await expect(page.locator(".notes-connection")).toContainText(
+      "Canlı güncelleniyor",
+    );
+    await expect(memberPage.locator(".notes-connection")).toContainText(
+      "Canlı güncelleniyor",
+    );
+    await page.getByRole("button", { name: "Not ekle", exact: true }).click();
+    const noteDialog = page.getByRole("dialog", { name: "Panoya not ekle" });
+    await noteDialog
+      .getByLabel("Başlık", { exact: true })
+      .fill(username + " test duyurusu");
+    await noteDialog
+      .getByLabel("Not", { exact: true })
+      .fill("Statik test hazırlığı tamamlanıyor.");
+    await noteDialog.getByRole("combobox", { name: "Not veya duyuru" }).click();
+    await noteDialog
+      .getByRole("option", { name: "Duyuru", exact: true })
+      .click();
+    await noteDialog
+      .getByRole("button", { name: "Panoya ekle", exact: true })
+      .click();
+    const remoteNote = memberPage
+      .locator(".sticky-note")
+      .filter({ hasText: username + " test duyurusu" });
+    await expect(remoteNote).toBeVisible();
+    await expect(
+      remoteNote.getByRole("button", { name: "Notu düzenle" }),
+    ).toHaveCount(0);
+    await memberPage
+      .getByRole("button", { name: "Not ekle", exact: true })
+      .click();
+    const memberNoteDialog = memberPage.getByRole("dialog", {
+      name: "Panoya not ekle",
+    });
+    await memberNoteDialog
+      .getByLabel("Başlık", { exact: true })
+      .fill(username + " üye notu");
+    await memberNoteDialog
+      .getByLabel("Not", { exact: true })
+      .fill("Kontrol listesi hazır.");
+    await memberNoteDialog
+      .getByRole("button", { name: "Panoya ekle", exact: true })
+      .click();
+    const shared = page
+      .locator(".sticky-note")
+      .filter({ hasText: username + " üye notu" });
+    await expect(shared).toBeVisible();
+    await shared
+      .getByRole("button", { name: "Notu sabitle", exact: true })
+      .click();
+    const memberOwnNote = memberPage
+      .locator(".sticky-note")
+      .filter({ hasText: username + " üye notu" });
+    await expect(memberOwnNote).toContainText("Sabit");
+    await memberOwnNote
+      .getByRole("button", { name: "Notu düzenle", exact: true })
+      .click();
+    const edit = memberPage.getByRole("dialog", { name: "Notu düzenle" });
+    await edit
+      .getByLabel("Not", { exact: true })
+      .fill("Kontrol listesi güncellendi.");
+    await edit
+      .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+      .click();
+    await expect(shared).toContainText("Kontrol listesi güncellendi.");
+    await page.screenshot({
+      path: "/tmp/starbase-sticky-notes.png",
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: "/tmp/starbase-sticky-mobile.png",
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page
+      .locator(".sticky-note")
+      .filter({ hasText: username + " test duyurusu" })
+      .getByRole("button", { name: "Notu arşivle", exact: true })
+      .click();
+    await expect(remoteNote).not.toBeVisible();
+    await notesContext.close();
+    notesContext = undefined;
+    await page
+      .locator(".team-directory")
+      .getByRole("button", { name: "Üyeler", exact: true })
       .click();
     await page.getByRole("searchbox", { name: "Üye ara" }).fill("Added Member");
     await page
@@ -344,13 +466,14 @@ test("real Firebase account and administration", async ({ page, request }) => {
     ).toBeVisible();
   } finally {
     for (const server of servers) server.kill();
+    await notesContext?.close();
     for (const id of addedMembers) {
       await request.post(
         "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=demo-key",
         { headers: { Authorization: "Bearer owner" }, data: { localId: id } },
       );
       sql(
-        `DELETE FROM memberships WHERE user_id='${id}'; DELETE FROM user_roles WHERE user_id='${id}'; DELETE FROM users WHERE id='${id}';`,
+        `DELETE FROM board_notes WHERE author_id='${id}'; DELETE FROM codes WHERE user_id='${id}'; DELETE FROM consents WHERE user_id='${id}'; DELETE FROM sessions WHERE user_id='${id}'; DELETE FROM families WHERE user_id='${id}'; DELETE FROM memberships WHERE user_id='${id}'; DELETE FROM user_roles WHERE user_id='${id}'; DELETE FROM users WHERE id='${id}';`,
       );
     }
     if (uid) {
@@ -359,7 +482,7 @@ test("real Firebase account and administration", async ({ page, request }) => {
         { headers: { Authorization: "Bearer owner" }, data: { localId: uid } },
       );
       sql(
-        `DELETE FROM application_visits WHERE user_id='${uid}'; DELETE FROM application_usage WHERE user_id='${uid}'; DELETE FROM codes WHERE user_id='${uid}'; DELETE FROM consents WHERE user_id='${uid}'; DELETE FROM sessions WHERE user_id='${uid}'; DELETE FROM families WHERE user_id='${uid}'; DELETE FROM users WHERE id='${uid}'; DELETE FROM apps WHERE id LIKE '${username.replaceAll("_", "-")}-%';`,
+        `DELETE FROM board_notes WHERE author_id='${uid}'; DELETE FROM application_visits WHERE user_id='${uid}'; DELETE FROM application_usage WHERE user_id='${uid}'; DELETE FROM codes WHERE user_id='${uid}'; DELETE FROM consents WHERE user_id='${uid}'; DELETE FROM sessions WHERE user_id='${uid}'; DELETE FROM families WHERE user_id='${uid}'; DELETE FROM users WHERE id='${uid}'; DELETE FROM apps WHERE id LIKE '${username.replaceAll("_", "-")}-%';`,
       );
     }
   }

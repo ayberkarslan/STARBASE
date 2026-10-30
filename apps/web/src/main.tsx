@@ -1,3 +1,4 @@
+import { TeamDirectory, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
 import { FormSelect } from "./form-select";
@@ -72,7 +73,7 @@ function App() {
     [tab, setTab] = useState(
       new URLSearchParams(location.search).get("view") === "sessions"
         ? "sessions"
-        : "account",
+        : "board",
     ),
     [mode, setMode] = useState("login"),
     [error, setError] = useState(""),
@@ -463,6 +464,7 @@ function App() {
       <div className="consent">
         <Panel title={`${consent.name} ile bağlantı kur`}>
           <p>Bu uygulama aşağıdaki profil bilgilerine erişmek istiyor.</p>
+          <p>Uygulama giriş ve çıkışların takım profilinde görünür.</p>
           <ul>
             {consent.scopes.map((s: string) => (
               <li key={s}>
@@ -522,7 +524,9 @@ function App() {
         <aside>
           <span className="eyebrow">ÇALIŞMA ALANI</span>
           {[
+            { id: "board", name: "Pano", icon: Users },
             { id: "account", name: "Hesabım", icon: Orbit },
+            { id: "teams", name: "Ekipler", icon: Layers },
             { id: "connections", name: "Bağlı uygulamalar", icon: AppWindow },
             { id: "organization", name: "Departmanlar", icon: Layers },
             { id: "sessions", name: "Oturumlar", icon: KeyRound },
@@ -577,6 +581,13 @@ function App() {
         </aside>
         <main className="content">
           {status}
+          {(tab === "board" || tab === "teams") && (
+            <TeamDirectory
+              key={tab}
+              currentUserId={user.id}
+              teamsOnly={tab === "teams"}
+            />
+          )}
           {tab === "account" && (
             <>
               <span className="eyebrow">SENİN YÖRÜNGEN</span>
@@ -609,6 +620,7 @@ function App() {
                   )}
                 </Panel>
               </div>
+              <MyApplicationHistory />
               <h2>Platformların</h2>
               <div className="cards">
                 {apps.length ? (

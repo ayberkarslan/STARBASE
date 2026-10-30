@@ -1,11 +1,12 @@
-import type { Env } from "./common";
+import { type Env, fail } from "./common";
 import { now } from "./security";
 export async function startVisit(env: Env, family: string) {
-  await env.DB.prepare(
-    "INSERT INTO application_visits(id,user_id,app_id,signed_in_at,expires_at) SELECT id,user_id,app_id,?,expires FROM families WHERE id=? AND app_id IS NOT NULL AND revoked=0",
+  const recorded = await env.DB.prepare(
+    "INSERT INTO application_visits(id,user_id,app_id,signed_in_at,expires_at) SELECT id,user_id,app_id,?,expires FROM families WHERE id=? AND app_id IS NOT NULL AND revoked=0 RETURNING id",
   )
     .bind(now(), family)
-    .run();
+    .first();
+  if (!recorded) fail(401, "session_revoked");
 }
 export function logoutVisit(env: Env, userId: string, family?: string) {
   const timestamp = now();

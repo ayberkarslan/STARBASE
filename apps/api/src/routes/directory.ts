@@ -112,7 +112,7 @@ export function register(app: App) {
     await requireDirectory(c);
     const departments = (
       await c.env.DB.prepare(
-        `SELECT d.id,d.name,COUNT(DISTINCT CASE WHEN u.disabled=0 AND ${member("u")} THEN u.id END) memberCount FROM departments d LEFT JOIN memberships m ON m.department_id=d.id LEFT JOIN users u ON u.id=m.user_id WHERE d.archived=0 GROUP BY d.id ORDER BY d.name`,
+        `SELECT d.id,d.name,COUNT(DISTINCT CASE WHEN u.disabled=0 AND (m.team_id IS NULL OR t.archived=0) AND ${member("u")} THEN u.id END) memberCount FROM departments d LEFT JOIN memberships m ON m.department_id=d.id LEFT JOIN teams t ON t.id=m.team_id LEFT JOIN users u ON u.id=m.user_id WHERE d.archived=0 GROUP BY d.id ORDER BY d.name`,
       ).all()
     ).results;
     const teams = (

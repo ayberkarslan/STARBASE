@@ -71,5 +71,43 @@ app.post('/api/v1/admin/teams',async c=>{await permit(c,'organization.manage');c
 app.post('/api/v1/admin/memberships',async c=>{await permit(c,'users.manage');const b=await body(c,z.object({userId:z.string(),departmentId:z.string(),teamId:z.string()}));if(!await c.env.DB.prepare('SELECT id FROM teams WHERE id=? AND department_id=? AND archived=0').bind(b.teamId,b.departmentId).first())fail(400,'invalid_team');await c.env.DB.prepare('INSERT OR IGNORE INTO memberships VALUES(?,?,?)').bind(b.userId,b.departmentId,b.teamId).run();await audit(c,'membership.assign',b.userId);return c.json({ok:true})});
 app.get('/api/v1/admin/audit',async c=>{await permit(c,'users.manage');return c.json((await c.env.DB.prepare('SELECT * FROM audit ORDER BY created_at DESC LIMIT 100').all()).results)});
 app.get('/api/v1/apps',async c=>c.json((await c.env.DB.prepare('SELECT id,name FROM apps WHERE disabled=0').all()).results));
-app.get('*',c=>c.env.ASSETS.fetch(c.req.raw));
+app.get('/api/v1/authorize',async c=>{
+ const id=c.req.query('client_id');const a=await c.env.DB.prepare('SELECT * FROM apps WHERE id=? AND disabled=0').bind(id??'').first<any>();if(!a)fail(400,'unknown_app');
+ const redirect=c.req.query('redirect_uri')??'';const scopes=(c.req.query('scope')??'profile').split(' ').filter(Boolean);const pkce=c.req.query('code_challenge')??'';
+ if(!JSON.parse(a.redirects).includes(redirect)||!allowedScopes(scopes,JSON.parse(a.scopes))||! /^[A-Za-z0-9_-]{43}$/.test(pkce))fail(400,'invalid_authorization');
+ return c.json({id:a.id,name:a.name,scopes,redirect,challenge:pkce,state:c.req.query('state')});
+});
+app.post('/api/v1/authorize',async c=>{
+ if(c.get('session').kind!=='central')fail(403,'central_session_required');
+ const b=await body(c,z.object({clientId:z.string(),redirectUri:z.string().url(),scopes:z.array(z.enum(['profile','email','organization'])),challenge:z.string().regex(/^[A-Za-z0-9_-]{43}$/),state:z.string().min(16).max(256)}));
+ const a=await c.env.DB.prepare('SELECT * FROM apps WHERE id=? AND disabled=0').bind(b.clientId).first<any>();if(!a||!JSON.parse(a.redirects).includes(b.redirectUri)||!allowedScopes(b.scopes,JSON.parse(a.scopes)))fail(400,'invalid_authorization');
+ const value=token();await c.env.DB.batch([
+ c.env.DB.prepare('INSERT INTO consents VALUES(?,?,?) ON CONFLICT(user_id,app_id) DO UPDATE SET scopes=excluded.scopes').bind(c.get('user').id,a.id,JSON.stringify(b.scopes)),
+ c.env.DB.prepare('INSERT INTO codes VALUES(?,?,?,?,?,?,?)').bind(await hash(value),c.get('user').id,a.id,b.redirectUri,b.challenge,JSON.stringify(b.scopes),now()+60)]);
+ const url=new URL(b.redirectUri);url.searchParams.set('code',value);url.searchParams.set('state',b.state);return c.json({redirect:url.href});
+});
+app.post('/api/v1/auth/exchange',async c=>{
+ await rate(c);const b=await body(c,z.object({code:z.string(),verifier:z.string().min(43).max(128),clientId:z.string(),redirectUri:z.string().url()}));
+ const code=await c.env.DB.prepare('DELETE FROM codes WHERE hash=? AND expires>? AND app_id=? AND redirect=? AND challenge=? RETURNING *').bind(await hash(b.code),now(),b.clientId,b.redirectUri,await challenge(b.verifier)).first<any>();if(!code)fail(400,'invalid_code');
+ const a=await c.env.DB.prepare('SELECT id FROM apps WHERE id=? AND disabled=0').bind(b.clientId).first();const u=await c.env.DB.prepare('SELECT id FROM users WHERE id=? AND disabled=0 AND must_change_password=0 AND verified=1').bind(code.user_id).first();if(!a||!u)fail(403,'access_denied');
+ const family=crypto.randomUUID();return c.json({accessToken:await issue(c,code.user_id,'access',b.clientId,JSON.parse(code.scopes),family),refreshToken:await issue(c,code.user_id,'refresh',b.clientId,JSON.parse(code.scopes),family),expiresIn:600});
+});
+app.post('/api/v1/auth/refresh',async c=>{
+ const b=await body(c,z.object({refreshToken:z.string(),clientId:z.string()}));const h=await hash(b.refreshToken);
+ const old=await c.env.DB.prepare('SELECT * FROM sessions WHERE hash=? AND kind=\'refresh\' AND app_id=?').bind(h,b.clientId).first<any>();
+ if(!old||old.expires<=now())fail(401,'session_expired');if(old.used){await c.env.DB.prepare('DELETE FROM sessions WHERE family=?').bind(old.family).run();fail(401,'refresh_reused')}
+ const user=await c.env.DB.prepare('SELECT id FROM users WHERE id=? AND disabled=0 AND must_change_password=0 AND verified=1').bind(old.user_id).first();
+ const consent=await c.env.DB.prepare('SELECT scopes FROM consents WHERE user_id=? AND app_id=?').bind(old.user_id,b.clientId).first<{scopes:string}>();
+ const a=await c.env.DB.prepare('SELECT id FROM apps WHERE id=? AND disabled=0').bind(b.clientId).first();if(!user||!consent||!a||!allowedScopes(JSON.parse(old.scopes),JSON.parse(consent.scopes)))fail(403,'access_denied');
+ const claimed=await c.env.DB.prepare('UPDATE sessions SET used=1 WHERE hash=? AND used=0 RETURNING hash').bind(h).first();if(!claimed){await c.env.DB.prepare('DELETE FROM sessions WHERE family=?').bind(old.family).run();fail(401,'refresh_reused')}
+ const accessToken=await issue(c,old.user_id,'access',b.clientId,JSON.parse(old.scopes),old.family);const refreshToken=await issue(c,old.user_id,'refresh',b.clientId,JSON.parse(old.scopes),old.family);
+ await c.env.DB.prepare('UPDATE sessions SET expires=MIN(expires,?) WHERE family=? AND used=0').bind(old.expires,old.family).run();return c.json({accessToken,refreshToken,expiresIn:Math.min(600,old.expires-now())});
+});
+app.get('/api/v1/connections',async c=>{if(c.get('session').kind!=='central')fail(403,'central_session_required');return c.json((await c.env.DB.prepare('SELECT a.id,a.name,c.scopes FROM consents c JOIN apps a ON a.id=c.app_id WHERE c.user_id=?').bind(c.get('user').id).all()).results)});
+app.delete('/api/v1/connections/:id',async c=>{if(c.get('session').kind!=='central')fail(403,'central_session_required');await c.env.DB.batch([c.env.DB.prepare('DELETE FROM consents WHERE user_id=? AND app_id=?').bind(c.get('user').id,c.req.param('id')),c.env.DB.prepare('DELETE FROM sessions WHERE user_id=? AND app_id=?').bind(c.get('user').id,c.req.param('id'))]);return c.json({ok:true})});
+app.post('/api/v1/admin/apps',async c=>{await permit(c,'apps.manage');const b=await body(c,z.object({id:z.string().regex(/^[a-z0-9-]{3,40}$/),name:z.string().min(1),redirects:z.array(z.string().url()).min(1),origins:z.array(z.string().url()),scopes:z.array(z.enum(['profile','email','organization']))}));for(const r of b.redirects){const u=new URL(r);if(u.protocol!=='https:'&&!['localhost','127.0.0.1'].includes(u.hostname))fail(400,'https_required')}
+ await c.env.DB.prepare('INSERT INTO apps(id,name,redirects,origins,scopes) VALUES(?,?,?,?,?)').bind(b.id,b.name,JSON.stringify(b.redirects),JSON.stringify(b.origins),JSON.stringify(b.scopes)).run();await audit(c,'app.create',b.id);return c.json({id:b.id},201)});
+app.get('/api/v1/permissions',async c=>{const s=c.get('session');return c.json((await c.env.DB.prepare('SELECT DISTINCT rp.permission_id FROM user_roles ur JOIN role_permissions rp ON ur.role_id=rp.role_id WHERE ur.user_id=?').bind(c.get('user').id).all<{permission_id:string}>()).results.map(r=>r.permission_id).filter(p=>s.kind==='central'||p.startsWith(s.app_id+'.')))});
+
+app.notFound(c=>c.req.path.startsWith('/api/')?c.json({error:{code:'not_found'}},404):c.env.ASSETS.fetch(c.req.raw));
 export default app;

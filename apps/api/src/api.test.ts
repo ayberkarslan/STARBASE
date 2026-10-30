@@ -31,6 +31,7 @@ beforeEach(async () => {
     readFileSync("apps/api/migrations/0004_directory_activity.sql", "utf8"),
   );
   db.exec(readFileSync("apps/api/migrations/0005_board_notes.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0006_board_canvas.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -540,20 +541,144 @@ describe("shared board notes", () => {
     );
   }
   const input = {
+    scope: "shared",
     title: "Test hazırlığı",
     content: "Aviyonik kontrol listesi hazır.",
     kind: "announcement",
     teamId: "software",
     dueAt: 1900000000,
   };
+  it("isolates private notes from other members and owners", async () => {
+    const privateNote: any = await (
+      await memberRequest("/board/notes", {
+        title: "Personal",
+        content: "Secret",
+        x: 120,
+        y: 80,
+      })
+    ).json();
+    const own: any = await (
+      await memberRequest("/board/notes?scope=private")
+    ).json();
+    expect(own.notes).toHaveLength(1);
+    expect(own.notes[0]).toMatchObject({ scope: "private", x: 120, y: 80 });
+    expect(
+      ((await (await call("/board/notes?scope=private")).json()) as any).notes,
+    ).toHaveLength(0);
+    expect(
+      ((await (await call("/board/notes?scope=shared")).json()) as any).notes,
+    ).toHaveLength(0);
+    expect(
+      (
+        await call(
+          "/board/notes/" + privateNote.id,
+          { title: "Intrusion", version: 1 },
+          "central",
+          "PATCH",
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await call(
+          "/board/notes/" + privateNote.id,
+          { version: 1 },
+          "central",
+          "DELETE",
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await call(
+          "/board/notes/" + privateNote.id + "/position",
+          { x: 1, y: 1, layoutVersion: 1 },
+          "central",
+          "PATCH",
+        )
+      ).status,
+    ).toBe(404);
+    const changed = await memberRequest(
+      "/board/notes/" + privateNote.id,
+      { title: "Still private", scope: "shared", version: 1 },
+      "PATCH",
+    );
+    expect(changed.status).toBe(200);
+    expect(
+      (
+        db
+          .prepare("SELECT scope FROM board_notes WHERE id=?")
+          .get(privateNote.id) as any
+      ).scope,
+    ).toBe("private");
+  });
+  it("keeps position versions independent and rejects stale moves", async () => {
+    const n: any = await (
+      await memberRequest("/board/notes?scope=shared", input)
+    ).json();
+    const path = "/board/notes/" + n.id + "/position";
+    expect(
+      (await memberRequest(path, { x: 456, y: 321, layoutVersion: 1 }, "PATCH"))
+        .status,
+    ).toBe(200);
+    expect(
+      (await memberRequest(path, { x: 1, y: 1, layoutVersion: 1 }, "PATCH"))
+        .status,
+    ).toBe(409);
+    expect(
+      (await memberRequest(path, { x: -1, y: 1, layoutVersion: 2 }, "PATCH"))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await memberRequest(
+          "/board/notes/" + n.id,
+          { title: "Edited", version: 1 },
+          "PATCH",
+        )
+      ).status,
+    ).toBe(200);
+    const feed: any = await (
+      await memberRequest("/board/notes?scope=shared")
+    ).json();
+    expect(feed.notes[0]).toMatchObject({
+      x: 456,
+      y: 321,
+      layoutVersion: 2,
+      version: 2,
+      title: "Edited",
+    });
+    db.exec(
+      "UPDATE users SET owner=0 WHERE id='u1'; INSERT INTO user_roles VALUES('u1','member')",
+    );
+    expect(
+      (await call(path, { x: 1, y: 1, layoutVersion: 2 }, "central", "PATCH"))
+        .status,
+    ).toBe(403);
+  });
+  it("uses separate live hubs for personal and shared changes", async () => {
+    const names: string[] = [];
+    env.BOARD_HUB.idFromName = (name: string) => {
+      names.push(name);
+      return name;
+    };
+    await memberRequest("/board/notes", {
+      title: "Private",
+      content: "Private",
+    });
+    await memberRequest("/board/notes?scope=shared", input);
+    expect(names).toEqual(["private:u2", "team-board"]);
+  });
   it("allows team members to post with server-owned authorship", async () => {
-    const r = await memberRequest("/board/notes", {
+    const r = await memberRequest("/board/notes?scope=shared", {
       ...input,
       authorId: "u1",
       pinned: true,
     });
     expect(r.status).toBe(201);
-    const feed: any = await (await memberRequest("/board/notes")).json();
+    const feed: any = await (
+      await memberRequest("/board/notes?scope=shared")
+    ).json();
     expect(feed.notes[0]).toMatchObject({
       authorId: "u2",
       pinned: 0,
@@ -565,32 +690,42 @@ describe("shared board notes", () => {
   });
   it("blocks outsiders and application tokens from the board", async () => {
     db.exec("UPDATE users SET owner=0 WHERE id='u1'");
-    expect((await call("/board/notes")).status).toBe(403);
+    expect((await call("/board/notes?scope=shared")).status).toBe(403);
     db.exec("UPDATE users SET owner=1 WHERE id='u1'");
     const t: any = await (
       await call("/auth/exchange", await loginCode(), "")
     ).json();
-    expect((await call("/board/notes", undefined, t.accessToken)).status).toBe(
-      403,
-    );
+    expect(
+      (await call("/board/notes?scope=shared", undefined, t.accessToken))
+        .status,
+    ).toBe(403);
   });
   it("rejects empty and oversized content or archived teams", async () => {
     expect(
-      (await memberRequest("/board/notes", { ...input, content: "" })).status,
+      (
+        await memberRequest("/board/notes?scope=shared", {
+          ...input,
+          content: "",
+        })
+      ).status,
     ).toBe(400);
     expect(
       (
-        await memberRequest("/board/notes", {
+        await memberRequest("/board/notes?scope=shared", {
           ...input,
           content: "a".repeat(2001),
         })
       ).status,
     ).toBe(400);
     db.exec("UPDATE teams SET archived=1 WHERE id='software'");
-    expect((await memberRequest("/board/notes", input)).status).toBe(400);
+    expect(
+      (await memberRequest("/board/notes?scope=shared", input)).status,
+    ).toBe(400);
   });
   it("only permits owners or board moderators to edit others notes", async () => {
-    const note: any = await (await memberRequest("/board/notes", input)).json();
+    const note: any = await (
+      await memberRequest("/board/notes?scope=shared", input)
+    ).json();
     db.exec("UPDATE users SET owner=0 WHERE id='u1'");
     db.prepare("INSERT INTO user_roles VALUES(?,?)").run("u1", "member");
     expect(
@@ -618,7 +753,9 @@ describe("shared board notes", () => {
     ).toBe(200);
   });
   it("keeps pinning administrative and preserves other fields in partial updates", async () => {
-    const note: any = await (await memberRequest("/board/notes", input)).json();
+    const note: any = await (
+      await memberRequest("/board/notes?scope=shared", input)
+    ).json();
     expect(
       (
         await memberRequest(
@@ -638,7 +775,7 @@ describe("shared board notes", () => {
         )
       ).status,
     ).toBe(200);
-    const feed: any = await (await call("/board/notes")).json();
+    const feed: any = await (await call("/board/notes?scope=shared")).json();
     expect(feed.notes[0]).toMatchObject({
       kind: "announcement",
       teamId: "software",
@@ -648,7 +785,9 @@ describe("shared board notes", () => {
     });
   });
   it("rejects stale edits without overwriting another user change", async () => {
-    const note: any = await (await memberRequest("/board/notes", input)).json();
+    const note: any = await (
+      await memberRequest("/board/notes?scope=shared", input)
+    ).json();
     expect(
       (
         await memberRequest(
@@ -672,18 +811,24 @@ describe("shared board notes", () => {
     ).toMatchObject({ title: "New title" });
   });
   it("archives, restores and deletes the authors own note", async () => {
-    const note: any = await (await memberRequest("/board/notes", input)).json();
+    const note: any = await (
+      await memberRequest("/board/notes?scope=shared", input)
+    ).json();
     await memberRequest(
       "/board/notes/" + note.id,
       { archived: true, version: 1 },
       "PATCH",
     );
     expect(
-      ((await (await memberRequest("/board/notes")).json()) as any).total,
+      ((await (await memberRequest("/board/notes?scope=shared")).json()) as any)
+        .total,
     ).toBe(0);
     expect(
-      ((await (await memberRequest("/board/notes?archived=1")).json()) as any)
-        .total,
+      (
+        (await (
+          await memberRequest("/board/notes?archived=1&scope=shared")
+        ).json()) as any
+      ).total,
     ).toBe(1);
     await memberRequest(
       "/board/notes/" + note.id,
@@ -700,9 +845,10 @@ describe("shared board notes", () => {
     ).toBe(200);
   });
   it("filters by kind and team and orders pinned notes first", async () => {
-    await memberRequest("/board/notes", input);
+    await memberRequest("/board/notes?scope=shared", input);
     const note: any = await (
-      await memberRequest("/board/notes", {
+      await memberRequest("/board/notes?scope=shared", {
+        scope: "shared",
         title: "General",
         content: "All members",
       })
@@ -713,12 +859,14 @@ describe("shared board notes", () => {
       "central",
       "PATCH",
     );
-    const feed: any = await (await call("/board/notes")).json();
+    const feed: any = await (await call("/board/notes?scope=shared")).json();
     expect(feed.notes[0].id).toBe(note.id);
     expect(
       (
         (await (
-          await call("/board/notes?kind=announcement&teamId=software")
+          await call(
+            "/board/notes?kind=announcement&teamId=software&scope=shared",
+          )
         ).json()) as any
       ).total,
     ).toBe(1);
@@ -729,7 +877,7 @@ describe("shared board notes", () => {
         throw new Error("offline");
       },
     });
-    const r = await memberRequest("/board/notes", input);
+    const r = await memberRequest("/board/notes?scope=shared", input);
     expect(r.status).toBe(201);
     expect(((await r.json()) as any).liveDelivered).toBe(false);
     expect(
@@ -737,7 +885,7 @@ describe("shared board notes", () => {
     ).toMatchObject({ count: 1 });
   });
   it("requires the same-origin websocket handshake", async () => {
-    expect((await call("/board/live")).status).toBe(400);
+    expect((await call("/board/live?scope=shared")).status).toBe(400);
     expect(
       (
         await app.request(

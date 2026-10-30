@@ -1,3 +1,4 @@
+import { register as members } from "./routes/members";
 import spec from "./openapi.json";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -133,6 +134,7 @@ auth(app);
 identity(app);
 organization(app);
 management(app);
+members(app);
 applications(app);
 app.notFound((c) =>
   c.req.path.startsWith("/api/")

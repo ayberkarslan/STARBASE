@@ -234,3 +234,105 @@ describe("identity boundaries", () => {
     expect(r.status).toBe(200);
   });
 });
+
+describe("admin member creation", () => {
+  const input = {
+    username: "new.member",
+    email: "new@test.com",
+    firstName: "New",
+    lastName: "Member",
+    temporaryPassword: "temporary-password-123",
+    currentPassword: "admin-password",
+    teamId: "software",
+  };
+  function identityMock(rejectSignup = false) {
+    const f = vi.fn(async (url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path.includes("signInWithPassword"))
+        return Response.json({ localId: "u1", idToken: "admin-token" });
+      if (path.includes("signUp"))
+        return rejectSignup
+          ? Response.json({}, { status: 400 })
+          : Response.json({ localId: "u3", idToken: "new-token" });
+      return Response.json({});
+    });
+    vi.stubGlobal("fetch", f);
+    return f;
+  }
+  afterEach(() => vi.unstubAllGlobals());
+  it("creates a normal member with forced password change and optional team", async () => {
+    identityMock();
+    const r = await call("/admin/users", { ...input, owner: true });
+    expect(r.status).toBe(201);
+    const result: any = await r.json();
+    expect(result.user.owner).toBe(0);
+    expect(result).not.toHaveProperty("temporaryPassword");
+    expect(
+      db
+        .prepare("SELECT must_change_password,verified FROM users WHERE id=?")
+        .get("u3"),
+    ).toMatchObject({ must_change_password: 1, verified: 0 });
+    expect(
+      db.prepare("SELECT role_id FROM user_roles WHERE user_id=?").all("u3"),
+    ).toEqual([{ role_id: "member" }]);
+    expect(
+      db.prepare("SELECT team_id FROM memberships WHERE user_id=?").get("u3"),
+    ).toMatchObject({ team_id: "software" });
+    expect(
+      JSON.stringify(db.prepare("SELECT * FROM audit").all()),
+    ).not.toContain(input.temporaryPassword);
+  });
+  it("rejects administrators without user management permission", async () => {
+    db.exec("UPDATE users SET owner=0 WHERE id='u1'");
+    const fetcher = identityMock();
+    expect((await call("/admin/users", input)).status).toBe(403);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("requires the administrators current password", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({}, { status: 400 })),
+    );
+    expect((await call("/admin/users", input)).status).toBe(401);
+    expect(db.prepare("SELECT COUNT(*) count FROM users").get()).toMatchObject({
+      count: 2,
+    });
+  });
+  it("rejects duplicates before creating a Firebase identity", async () => {
+    const f = identityMock();
+    expect(
+      (await call("/admin/users", { ...input, username: "alice" })).status,
+    ).toBe(409);
+    expect(f.mock.calls.every(([url]) => !String(url).includes("signUp"))).toBe(
+      true,
+    );
+  });
+  it("rejects archived teams before account creation", async () => {
+    db.exec("UPDATE teams SET archived=1 WHERE id='software'");
+    const f = identityMock();
+    expect((await call("/admin/users", input)).status).toBe(400);
+    expect(f.mock.calls.every(([url]) => !String(url).includes("signUp"))).toBe(
+      true,
+    );
+  });
+  it("rolls back reservations when Firebase rejects signup", async () => {
+    identityMock(true);
+    expect((await call("/admin/users", input)).status).toBe(400);
+    expect(
+      db.prepare("SELECT id FROM users WHERE username=?").get(input.username),
+    ).toBeUndefined();
+  });
+  it("compensates Firebase creation if local provisioning fails", async () => {
+    const f = identityMock();
+    env.DB.batch = async () => {
+      throw new Error("database unavailable");
+    };
+    expect((await call("/admin/users", input)).status).toBe(503);
+    expect(
+      f.mock.calls.some(([url]) => String(url).includes("accounts:delete")),
+    ).toBe(true);
+    expect(
+      db.prepare("SELECT id FROM users WHERE username=?").get(input.username),
+    ).toBeUndefined();
+  });
+});

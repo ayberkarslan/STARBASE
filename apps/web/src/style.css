@@ -573,3 +573,14 @@ footer {
     grid-row: 1;
   }
 }
+
+.members-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.members-heading h1 {
+  margin: 0;
+}

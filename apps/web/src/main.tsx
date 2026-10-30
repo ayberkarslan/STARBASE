@@ -1,3 +1,4 @@
+import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
 import { FormSelect } from "./form-select";
 import { Captcha } from "./captcha";
@@ -722,7 +723,21 @@ function App() {
           )}
           {tab === "members" && (
             <>
-              <h1>Üyeler</h1>
+              <div className="members-heading">
+                <h1>Üyeler</h1>
+                <CreateMember
+                  org={org}
+                  onCreated={async (result) => {
+                    setRows(await api("/admin/users"));
+                    setSelected(result.user);
+                    setNotice(
+                      result.verificationDelivered
+                        ? "Üye oluşturuldu. Doğrulama e-postası gönderildi; ilk girişte şifre değişimi istenecek."
+                        : "Üye oluşturuldu; doğrulama e-postası gönderilemedi. Üye giriş ekranından yeniden isteyebilir.",
+                    );
+                  }}
+                />
+              </div>
               <Invitations run={act} />
               <p>Kişiler, ekipler ve erişimler.</p>
               <div className="table">

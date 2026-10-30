@@ -24,6 +24,25 @@ import {
   type App,
 } from "../common";
 export function register(app: App) {
+  app.get("/api/v1/admin/users/:id", async (c) => {
+    await permit(c, "users.manage");
+    const id = c.req.param("id");
+    const user = await c.env.DB.prepare(
+      "SELECT id,username,email,first_name,last_name,verified,disabled,owner FROM users WHERE id=?",
+    )
+      .bind(id)
+      .first();
+    if (!user) fail(404, "not_found");
+    const memberships = (
+      await c.env.DB.prepare(
+        "SELECT m.department_id,m.team_id,d.name department,t.name team FROM memberships m JOIN departments d ON d.id=m.department_id JOIN teams t ON t.id=m.team_id WHERE m.user_id=?",
+      )
+        .bind(id)
+        .all()
+    ).results;
+    return c.json({ ...user, memberships });
+  });
+
   app.get("/api/v1/admin/users", async (c) => {
     await permit(c, "users.manage");
     return c.json(

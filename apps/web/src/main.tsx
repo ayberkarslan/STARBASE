@@ -644,7 +644,7 @@ function App() {
                   </Panel>
                 ))}
               </div>
-              {user.owner && (
+              {(user.owner || permissions.includes("organization.manage")) && (
                 <form
                   className="inline-form"
                   onSubmit={(e) => {
@@ -664,7 +664,7 @@ function App() {
                   </Button>
                 </form>
               )}
-              {user.owner && (
+              {(user.owner || permissions.includes("organization.manage")) && (
                 <form
                   className="inline-form"
                   onSubmit={(e) => {
@@ -818,8 +818,39 @@ function App() {
   );
 }
 function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
+  const [memberships, setMemberships] = useState<any[]>([]);
+  const refresh = () =>
+    api("/admin/users/" + user.id).then((u) => setMemberships(u.memberships));
+  useEffect(() => {
+    refresh().catch(() => {});
+  }, [user.id]);
   return (
     <div className="admin-forms">
+      {memberships.map((m) => (
+        <div className="org-row" key={m.team_id}>
+          <span>
+            {m.department} / {m.team}
+          </span>
+          <Button
+            onClick={() =>
+              run(async () => {
+                await api(
+                  "/admin/memberships",
+                  {
+                    userId: user.id,
+                    departmentId: m.department_id,
+                    teamId: m.team_id,
+                  },
+                  "DELETE",
+                );
+                await refresh();
+              })
+            }
+          >
+            Üyeliği kaldır
+          </Button>
+        </div>
+      ))}
       <form
         onSubmit={(e) => {
           e.preventDefault();

@@ -2,5 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "/@starbase-sdk": new URL(
+        "../../packages/sdk/src/index.ts",
+        import.meta.url,
+      ).pathname,
+    },
+  },
   server: { proxy: { "/api": "http://127.0.0.1:8787" } },
 });

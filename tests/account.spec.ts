@@ -79,6 +79,59 @@ test("real Firebase account and administration", async ({ page, request }) => {
     await expect(
       page.getByRole("heading", { name: "Rol oluştur", exact: true }),
     ).toBeVisible();
+    for (const suffix of ["one", "two"]) {
+      const clientId = username.replaceAll("_", "-") + "-" + suffix;
+      const registered = await page.request.post(
+        origin + "/api/v1/admin/apps",
+        {
+          headers: { Origin: origin },
+          data: {
+            id: clientId,
+            name: "Fixture " + suffix,
+            redirects: [origin + "/callback"],
+            origins: [origin],
+            scopes: ["profile"],
+          },
+        },
+      );
+      expect(registered.status()).toBe(201);
+      await page.evaluate(
+        async ({ origin, clientId }) => {
+          const sdk = await import("/@starbase-sdk");
+          const client = new sdk.Starbase({
+            baseUrl: origin,
+            clientId,
+            redirectUri: origin + "/callback",
+            storage: sessionStorage,
+          });
+          await client.login(["profile"]);
+        },
+        { origin, clientId },
+      );
+      await expect(
+        page.getByRole("heading", {
+          name: "Fixture " + suffix + " ile bağlantı kur",
+        }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "İzin ver ve devam et" }).click();
+      await page.waitForURL("**/callback?**");
+      const profile = await page.evaluate(
+        async ({ origin, clientId }) => {
+          const sdk = await import("/@starbase-sdk");
+          return new sdk.Starbase({
+            baseUrl: origin,
+            clientId,
+            redirectUri: origin + "/callback",
+            storage: sessionStorage,
+          }).handleCallback();
+        },
+        { origin, clientId },
+      );
+      expect(profile.username).toBe(username);
+      expect(profile.applicationId).toBe(clientId);
+      expect(profile.email).toBeUndefined();
+      await page.goto(origin);
+    }
     const temporary = randomBytes(24).toString("base64url");
     const reset = await page.request.post(
       origin + "/api/v1/admin/users/" + uid + "/password",
@@ -122,7 +175,7 @@ test("real Firebase account and administration", async ({ page, request }) => {
         { headers: { Authorization: "Bearer owner" }, data: { localId: uid } },
       );
       sql(
-        `DELETE FROM sessions WHERE user_id='${uid}'; DELETE FROM families WHERE user_id='${uid}'; DELETE FROM users WHERE id='${uid}';`,
+        `DELETE FROM codes WHERE user_id='${uid}'; DELETE FROM consents WHERE user_id='${uid}'; DELETE FROM sessions WHERE user_id='${uid}'; DELETE FROM families WHERE user_id='${uid}'; DELETE FROM users WHERE id='${uid}'; DELETE FROM apps WHERE id LIKE '${username.replaceAll("_", "-")}-%';`,
       );
     }
   }

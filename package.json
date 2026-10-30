@@ -16,7 +16,8 @@
     "emulators": "firebase emulators:start --only auth --project demo-starbase",
     "example:web": "vite examples/vite --host 127.0.0.1 --port 5180",
     "openapi": "node scripts/openapi.mjs",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "test:smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

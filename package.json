@@ -1,0 +1,25 @@
+{
+  "name": "starbase",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @starbase/web",
+    "dev:api": "npm run dev -w @starbase/api",
+    "build": "npm run build -w @starbase/web",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "npm run db:migrate -w @starbase/api"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@cloudflare/workers-types": "^4.20261001.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/node": "^22.0.0"
+  }
+}

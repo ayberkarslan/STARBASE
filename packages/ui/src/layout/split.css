@@ -1,0 +1,16 @@
+.resizable-split{display:grid;min-width:0;min-height:0;overflow:hidden}
+.resizable-split.split-x{grid-template-columns:var(--split-first) 6px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.resizable-split.split-y{grid-template-rows:var(--split-first) 6px minmax(0,1fr);grid-template-columns:minmax(0,1fr)}
+.split-pane{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.split-pane[hidden],.split-handle[hidden]{display:none!important}
+.resizable-split.split-collapsed{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.split-handle{position:relative;background:#000;touch-action:none;z-index:5;outline:none}
+.split-x>.split-handle{cursor:col-resize}
+.split-y>.split-handle{cursor:row-resize}
+.split-handle::after{content:'';position:absolute;background:var(--line);pointer-events:none}
+.split-x>.split-handle::after{width:1px;top:0;bottom:0;left:2px}
+.split-y>.split-handle::after{height:1px;left:0;right:0;top:2px}
+.split-handle:is(:hover,:focus-visible)::after{background:#fff}
+body[data-panel-resizing=x],body[data-panel-resizing=x] *{cursor:col-resize!important;user-select:none!important}
+body[data-panel-resizing=y],body[data-panel-resizing=y] *{cursor:row-resize!important;user-select:none!important}
+body[data-panel-resizing] .split-handle::after{background:#fff}

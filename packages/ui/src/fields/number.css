@@ -1,0 +1,5 @@
+.inspector-numbers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.inspector-number{display:grid;gap:8px;min-width:0;font-size:12px}
+.inspector-number>div{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.inspector-number input{width:100%;min-width:0;background:#000;color:#fff;border:0;padding:7px 0;font-size:13px}
+.inspector-number small{font-size:11px}

@@ -1,0 +1,20 @@
+.startup-shell,.startup-workspace{width:100%;height:100%;min-width:0;min-height:0;overflow:hidden}
+.startup-workspace{opacity:0;transition:opacity var(--startup-fade,650ms) cubic-bezier(.22,1,.36,1)}
+.startup-fading .startup-workspace,.startup-ready .startup-workspace{opacity:1}
+.startup-screen{position:fixed;inset:0;z-index:20000;display:grid;place-items:center;overflow:hidden;background:#000;color:#fff;opacity:1;transition:opacity var(--startup-fade,650ms) cubic-bezier(.22,1,.36,1);user-select:none}
+.startup-fading .startup-screen{opacity:0;pointer-events:none}
+.startup-brand{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1}
+.startup-brand img{display:block;width:clamp(140px,17vw,200px);height:clamp(140px,17vw,200px);object-fit:contain}
+.startup-orbit{position:absolute;inset:-24px;width:calc(100% + 48px);height:calc(100% + 48px);overflow:visible;pointer-events:none}
+.orbit-track{fill:none;stroke:#ffffff25;stroke-width:.7}
+.orbit-trail{fill:none;stroke:#fff;stroke-width:1;stroke-dasharray:90 614;stroke-dashoffset:90;transform:rotate(-90deg);transform-origin:120px 120px}
+.orbit-star{fill:#fff;filter:drop-shadow(0 0 3px #ffffff70)}
+.orbit-rotor{transform-origin:120px 120px;animation:startup-orbit 3.8s linear infinite}
+.startup-fading .orbit-rotor{animation-play-state:paused}
+@keyframes startup-orbit{to{transform:rotate(360deg)}}
+.startup-brand>span{position:absolute;top:calc(100% + 32px);left:50%;transform:translateX(-50%);white-space:nowrap;font-family:Michroma,sans-serif;font-size:clamp(21px,2vw,28px);font-weight:400;letter-spacing:.48em;text-indent:.48em;line-height:1.5}
+.startup-stars{position:absolute;left:0;right:0;top:0;height:45%;pointer-events:none;mask-image:linear-gradient(#000 0%,#000 35%,transparent 100%)}
+.startup-stars>span{position:absolute;border-radius:50%;background:#fff;opacity:.15;animation:startup-twinkle var(--star-duration) ease-in-out var(--star-delay) infinite}
+@keyframes startup-twinkle{0%,100%{opacity:.08}45%{opacity:var(--star-brightness);box-shadow:0 0 5px #ffffff70}65%{opacity:.18}}
+@media(prefers-reduced-motion:reduce){.startup-stars>span{animation:none;opacity:.35}.startup-workspace,.startup-screen{transition:none}}
+@media(prefers-reduced-motion:reduce){.orbit-rotor{animation:none}.orbit-trail{stroke-dasharray:none;opacity:.4}}

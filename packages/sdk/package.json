@@ -1,0 +1,12 @@
+{
+  "name": "@starbase/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.tsx"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0"
+  }
+}

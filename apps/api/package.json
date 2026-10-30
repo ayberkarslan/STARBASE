@@ -1,0 +1,17 @@
+{
+  "name": "@starbase/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "db:migrate": "wrangler d1 migrations apply starbase --local"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "zod": "^3.24.0",
+    "jose": "^6.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

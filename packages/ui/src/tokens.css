@@ -1,0 +1,19 @@
+:root,.sd-theme{--sd-black:#000;--sd-white:#fff;--sd-muted:#fff;--sd-line:#ffffff40;--sd-line-strong:#fff;--line:var(--sd-line);--sd-success:#6ee7a2;--sd-warning:#efad57;--sd-danger:#ff8585;--sd-radius:6px;--sd-font:Michroma,sans-serif;--sd-text:13px;--sd-space:8px;--sd-marker:2px;--sd-icon:16px;--sd-motion:180ms ease}
+.sd-theme{font-family:var(--sd-font);font-size:var(--sd-text);font-synthesis:none;color:var(--sd-white);background:var(--sd-black);color-scheme:dark}
+.sd-theme *,.sd-theme *::before,.sd-theme *::after{box-sizing:border-box}
+.sd-theme :is(button,input,textarea,select,svg text){font-family:inherit}
+.sd-theme button{color:inherit;cursor:pointer}.sd-theme button:disabled{opacity:.4;cursor:default}
+.sd-theme :focus-visible{outline:1px solid #fff;outline-offset:3px}
+.sd-theme,.sd-theme *{scrollbar-width:thin;scrollbar-color:#fff #000}
+.sd-theme ::-webkit-scrollbar{width:4px;height:4px}.sd-theme ::-webkit-scrollbar-track,.sd-theme ::-webkit-scrollbar-corner{background:#000}.sd-theme ::-webkit-scrollbar-thumb{background:#fff;border-radius:0}.sd-theme ::-webkit-scrollbar-button{display:none}
+:where(.sd-button,.sd-select__trigger,.sd-select__option,.sd-field__input,.sd-tabs__tab,.sd-status){font-size:12px}
+.sd-button,.sd-select__trigger,.sd-dialog__close{position:relative}
+:is(.sd-button,.sd-select__trigger,.sd-dialog__close)::after{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--sd-marker);background:currentColor;opacity:0;pointer-events:none;border-radius:0}
+:is(.sd-button,.sd-select__trigger,.sd-dialog__close):is(:hover,:focus-visible,[aria-pressed=true],[aria-expanded=true]):not(:disabled)::after{opacity:1}
+.sd-select__option::before,.sd-choice-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:var(--sd-marker);background:currentColor;opacity:0;pointer-events:none;border-radius:0}
+:is(.sd-select__option,.sd-choice-card):is(:hover,:focus-visible,[aria-selected=true],[aria-pressed=true])::before{opacity:1}
+.sd-choice-card{position:relative}.sd-choice-card:hover{transform:none}
+.sd-button--danger{border-color:var(--sd-line);color:#fff}.sd-button--primary:is(:hover,:focus-visible){background:#fff;color:#000}
+.sd-select__popup{max-height:min(300px,40dvh)}.sd-dialog{max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain}
+.sd-theme kbd{display:inline-grid;place-items:center;min-width:22px;min-height:22px;padding:0 4px;border:1px solid var(--sd-line);border-radius:3px;font:12px var(--sd-font)}
+@media(prefers-reduced-motion:reduce){.sd-theme *,.sd-theme *::before,.sd-theme *::after{animation:none!important;transition:none!important}}

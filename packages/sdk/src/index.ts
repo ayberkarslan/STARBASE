@@ -1,12 +1,28 @@
-import type { Profile, ProfileScope, TokenSet } from "../../contracts/src";
+export type * from "./contracts";
+import type {
+  Profile,
+  ProfileScope,
+  TokenSet,
+  ApplicationHistory,
+} from "./contracts";
 export interface Storage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
 }
+export class StarbaseError extends Error {
+  constructor(
+    public readonly code: string,
+    public readonly status: number,
+  ) {
+    super(code);
+    this.name = "StarbaseError";
+  }
+}
 export class Starbase {
   private tokens: TokenSet | null = null;
   private refreshing: Promise<void> | null = null;
+  private callbackPromise: Promise<Profile> | null = null;
   constructor(
     private options: {
       baseUrl: string;
@@ -31,7 +47,8 @@ export class Starbase {
       body: body ? JSON.stringify(body) : undefined,
     });
     const result: any = await r.json();
-    if (!r.ok) throw new Error(result.error?.code ?? "starbase_error");
+    if (!r.ok)
+      throw new StarbaseError(result.error?.code ?? "starbase_error", r.status);
     return result;
   }
   async login(scopes: ProfileScope[] = ["profile"]) {
@@ -67,7 +84,15 @@ export class Starbase {
     }).forEach(([k, v]) => url.searchParams.set(k, v));
     location.assign(url.href);
   }
-  async handleCallback(url = location.href) {
+  handleCallback(url = location.href): Promise<Profile> {
+    if (!this.callbackPromise)
+      this.callbackPromise = this.finishCallback(url).catch((error) => {
+        this.callbackPromise = null;
+        throw error;
+      });
+    return this.callbackPromise;
+  }
+  private async finishCallback(url: string) {
     const u = new URL(url);
     const saved = sessionStorage.getItem("starbase.pending");
     if (!saved) throw new Error("missing_login");
@@ -123,6 +148,13 @@ export class Starbase {
   }
   getProfile() {
     return this.request<Profile>("/me", undefined, true);
+  }
+  getApplicationHistory(page = 1) {
+    return this.request<ApplicationHistory>(
+      `/me/applications?page=${page}`,
+      undefined,
+      true,
+    );
   }
   async hasPermission(permission: string) {
     return (

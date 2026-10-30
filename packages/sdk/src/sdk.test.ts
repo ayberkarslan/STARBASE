@@ -77,3 +77,42 @@ describe("SDK contracts", () => {
     ).rejects.toThrow("invalid_session");
   });
 });
+
+it("deduplicates callback exchange for React strict effects", async () => {
+  vi.stubGlobal("sessionStorage", {
+    getItem: () =>
+      JSON.stringify({ state: "expected", verifier: "a".repeat(64) }),
+    removeItem: vi.fn(),
+  });
+  vi.stubGlobal("history", { replaceState: vi.fn() });
+  const fetcher = vi.fn(async (url: RequestInfo | URL) =>
+    String(url).endsWith("/auth/exchange")
+      ? Response.json({
+          accessToken: "access",
+          refreshToken: "next",
+          expiresIn: 600,
+        })
+      : Response.json({
+          id: "u1",
+          username: "alice",
+          applicationId: "starlab",
+        }),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  const client = new Starbase({
+    baseUrl: "https://base.test",
+    clientId: "starlab",
+    redirectUri: "https://lab.test/callback",
+  });
+  const results = await Promise.all([
+    client.handleCallback("https://lab.test/callback?code=test&state=expected"),
+    client.handleCallback("https://lab.test/callback?code=test&state=expected"),
+  ]);
+  expect(results[0].id).toBe("u1");
+  expect(results[1].id).toBe("u1");
+  expect(
+    fetcher.mock.calls.filter(([url]) =>
+      String(url).endsWith("/auth/exchange"),
+    ),
+  ).toHaveLength(1);
+});

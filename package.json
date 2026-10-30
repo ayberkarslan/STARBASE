@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm run dev -w @starbase/web",
     "dev:api": "npm run dev -w @starbase/api",
-    "build": "npm run build -w @starbase/web",
+    "build": "npm run pack:sdk && npm run build -w @starbase/web",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "npm run db:migrate -w @starbase/api",
@@ -17,7 +17,9 @@
     "example:web": "vite examples/vite --host 127.0.0.1 --port 5180",
     "openapi": "node scripts/openapi.mjs",
     "test:ui": "playwright test",
-    "test:smoke": "node scripts/smoke.mjs"
+    "test:smoke": "node scripts/smoke.mjs",
+    "build:sdk": "npm run build -w @starbase/sdk",
+    "pack:sdk": "node scripts/pack-sdk.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

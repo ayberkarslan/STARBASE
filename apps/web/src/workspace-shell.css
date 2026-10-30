@@ -1,0 +1,150 @@
+.workspace-body {
+  display: block;
+  position: relative;
+}
+.workspace .content {
+  height: 100%;
+  box-sizing: border-box;
+  padding-bottom: 200px;
+}
+.workspace .content.canvas-content {
+  padding: 0;
+  overflow: hidden;
+}
+.workspace-menu-anchor {
+  position: relative;
+  z-index: 80;
+}
+.workspace .workspace-menu {
+  position: absolute;
+  top: calc(100% + 15px);
+  left: -8px;
+  width: 264px;
+  max-height: calc(100dvh - 120px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 18px 12px;
+  background: #080808;
+  border: 1px solid #ffffff38;
+  box-shadow: 20px 24px 80px #000b;
+}
+.workspace .workspace-menu > button {
+  flex: none;
+  font-size: 10px;
+  min-height: 42px;
+}
+.workspace .workspace-menu > button svg:last-child {
+  display: block;
+}
+.workspace .workspace-menu > .eyebrow {
+  display: block;
+  font-size: 8px;
+  padding: 8px 12px 12px;
+  margin: 0;
+}
+.workspace .workspace-menu .sidebar-foot {
+  display: block;
+  font-size: 8px;
+  padding-top: 20px;
+}
+.application-orbit {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  z-index: 12;
+  pointer-events: none;
+  background: linear-gradient(transparent 0%, #0008 62%, #000 100%);
+}
+.application-orbit > svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.application-orbit path {
+  fill: none;
+  stroke: #ffffff4a;
+  stroke-width: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+.application-orbit .orbit-echo {
+  stroke: #ffffff12;
+}
+.orbit-application {
+  pointer-events: auto;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 8px 8px;
+  color: #fff;
+  background: #050505;
+  border: 1px solid #ffffff3b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.orbit-application:hover,
+.orbit-application:focus-visible {
+  border-color: #fff;
+  background: #141414;
+}
+.orbit-node {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #ffffff26;
+  border-radius: 50%;
+}
+.orbit-caption {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  letter-spacing: 3px;
+  white-space: nowrap;
+  color: #ffffff70;
+}
+@media (max-width: 650px) {
+  .application-orbit {
+    height: 112px;
+  }
+  .orbit-application {
+    font-size: 7px;
+    padding: 6px;
+    gap: 5px;
+    letter-spacing: 0;
+    flex-direction: column;
+    border: 0;
+    background: #000;
+  }
+  .orbit-node {
+    width: 28px;
+    height: 28px;
+  }
+  .orbit-node svg {
+    width: 15px;
+  }
+  .orbit-arrow {
+    display: none;
+  }
+  .orbit-caption {
+    font-size: 6px;
+    letter-spacing: 2px;
+    bottom: 10px;
+  }
+  .workspace .content {
+    padding-bottom: 125px;
+  }
+}

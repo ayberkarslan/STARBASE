@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import {
+  TabBar,
   Button,
   IconButton,
   Panel,
@@ -10,6 +17,10 @@ import {
   EmptyState,
 } from "@stardrop/ui";
 import {
+  LockKeyhole,
+  Users,
+  SlidersHorizontal,
+  GripHorizontal,
   Plus,
   StickyNote,
   Megaphone,
@@ -24,9 +35,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { request } from "./management";
-import "./board-notes.css";
 interface Note {
   id: string;
+  scope: "private" | "shared";
+  x: number;
+  y: number;
+  layoutVersion: number;
   authorId: string | null;
   authorFirstName: string | null;
   authorLastName: string | null;
@@ -66,13 +80,40 @@ const time = (n: number) =>
     dateStyle: "medium",
     timeStyle: "short",
   });
-export function BoardNotes({
-  currentUserId,
-  teams,
-}: {
+export function BoardNotes(props: {
   currentUserId: string;
   teams: { id: string; name: string; departmentId: string }[];
 }) {
+  const [scope, setScope] = useState<"private" | "shared">("private");
+  return (
+    <div className="board-desktop">
+      <TabBar
+        className="board-scope"
+        label="Pano seçimi"
+        value={scope}
+        onChange={(v) => setScope(v as "private" | "shared")}
+        items={[
+          {
+            value: "private",
+            label: "Kendi panom",
+            icon: <LockKeyhole size={14} />,
+          },
+          { value: "shared", label: "Ortak pano", icon: <Users size={14} /> },
+        ]}
+      />
+      <BoardCanvas key={scope} {...props} scope={scope} />
+    </div>
+  );
+}
+function BoardCanvas({
+  currentUserId,
+  teams,
+  scope,
+}: {
+  currentUserId: string;
+  teams: { id: string; name: string; departmentId: string }[];
+} & { scope: "private" | "shared" }) {
+  const [filters, setFilters] = useState(false);
   const [feed, setFeed] = useState<Feed>({
       notes: [],
       canModerate: false,
@@ -100,7 +141,12 @@ export function BoardNotes({
     const id = ++sequence.current;
     setBusy(true);
     try {
-      const params = new URLSearchParams({ page: String(page), archived });
+      const params = new URLSearchParams({
+        page: String(page),
+        archived,
+        scope,
+        limit: "200",
+      });
       if (kind) params.set("kind", kind);
       if (team) params.set("teamId", team);
       const data = await request("/board/notes?" + params);
@@ -164,6 +210,7 @@ export function BoardNotes({
       )
         return;
       const url = new URL("/api/v1/board/live", location.origin);
+      url.searchParams.set("scope", scope);
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
       const ws = new WebSocket(url);
       socket.current = ws;
@@ -252,6 +299,13 @@ export function BoardNotes({
     setEditorError("");
     const date = String(f.get("dueAt") ?? "");
     const payload = {
+      ...(editor === "new"
+        ? {
+            scope,
+            x: 40 + (feed.notes.length % 3) * 340,
+            y: 40 + Math.floor(feed.notes.length / 3) * 390,
+          }
+        : {}),
       title: f.get("title"),
       content: f.get("content"),
       kind: f.get("kind"),
@@ -307,191 +361,259 @@ export function BoardNotes({
     ? new Date(editing.dueAt * 1000).toLocaleDateString("en-CA")
     : "";
   return (
-    <section className="board-notes" aria-label="Ortak not panosu">
+    <section
+      className="board-notes"
+      aria-label={scope === "private" ? "Özel not panosu" : "Ortak not panosu"}
+    >
       <div className="notes-heading">
         <div>
-          <h2>Ortak not panosu</h2>
+          <h2>
+            {scope === "private"
+              ? "Sana ait bir alan."
+              : "Birlikte, aynı panoda."}
+          </h2>
           <span className="notes-connection" role="status">
             <i className={live ? "connected" : ""} />
             {live ? "Canlı güncelleniyor" : "Bağlantı yeniden kuruluyor"}
           </span>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => {
-            setEditorError("");
-            setEditor("new");
-          }}
-        >
-          <Plus size={16} /> Not ekle
-        </Button>
+        <div className="notes-tools">
+          <IconButton
+            label="Pano filtreleri"
+            variant="bare"
+            aria-expanded={filters}
+            onClick={() => setFilters((v) => !v)}
+          >
+            <SlidersHorizontal size={16} />
+          </IconButton>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditorError("");
+              setEditor("new");
+            }}
+          >
+            <Plus size={16} /> Not ekle
+          </Button>
+        </div>
       </div>
-      <div className="notes-filters">
-        <SelectMenu
-          label="Not türü"
-          value={kind}
-          onChange={(v) => {
-            setKind(v);
-            setPage(1);
-          }}
-          options={[
-            { value: "", label: "Notlar ve duyurular" },
-            { value: "note", label: "Notlar" },
-            { value: "announcement", label: "Duyurular" },
-          ]}
-        />
-        <SelectMenu
-          label="Notların ekibi"
-          value={team}
-          onChange={(v) => {
-            setTeam(v);
-            setPage(1);
-          }}
-          options={[
-            { value: "", label: "Tüm ekipler" },
-            ...teams.map((t) => ({ value: t.id, label: t.name })),
-          ]}
-        />
-        <SelectMenu
-          label="Not durumu"
-          value={archived}
-          onChange={(v) => {
-            setArchived(v);
-            setPage(1);
-          }}
-          options={[
-            { value: "0", label: "Aktif notlar" },
-            { value: "1", label: "Arşiv" },
-          ]}
-        />
-        <IconButton
-          label="Notları yenile"
-          variant="bare"
-          disabled={busy}
-          onClick={() => load()}
-        >
-          <RefreshCw size={16} />
-        </IconButton>
-      </div>
+      {filters && (
+        <div className="notes-filters">
+          <SelectMenu
+            label="Not türü"
+            value={kind}
+            onChange={(v) => {
+              setKind(v);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "Notlar ve duyurular" },
+              { value: "note", label: "Notlar" },
+              { value: "announcement", label: "Duyurular" },
+            ]}
+          />
+          <SelectMenu
+            label="Notların ekibi"
+            value={team}
+            onChange={(v) => {
+              setTeam(v);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "Tüm ekipler" },
+              ...teams.map((t) => ({ value: t.id, label: t.name })),
+            ]}
+          />
+          <SelectMenu
+            label="Not durumu"
+            value={archived}
+            onChange={(v) => {
+              setArchived(v);
+              setPage(1);
+            }}
+            options={[
+              { value: "0", label: "Aktif notlar" },
+              { value: "1", label: "Arşiv" },
+            ]}
+          />
+          <IconButton
+            label="Notları yenile"
+            variant="bare"
+            disabled={busy}
+            onClick={() => load()}
+          >
+            <RefreshCw size={16} />
+          </IconButton>
+        </div>
+      )}
       {error && (
         <p className="message error" role="alert">
           {error}
         </p>
       )}
-      {feed.notes.length ? (
-        <div className="sticky-grid" aria-busy={busy}>
-          {feed.notes.map((n) => {
-            const own = n.authorId === currentUserId,
-              canEdit = own || feed.canModerate;
-            const overdue = n.dueAt !== null && n.dueAt < Date.now() / 1000;
-            return (
-              <Panel
-                key={n.id}
-                className={"sticky-note" + (n.pinned ? " is-pinned" : "")}
-                data-note-id={n.id}
-              >
-                <div className="sticky-kicker">
-                  <span>
-                    {n.kind === "announcement" ? (
-                      <Megaphone size={14} />
-                    ) : (
-                      <StickyNote size={14} />
-                    )}{" "}
-                    {n.kind === "announcement" ? "Duyuru" : "Not"}
-                  </span>
-                  {n.pinned > 0 && (
-                    <span>
-                      <Pin size={13} /> Sabit
-                    </span>
-                  )}
-                </div>
-                <h3>{n.title}</h3>
-                <p className="sticky-content">{n.content}</p>
-                {n.team && <span className="sticky-team">{n.team}</span>}
-                {n.dueAt !== null && (
-                  <span
-                    className={"sticky-deadline" + (overdue ? " overdue" : "")}
+      <div
+        className="board-viewport"
+        aria-label="Serbest not alanı"
+        tabIndex={0}
+      >
+        <div
+          className="board-surface"
+          style={{
+            width: Math.max(1400, ...feed.notes.map((n) => n.x + 370)),
+            height: Math.max(1000, ...feed.notes.map((n) => n.y + 500)),
+          }}
+        >
+          {feed.notes.length ? (
+            <div className="sticky-grid" aria-busy={busy}>
+              {feed.notes.map((n) => {
+                const own = n.authorId === currentUserId,
+                  canEdit = own || feed.canModerate;
+                const overdue = n.dueAt !== null && n.dueAt < Date.now() / 1000;
+                return (
+                  <MovableNote
+                    key={n.id}
+                    note={n}
+                    canMove={canEdit}
+                    onMove={async (x, y) => {
+                      try {
+                        await request(
+                          "/board/notes/" + n.id + "/position",
+                          { x, y, layoutVersion: n.layoutVersion },
+                          "PATCH",
+                        );
+                        await reload.current();
+                      } catch (e) {
+                        setError(
+                          (e as Error).message === "note_position_conflict"
+                            ? "Not başka bir yerde taşındı. Güncel konumu yüklendi."
+                            : "Konum kaydedilemedi. Tekrar dene.",
+                        );
+                        await reload.current();
+                        throw e;
+                      }
+                    }}
                   >
-                    <Calendar size={13} />
-                    {new Date(n.dueAt * 1000).toLocaleDateString("tr-TR")}
-                    {overdue ? " · Tarihi geçti" : ""}
-                  </span>
-                )}
-                <div className="sticky-author">
-                  <span>
-                    {n.authorFirstName
-                      ? [n.authorFirstName, n.authorLastName].join(" ")
-                      : "Eski üye"}
-                  </span>
-                  <time
-                    dateTime={new Date(n.updatedAt * 1000).toISOString()}
-                    title={n.version > 1 ? "Düzenlendi" : "Oluşturuldu"}
-                  >
-                    {time(n.updatedAt)}
-                    {n.version > 1 ? " · Düzenlendi" : ""}
-                  </time>
-                </div>
-                {canEdit && (
-                  <div className="sticky-actions">
-                    {feed.canModerate && (
-                      <IconButton
-                        label={n.pinned ? "Sabitlemeyi kaldır" : "Notu sabitle"}
-                        size="sm"
-                        variant="bare"
-                        onClick={() => change(n, { pinned: !n.pinned })}
-                      >
-                        <Pin size={15} />
-                      </IconButton>
-                    )}
-                    <IconButton
-                      label="Notu düzenle"
-                      size="sm"
-                      variant="bare"
-                      onClick={() => {
-                        setEditorError("");
-                        setEditor(n);
-                      }}
+                    <Panel
+                      className={"sticky-note" + (n.pinned ? " is-pinned" : "")}
+                      data-note-id={n.id}
                     >
-                      <Pencil size={15} />
-                    </IconButton>
-                    <IconButton
-                      label={n.archived ? "Notu geri getir" : "Notu arşivle"}
-                      size="sm"
-                      variant="bare"
-                      onClick={() => change(n, { archived: !n.archived })}
-                    >
-                      {n.archived ? (
-                        <ArchiveRestore size={15} />
-                      ) : (
-                        <Archive size={15} />
+                      <div className="sticky-kicker">
+                        <span>
+                          {n.kind === "announcement" ? (
+                            <Megaphone size={14} />
+                          ) : (
+                            <StickyNote size={14} />
+                          )}{" "}
+                          {n.kind === "announcement" ? "Duyuru" : "Not"}
+                        </span>
+                        {n.pinned > 0 && (
+                          <span>
+                            <Pin size={13} /> Sabit
+                          </span>
+                        )}
+                      </div>
+                      <h3>{n.title}</h3>
+                      <p className="sticky-content">{n.content}</p>
+                      {n.team && <span className="sticky-team">{n.team}</span>}
+                      {n.dueAt !== null && (
+                        <span
+                          className={
+                            "sticky-deadline" + (overdue ? " overdue" : "")
+                          }
+                        >
+                          <Calendar size={13} />
+                          {new Date(n.dueAt * 1000).toLocaleDateString("tr-TR")}
+                          {overdue ? " · Tarihi geçti" : ""}
+                        </span>
                       )}
-                    </IconButton>
-                    <IconButton
-                      label="Notu sil"
-                      size="sm"
-                      variant="bare"
-                      onClick={() => {
-                        setEditorError("");
-                        setDeleteNote(n);
-                      }}
-                    >
-                      <Trash2 size={15} />
-                    </IconButton>
-                  </div>
-                )}
-              </Panel>
-            );
-          })}
+                      <div className="sticky-author">
+                        <span>
+                          {n.authorFirstName
+                            ? [n.authorFirstName, n.authorLastName].join(" ")
+                            : "Eski üye"}
+                        </span>
+                        <time
+                          dateTime={new Date(n.updatedAt * 1000).toISOString()}
+                          title={n.version > 1 ? "Düzenlendi" : "Oluşturuldu"}
+                        >
+                          {time(n.updatedAt)}
+                          {n.version > 1 ? " · Düzenlendi" : ""}
+                        </time>
+                      </div>
+                      {canEdit && (
+                        <div className="sticky-actions">
+                          {feed.canModerate && (
+                            <IconButton
+                              label={
+                                n.pinned ? "Sabitlemeyi kaldır" : "Notu sabitle"
+                              }
+                              size="sm"
+                              variant="bare"
+                              onClick={() => change(n, { pinned: !n.pinned })}
+                            >
+                              <Pin size={15} />
+                            </IconButton>
+                          )}
+                          <IconButton
+                            label="Notu düzenle"
+                            size="sm"
+                            variant="bare"
+                            onClick={() => {
+                              setEditorError("");
+                              setEditor(n);
+                            }}
+                          >
+                            <Pencil size={15} />
+                          </IconButton>
+                          <IconButton
+                            label={
+                              n.archived ? "Notu geri getir" : "Notu arşivle"
+                            }
+                            size="sm"
+                            variant="bare"
+                            onClick={() => change(n, { archived: !n.archived })}
+                          >
+                            {n.archived ? (
+                              <ArchiveRestore size={15} />
+                            ) : (
+                              <Archive size={15} />
+                            )}
+                          </IconButton>
+                          <IconButton
+                            label="Notu sil"
+                            size="sm"
+                            variant="bare"
+                            onClick={() => {
+                              setEditorError("");
+                              setDeleteNote(n);
+                            }}
+                          >
+                            <Trash2 size={15} />
+                          </IconButton>
+                        </div>
+                      )}
+                    </Panel>
+                  </MovableNote>
+                );
+              })}
+            </div>
+          ) : (
+            !busy &&
+            !error && (
+              <EmptyState
+                title={
+                  archived === "1" ? "Arşivde not yok" : "İlk notu sen bırak"
+                }
+                description={
+                  scope === "private"
+                    ? "Yalnızca senin gördüğün notlar. Ekle, başlığından tut ve istediğin yere bırak."
+                    : "Ekip notları ve duyurular için ortak alanımız. Kendi notlarını başlığından tutup taşı."
+                }
+              />
+            )
+          )}
         </div>
-      ) : (
-        !busy &&
-        !error && (
-          <EmptyState
-            title={archived === "1" ? "Arşivde not yok" : "İlk notu sen bırak"}
-            description="Test hazırlıkları, toplantı duyuruları ve ekip notları burada ortaklaşa paylaşılır."
-          />
-        )
-      )}
+      </div>
       {(feed.hasMore || page > 1) && (
         <div className="directory-pagination">
           <Button
@@ -616,5 +738,135 @@ function NoteForm({
         {note ? "Değişiklikleri kaydet" : "Panoya ekle"}
       </Button>
     </form>
+  );
+}
+
+function MovableNote({
+  note,
+  canMove,
+  onMove,
+  children,
+}: {
+  note: Note;
+  canMove: boolean;
+  onMove: (x: number, y: number) => Promise<void>;
+  children: ReactNode;
+}) {
+  const [position, setPosition] = useState({ x: note.x, y: note.y });
+  const [moving, setMoving] = useState(false);
+  const [pending, setPending] = useState(false);
+  const drag = useRef<{
+    clientX: number;
+    clientY: number;
+    x: number;
+    y: number;
+    pointerId: number;
+  } | null>(null);
+  const positionRef = useRef(position);
+  const move = (p: { x: number; y: number }) => {
+    positionRef.current = p;
+    setPosition(p);
+  };
+  useEffect(() => {
+    if (!drag.current) move({ x: note.x, y: note.y });
+  }, [note.x, note.y, note.layoutVersion]);
+  const commit = async () => {
+    const p = positionRef.current;
+    setPending(true);
+    try {
+      await onMove(p.x, p.y);
+    } catch {
+      move({ x: note.x, y: note.y });
+    } finally {
+      setPending(false);
+    }
+  };
+  return (
+    <div
+      className={"movable-note" + (moving ? " is-moving" : "")}
+      style={{
+        transform: `translate(${position.x}px,${position.y}px)`,
+        zIndex: moving ? 100 : undefined,
+      }}
+    >
+      <button
+        className="note-grip"
+        aria-label={note.title + " notunu taşı"}
+        title="Sürükle veya yön tuşlarıyla taşı (Shift: büyük adım)"
+        disabled={!canMove || pending}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          e.currentTarget.setPointerCapture(e.pointerId);
+          drag.current = {
+            clientX: e.clientX,
+            clientY: e.clientY,
+            ...position,
+            pointerId: e.pointerId,
+          };
+          setMoving(true);
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d || d.pointerId !== e.pointerId) return;
+          move({
+            x: Math.round(
+              Math.max(0, Math.min(20000, d.x + e.clientX - d.clientX)),
+            ),
+            y: Math.round(
+              Math.max(0, Math.min(20000, d.y + e.clientY - d.clientY)),
+            ),
+          });
+        }}
+        onPointerUp={(e) => {
+          if (!drag.current) return;
+          const d = drag.current;
+          drag.current = null;
+          setMoving(false);
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          if (d.x !== positionRef.current.x || d.y !== positionRef.current.y)
+            void commit();
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          setMoving(false);
+          move({ x: note.x, y: note.y });
+        }}
+        onLostPointerCapture={() => {
+          if (drag.current) {
+            drag.current = null;
+            setMoving(false);
+            move({ x: note.x, y: note.y });
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            drag.current = null;
+            setMoving(false);
+            move({ x: note.x, y: note.y });
+            return;
+          }
+          const directions: Record<string, [number, number]> = {
+            ArrowLeft: [-1, 0],
+            ArrowRight: [1, 0],
+            ArrowUp: [0, -1],
+            ArrowDown: [0, 1],
+          };
+          const d = directions[e.key];
+          if (!d || e.repeat) return;
+          e.preventDefault();
+          const step = e.shiftKey ? 40 : 10;
+          move({
+            x: Math.max(0, Math.min(20000, position.x + d[0] * step)),
+            y: Math.max(0, Math.min(20000, position.y + d[1] * step)),
+          });
+          void commit();
+        }}
+      >
+        <GripHorizontal size={18} />
+      </button>
+      {children}
+    </div>
   );
 }

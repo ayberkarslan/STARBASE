@@ -1,3 +1,5 @@
+import { WorkspaceMenu, ApplicationOrbit } from "./workspace-shell";
+import { BoardNotes } from "./board-notes";
 import { DeveloperDocs } from "./developer-docs";
 import { TeamDirectory, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
@@ -40,6 +42,8 @@ import {
 } from "lucide-react";
 import "@stardrop/ui/styles.css";
 import "./style.css";
+import "./workspace-shell.css";
+import "./board-notes.css";
 async function api(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -510,7 +514,71 @@ function App() {
     <div className="workspace">
       <DesktopHeader
         brand={brand}
-        start={<span className="eyebrow">HESAP MERKEZİ</span>}
+        start={
+          <WorkspaceMenu>
+            <span className="eyebrow">ÇALIŞMA ALANI</span>
+            {[
+              { id: "board", name: "Pano", icon: Users },
+              { id: "directory", name: "Takım dizini", icon: Users },
+              { id: "account", name: "Hesabım", icon: Orbit },
+              { id: "teams", name: "Ekipler", icon: Layers },
+              { id: "connections", name: "Bağlı uygulamalar", icon: AppWindow },
+              { id: "organization", name: "Departmanlar", icon: Layers },
+              { id: "sessions", name: "Oturumlar", icon: KeyRound },
+              ...(user.owner || permissions.some((p) => p.endsWith(".manage"))
+                ? [
+                    { id: "members", name: "Üyeler", icon: Users },
+                    { id: "roles", name: "Roller ve izinler", icon: Shield },
+                    {
+                      id: "applications",
+                      name: "Uygulamalar",
+                      icon: AppWindow,
+                    },
+                    { id: "audit", name: "İşlem geçmişi", icon: KeyRound },
+                  ]
+                : []),
+              { id: "docs", name: "Geliştiriciler", icon: BookOpen },
+            ]
+              .filter(
+                (n) =>
+                  user.owner ||
+                  !(
+                    {
+                      members: "users.manage",
+                      roles: "roles.manage",
+                      applications: "apps.manage",
+                      audit: "users.manage",
+                    } as Record<string, string>
+                  )[n.id] ||
+                  permissions.includes(
+                    (
+                      {
+                        members: "users.manage",
+                        roles: "roles.manage",
+                        applications: "apps.manage",
+                        audit: "users.manage",
+                      } as Record<string, string>
+                    )[n.id],
+                  ),
+              )
+              .map((n) => (
+                <button
+                  key={n.id}
+                  className={tab === n.id ? "active" : ""}
+                  onClick={() => setTab(n.id)}
+                >
+                  <n.icon size={17} />
+                  {n.name}
+                  <ArrowUpRight size={13} />
+                </button>
+              ))}
+            <div className="sidebar-foot">
+              YILDIZ ROKET TAKIMI
+              <br />
+              STARBASE
+            </div>
+          </WorkspaceMenu>
+        }
         end={
           <Button
             variant="bare"
@@ -527,67 +595,14 @@ function App() {
         }
       />
       <div className="workspace-body">
-        <aside>
-          <span className="eyebrow">ÇALIŞMA ALANI</span>
-          {[
-            { id: "board", name: "Pano", icon: Users },
-            { id: "account", name: "Hesabım", icon: Orbit },
-            { id: "teams", name: "Ekipler", icon: Layers },
-            { id: "connections", name: "Bağlı uygulamalar", icon: AppWindow },
-            { id: "organization", name: "Departmanlar", icon: Layers },
-            { id: "sessions", name: "Oturumlar", icon: KeyRound },
-            ...(user.owner || permissions.some((p) => p.endsWith(".manage"))
-              ? [
-                  { id: "members", name: "Üyeler", icon: Users },
-                  { id: "roles", name: "Roller ve izinler", icon: Shield },
-                  { id: "applications", name: "Uygulamalar", icon: AppWindow },
-                  { id: "audit", name: "İşlem geçmişi", icon: KeyRound },
-                ]
-              : []),
-            { id: "docs", name: "Geliştiriciler", icon: BookOpen },
-          ]
-            .filter(
-              (n) =>
-                user.owner ||
-                !(
-                  {
-                    members: "users.manage",
-                    roles: "roles.manage",
-                    applications: "apps.manage",
-                    audit: "users.manage",
-                  } as Record<string, string>
-                )[n.id] ||
-                permissions.includes(
-                  (
-                    {
-                      members: "users.manage",
-                      roles: "roles.manage",
-                      applications: "apps.manage",
-                      audit: "users.manage",
-                    } as Record<string, string>
-                  )[n.id],
-                ),
-            )
-            .map((n) => (
-              <button
-                key={n.id}
-                className={tab === n.id ? "active" : ""}
-                onClick={() => setTab(n.id)}
-              >
-                <n.icon size={17} />
-                {n.name}
-                <ArrowUpRight size={13} />
-              </button>
-            ))}
-          <div className="sidebar-foot">
-            YILDIZ ROKET TAKIMI
-            <br />
-            STARBASE
-          </div>
-        </aside>
-        <main className="content">
+        <main
+          className={"content" + (tab === "board" ? " canvas-content" : "")}
+        >
           {status}
-          {(tab === "board" || tab === "teams") && (
+          {tab === "board" && (
+            <BoardNotes currentUserId={user.id} teams={org.teams} />
+          )}
+          {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
               key={tab}
               currentUserId={user.id}
@@ -867,6 +882,7 @@ function App() {
           {tab === "docs" && <Docs />}
         </main>
       </div>
+      <ApplicationOrbit onApplications={() => setTab("connections")} />
     </div>
   );
 }

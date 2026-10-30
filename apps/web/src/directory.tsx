@@ -1,4 +1,3 @@
-import { BoardNotes } from "./board-notes";
 import { useEffect, useState } from "react";
 import {
   Button,
@@ -17,7 +16,6 @@ import {
   AppWindow,
   ChevronRight,
   RefreshCw,
-  StickyNote,
 } from "lucide-react";
 import type {
   DirectoryPage,
@@ -224,7 +222,7 @@ export function TeamDirectory({
   currentUserId: string;
   teamsOnly?: boolean;
 }) {
-  const [view, setView] = useState(teamsOnly ? "teams" : "notes"),
+  const [view, setView] = useState(teamsOnly ? "teams" : "people"),
     [query, setQuery] = useState(""),
     [department, setDepartment] = useState(""),
     [team, setTeam] = useState(""),
@@ -302,33 +300,22 @@ export function TeamDirectory({
       <div className="directory-heading">
         <div>
           <span className="eyebrow">YILDIZ ROKET TAKIMI</span>
-          <h1>{teamsOnly ? "Ekipler" : "Pano"}</h1>
+          <h1>{teamsOnly ? "Ekipler" : "Takım dizini"}</h1>
         </div>
         <Button variant="bare" onClick={() => setSelected(currentUserId)}>
           Profilimi görüntüle <ArrowUpRight size={15} />
         </Button>
       </div>
       <TabBar
-        label="Pano görünümü"
+        label="Takım dizini görünümü"
         value={view}
         onChange={setView}
         items={[
-          ...(!teamsOnly
-            ? [
-                {
-                  value: "notes",
-                  label: "Not panosu",
-                  icon: <StickyNote size={16} />,
-                },
-              ]
-            : []),
           { value: "people", label: "Üyeler", icon: <Users size={16} /> },
           { value: "teams", label: "Ekipler", icon: <Layers size={16} /> },
         ]}
       />
-      {view === "notes" ? (
-        <BoardNotes currentUserId={currentUserId} teams={org.teams} />
-      ) : view === "people" ? (
+      {view === "people" ? (
         <>
           <div className="directory-filters">
             <SearchField

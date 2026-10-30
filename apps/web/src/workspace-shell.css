@@ -26,7 +26,8 @@
   flex-direction: column;
   gap: 3px;
   padding: 18px 12px;
-  background: #080808;
+  background: #000;
+  border-radius: 8px;
   border: 1px solid #ffffff38;
   box-shadow: 20px 24px 80px #000b;
 }
@@ -34,6 +35,16 @@
   flex: none;
   font-size: 10px;
   min-height: 42px;
+  background: transparent;
+  border-radius: 6px;
+}
+.workspace .workspace-menu > button:hover,
+.workspace .workspace-menu > button:focus-visible,
+.workspace .workspace-menu > button.active {
+  background: transparent;
+}
+.workspace-menu-anchor > .sd-icon-button {
+  border-radius: 6px;
 }
 .workspace .workspace-menu > button svg:last-child {
   display: block;

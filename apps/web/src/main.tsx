@@ -1,3 +1,4 @@
+import { FormSelect } from "./form-select";
 import { Captcha } from "./captcha";
 import {
   Invitations,
@@ -142,6 +143,7 @@ function App() {
     } catch (e) {
       setError(messages[(e as Error).message] ?? (e as Error).message);
     } finally {
+      window.turnstile?.reset();
       setBusy(false);
     }
   }
@@ -522,17 +524,40 @@ function App() {
                 ]
               : []),
             { id: "docs", name: "Geliştiriciler", icon: BookOpen },
-          ].map((n) => (
-            <button
-              key={n.id}
-              className={tab === n.id ? "active" : ""}
-              onClick={() => setTab(n.id)}
-            >
-              <n.icon size={17} />
-              {n.name}
-              <ArrowUpRight size={13} />
-            </button>
-          ))}
+          ]
+            .filter(
+              (n) =>
+                user.owner ||
+                !(
+                  {
+                    members: "users.manage",
+                    roles: "roles.manage",
+                    applications: "apps.manage",
+                    audit: "users.manage",
+                  } as Record<string, string>
+                )[n.id] ||
+                permissions.includes(
+                  (
+                    {
+                      members: "users.manage",
+                      roles: "roles.manage",
+                      applications: "apps.manage",
+                      audit: "users.manage",
+                    } as Record<string, string>
+                  )[n.id],
+                ),
+            )
+            .map((n) => (
+              <button
+                key={n.id}
+                className={tab === n.id ? "active" : ""}
+                onClick={() => setTab(n.id)}
+              >
+                <n.icon size={17} />
+                {n.name}
+                <ArrowUpRight size={13} />
+              </button>
+            ))}
           <div className="sidebar-foot">
             YILDIZ ROKET TAKIMI
             <br />
@@ -656,13 +681,13 @@ function App() {
                 >
                   <label>
                     Departman
-                    <select name="departmentId">
+                    <FormSelect name="departmentId">
                       {org.departments.map((d: any) => (
                         <option key={d.id} value={d.id}>
                           {d.name}
                         </option>
                       ))}
-                    </select>
+                    </FormSelect>
                   </label>
                   <TextField name="name" label="Yeni ekip" required />
                   <Button type="submit">
@@ -810,7 +835,7 @@ function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
       >
         <label>
           Ekip ata
-          <select name="team">
+          <FormSelect name="team">
             {org.teams.map((t: any) => (
               <option key={t.id} value={t.department_id + ":" + t.id}>
                 {
@@ -820,7 +845,7 @@ function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
                 / {t.name}
               </option>
             ))}
-          </select>
+          </FormSelect>
         </label>
         <Button type="submit">Üyelik ekle</Button>
       </form>

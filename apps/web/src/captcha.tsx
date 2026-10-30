@@ -7,6 +7,7 @@ declare global {
         options: Record<string, unknown>,
       ) => string;
       remove: (id: string) => void;
+      reset: () => void;
     };
   }
 }

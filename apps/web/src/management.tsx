@@ -1,3 +1,4 @@
+import { FormSelect } from "./form-select";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button, TextField, Panel } from "@stardrop/ui";
 export async function request(path: string, body?: unknown, method?: string) {
@@ -98,6 +99,14 @@ export function EditUser({ user, run }: { user: any; run: Run }) {
 }
 export function Fields({ run, userId }: { run: Run; userId?: string }) {
   const [fields, setFields] = useState<any[]>([]);
+  const [values, setValues] = useState<any[]>([]);
+  const reloadValues = () =>
+    userId
+      ? request("/admin/profile-values/" + userId).then(setValues)
+      : Promise.resolve();
+  useEffect(() => {
+    reloadValues().catch(() => {});
+  }, [userId]);
   const reload = () => request("/admin/profile-fields").then(setFields);
   useEffect(() => {
     reload().catch(() => {});
@@ -123,18 +132,25 @@ export function Fields({ run, userId }: { run: Run; userId?: string }) {
                 { key: field.key, value },
                 "PUT",
               );
+              await reloadValues();
             });
           }}
         >
+          {values.map((v) => (
+            <p key={v.field_key}>
+              {fields.find((f) => f.key === v.field_key)?.label ?? v.field_key}:{" "}
+              {String(JSON.parse(v.value))}
+            </p>
+          ))}
           <label>
             Alan
-            <select name="key">
+            <FormSelect name="key">
               {fields.map((f) => (
                 <option key={f.key} value={f.key}>
                   {f.label} ({f.type})
                 </option>
               ))}
-            </select>
+            </FormSelect>
           </label>
           <TextField name="value" label="Değer" required />
           <Button type="submit">Kaydet</Button>
@@ -167,11 +183,11 @@ export function Fields({ run, userId }: { run: Run; userId?: string }) {
             <TextField name="label" label="Görünen ad" required />
             <label>
               Tip
-              <select name="type">
+              <FormSelect name="type">
                 {["text", "number", "date", "boolean", "select"].map((t) => (
                   <option key={t}>{t}</option>
                 ))}
-              </select>
+              </FormSelect>
             </label>
             <TextField name="options" label="Seçenekler (virgülle)" />
             <Button type="submit">Alan oluştur</Button>

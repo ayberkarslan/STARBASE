@@ -27,7 +27,9 @@
     "/api/v1/apps": {
       "get": {
         "operationId": "get__api_v1_apps",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "security": [
           {
             "bearer": []
@@ -61,7 +63,9 @@
     "/api/v1/authorize": {
       "get": {
         "operationId": "get__api_v1_authorize",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "security": [
           {
             "bearer": []
@@ -93,7 +97,9 @@
       },
       "post": {
         "operationId": "post__api_v1_authorize",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "security": [
           {
             "bearer": []
@@ -141,7 +147,11 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": ["profile", "email", "organization"]
+                      "enum": [
+                        "profile",
+                        "email",
+                        "organization"
+                      ]
                     }
                   },
                   "challenge": {
@@ -170,7 +180,9 @@
     "/api/v1/connections": {
       "get": {
         "operationId": "get__api_v1_connections",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "security": [
           {
             "bearer": []
@@ -204,7 +216,9 @@
     "/api/v1/connections/{id}": {
       "delete": {
         "operationId": "delete__api_v1_connections__id",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "security": [
           {
             "bearer": []
@@ -248,7 +262,9 @@
     "/api/v1/permissions": {
       "get": {
         "operationId": "get__api_v1_permissions",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "security": [
           {
             "bearer": []
@@ -282,7 +298,9 @@
     "/api/v1/health": {
       "get": {
         "operationId": "get__api_v1_health",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -309,7 +327,9 @@
     "/api/v1/auth/register": {
       "post": {
         "operationId": "post__api_v1_auth_register",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -380,7 +400,9 @@
     "/api/v1/auth/login": {
       "post": {
         "operationId": "post__api_v1_auth_login",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -420,7 +442,10 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["username", "password"]
+                "required": [
+                  "username",
+                  "password"
+                ]
               }
             }
           }
@@ -430,7 +455,9 @@
     "/api/v1/auth/recover": {
       "post": {
         "operationId": "post__api_v1_auth_recover",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -466,7 +493,9 @@
                     "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   }
                 },
-                "required": ["email"]
+                "required": [
+                  "email"
+                ]
               }
             }
           }
@@ -476,7 +505,9 @@
     "/api/v1/auth/logout": {
       "post": {
         "operationId": "post__api_v1_auth_logout",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -503,7 +534,9 @@
     "/api/v1/auth/logout-all": {
       "post": {
         "operationId": "post__api_v1_auth_logout_all",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -530,7 +563,9 @@
     "/api/v1/auth/exchange": {
       "post": {
         "operationId": "post__api_v1_auth_exchange",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -576,7 +611,12 @@
                     "format": "uri"
                   }
                 },
-                "required": ["code", "verifier", "clientId", "redirectUri"]
+                "required": [
+                  "code",
+                  "verifier",
+                  "clientId",
+                  "redirectUri"
+                ]
               }
             }
           }
@@ -586,7 +626,9 @@
     "/api/v1/auth/refresh": {
       "post": {
         "operationId": "post__api_v1_auth_refresh",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -623,7 +665,10 @@
                     "type": "string"
                   }
                 },
-                "required": ["refreshToken", "clientId"]
+                "required": [
+                  "refreshToken",
+                  "clientId"
+                ]
               }
             }
           }
@@ -633,7 +678,9 @@
     "/api/v1/auth/password": {
       "post": {
         "operationId": "post__api_v1_auth_password",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -672,7 +719,10 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["currentPassword", "password"]
+                "required": [
+                  "currentPassword",
+                  "password"
+                ]
               }
             }
           }
@@ -682,7 +732,9 @@
     "/api/v1/auth/reset": {
       "post": {
         "operationId": "post__api_v1_auth_reset",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -721,7 +773,10 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["code", "password"]
+                "required": [
+                  "code",
+                  "password"
+                ]
               }
             }
           }
@@ -731,7 +786,9 @@
     "/api/v1/auth/verify": {
       "post": {
         "operationId": "post__api_v1_auth_verify",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -765,7 +822,9 @@
                     "type": "string"
                   }
                 },
-                "required": ["code"]
+                "required": [
+                  "code"
+                ]
               }
             }
           }
@@ -775,7 +834,9 @@
     "/api/v1/config": {
       "get": {
         "operationId": "get__api_v1_config",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -802,7 +863,9 @@
     "/api/v1/auth/resend": {
       "post": {
         "operationId": "post__api_v1_auth_resend",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -842,7 +905,10 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["username", "password"]
+                "required": [
+                  "username",
+                  "password"
+                ]
               }
             }
           }
@@ -852,7 +918,9 @@
     "/api/v1/me": {
       "get": {
         "operationId": "get__api_v1_me",
-        "tags": ["identity"],
+        "tags": [
+          "identity"
+        ],
         "security": [
           {
             "bearer": []
@@ -886,7 +954,9 @@
     "/api/v1/sessions": {
       "get": {
         "operationId": "get__api_v1_sessions",
-        "tags": ["identity"],
+        "tags": [
+          "identity"
+        ],
         "security": [
           {
             "bearer": []
@@ -920,7 +990,9 @@
     "/api/v1/sessions/{family}": {
       "delete": {
         "operationId": "delete__api_v1_sessions__family",
-        "tags": ["identity"],
+        "tags": [
+          "identity"
+        ],
         "security": [
           {
             "bearer": []
@@ -964,7 +1036,9 @@
     "/api/v1/admin/users": {
       "get": {
         "operationId": "get__api_v1_admin_users",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -998,7 +1072,9 @@
     "/api/v1/admin/departments": {
       "post": {
         "operationId": "post__api_v1_admin_departments",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1041,7 +1117,9 @@
                     "maxLength": 80
                   }
                 },
-                "required": ["name"]
+                "required": [
+                  "name"
+                ]
               }
             }
           }
@@ -1051,7 +1129,9 @@
     "/api/v1/admin/teams": {
       "post": {
         "operationId": "post__api_v1_admin_teams",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1097,7 +1177,10 @@
                     "maxLength": 80
                   }
                 },
-                "required": ["departmentId", "name"]
+                "required": [
+                  "departmentId",
+                  "name"
+                ]
               }
             }
           }
@@ -1107,7 +1190,9 @@
     "/api/v1/admin/memberships": {
       "post": {
         "operationId": "post__api_v1_admin_memberships",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1154,7 +1239,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["userId", "departmentId", "teamId"]
+                "required": [
+                  "userId",
+                  "departmentId",
+                  "teamId"
+                ]
               }
             }
           }
@@ -1162,7 +1251,9 @@
       },
       "delete": {
         "operationId": "delete__api_v1_admin_memberships",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1209,7 +1300,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["userId", "departmentId", "teamId"]
+                "required": [
+                  "userId",
+                  "departmentId",
+                  "teamId"
+                ]
               }
             }
           }
@@ -1219,7 +1314,9 @@
     "/api/v1/admin/audit": {
       "get": {
         "operationId": "get__api_v1_admin_audit",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1253,7 +1350,9 @@
     "/api/v1/admin/apps": {
       "post": {
         "operationId": "post__api_v1_admin_apps",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1317,11 +1416,21 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": ["profile", "email", "organization"]
+                      "enum": [
+                        "profile",
+                        "email",
+                        "organization"
+                      ]
                     }
                   }
                 },
-                "required": ["id", "name", "redirects", "origins", "scopes"]
+                "required": [
+                  "id",
+                  "name",
+                  "redirects",
+                  "origins",
+                  "scopes"
+                ]
               }
             }
           }
@@ -1329,7 +1438,9 @@
       },
       "get": {
         "operationId": "get__api_v1_admin_apps",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1363,7 +1474,9 @@
     "/api/v1/admin/users/{id}/password": {
       "post": {
         "operationId": "post__api_v1_admin_users__id_password",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1419,7 +1532,9 @@
                     "maxLength": 128
                   }
                 },
-                "required": ["currentPassword"]
+                "required": [
+                  "currentPassword"
+                ]
               }
             }
           }
@@ -1429,7 +1544,9 @@
     "/api/v1/admin/users/{id}": {
       "put": {
         "operationId": "put__api_v1_admin_users__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1514,7 +1631,9 @@
     "/api/v1/admin/roles": {
       "get": {
         "operationId": "get__api_v1_admin_roles",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1546,7 +1665,9 @@
       },
       "post": {
         "operationId": "post__api_v1_admin_roles",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1598,7 +1719,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["name", "permissions", "currentPassword"]
+                "required": [
+                  "name",
+                  "permissions",
+                  "currentPassword"
+                ]
               }
             }
           }
@@ -1608,7 +1733,9 @@
     "/api/v1/admin/permissions": {
       "post": {
         "operationId": "post__api_v1_admin_permissions",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1657,7 +1784,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["id", "description", "currentPassword"]
+                "required": [
+                  "id",
+                  "description",
+                  "currentPassword"
+                ]
               }
             }
           }
@@ -1667,7 +1798,9 @@
     "/api/v1/admin/role-assignments": {
       "post": {
         "operationId": "post__api_v1_admin_role_assignments",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1714,7 +1847,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["userId", "roleId", "currentPassword"]
+                "required": [
+                  "userId",
+                  "roleId",
+                  "currentPassword"
+                ]
               }
             }
           }
@@ -1722,7 +1859,9 @@
       },
       "delete": {
         "operationId": "delete__api_v1_admin_role_assignments",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1769,7 +1908,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["userId", "roleId", "currentPassword"]
+                "required": [
+                  "userId",
+                  "roleId",
+                  "currentPassword"
+                ]
               }
             }
           }
@@ -1779,7 +1922,9 @@
     "/api/v1/admin/profile-fields": {
       "post": {
         "operationId": "post__api_v1_admin_profile_fields",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1826,7 +1971,13 @@
                   },
                   "type": {
                     "type": "string",
-                    "enum": ["text", "number", "date", "boolean", "select"]
+                    "enum": [
+                      "text",
+                      "number",
+                      "date",
+                      "boolean",
+                      "select"
+                    ]
                   },
                   "options": {
                     "default": [],
@@ -1836,7 +1987,11 @@
                     }
                   }
                 },
-                "required": ["key", "label", "type"]
+                "required": [
+                  "key",
+                  "label",
+                  "type"
+                ]
               }
             }
           }
@@ -1844,7 +1999,9 @@
       },
       "get": {
         "operationId": "get__api_v1_admin_profile_fields",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1878,7 +2035,9 @@
     "/api/v1/admin/invites": {
       "post": {
         "operationId": "post__api_v1_admin_invites",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1921,7 +2080,9 @@
                     "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   }
                 },
-                "required": ["email"]
+                "required": [
+                  "email"
+                ]
               }
             }
           }
@@ -1931,7 +2092,9 @@
     "/api/v1/admin/profile-values/{id}": {
       "put": {
         "operationId": "put__api_v1_admin_profile_values__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -1983,7 +2146,10 @@
                   },
                   "value": {}
                 },
-                "required": ["key", "value"]
+                "required": [
+                  "key",
+                  "value"
+                ]
               }
             }
           }
@@ -1991,7 +2157,9 @@
       },
       "get": {
         "operationId": "get__api_v1_admin_profile_values__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -2035,7 +2203,9 @@
     "/api/v1/admin/departments/{id}": {
       "put": {
         "operationId": "put__api_v1_admin_departments__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -2091,7 +2261,10 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["name", "archived"]
+                "required": [
+                  "name",
+                  "archived"
+                ]
               }
             }
           }
@@ -2101,7 +2274,9 @@
     "/api/v1/admin/teams/{id}": {
       "put": {
         "operationId": "put__api_v1_admin_teams__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -2157,7 +2332,10 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["name", "archived"]
+                "required": [
+                  "name",
+                  "archived"
+                ]
               }
             }
           }
@@ -2167,7 +2345,9 @@
     "/api/v1/admin/roles/{id}": {
       "put": {
         "operationId": "put__api_v1_admin_roles__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -2229,7 +2409,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["name", "permissions", "currentPassword"]
+                "required": [
+                  "name",
+                  "permissions",
+                  "currentPassword"
+                ]
               }
             }
           }
@@ -2237,7 +2421,9 @@
       },
       "delete": {
         "operationId": "delete__api_v1_admin_roles__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -2288,7 +2474,9 @@
                     "type": "string"
                   }
                 },
-                "required": ["currentPassword"]
+                "required": [
+                  "currentPassword"
+                ]
               }
             }
           }
@@ -2298,7 +2486,9 @@
     "/api/v1/admin/apps/{id}": {
       "put": {
         "operationId": "put__api_v1_admin_apps__id",
-        "tags": ["management"],
+        "tags": [
+          "management"
+        ],
         "security": [
           {
             "bearer": []
@@ -2349,7 +2539,9 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["disabled"]
+                "required": [
+                  "disabled"
+                ]
               }
             }
           }
@@ -2359,7 +2551,9 @@
     "/api/v1/organization": {
       "get": {
         "operationId": "get__api_v1_organization",
-        "tags": ["organization"],
+        "tags": [
+          "organization"
+        ],
         "security": [
           {
             "bearer": []
@@ -2393,7 +2587,9 @@
     "/api/v1/invites/accept": {
       "post": {
         "operationId": "post__api_v1_invites_accept",
-        "tags": ["organization"],
+        "tags": [
+          "organization"
+        ],
         "security": [
           {
             "bearer": []
@@ -2434,7 +2630,9 @@
                     "type": "string"
                   }
                 },
-                "required": ["code"]
+                "required": [
+                  "code"
+                ]
               }
             }
           }

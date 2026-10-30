@@ -284,6 +284,8 @@ function App() {
                 etrafında.
               </h1>
               <p>
+                Tek hesap ile tüm platformlara kolay erişim.
+                <br />
                 Yıldız Roket Takımının tüm yazılım platformları için ortak bir
                 erişim alanı.
               </p>

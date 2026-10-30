@@ -1,65 +1,60 @@
-# Ortak not panosu
+# Özel ve ortak serbest pano
 
-Pano varsayılan olarak **Not panosu** görünümüyle açılır. Üyeler ve Ekipler sekmeleri aynı yerde durur.
+Ana ekran kendi panonla açılır. Üst ortadaki **Kendi panom / Ortak pano** düğmeleri iki alanı değiştirir. Menü sol üstteki ikonun üzerine gelince açılır, üzerinden ayrılınca kapanır; dokunarak ve klavyeyle de kullanılabilir. Üye arama ve profiller **Takım dizini**, ekipten üyeye gezinti **Ekipler** menüsündedir.
 
-## Kullanım ve fikirler
+Alt yörünge ekranın iki alt köşesini birleştirir. STARDROP, STARLAB ve YRT TAKVİM düğmeleri bağlı uygulamalar ekranını açar; henüz bağlanmamış uygulamalara sahte bir giriş bağlantısı verilmez.
 
-- **Not:** Kontrol listesi, test hazırlığı, ekip içi kısa bilgi.
-- **Duyuru:** Toplantı saati, test günü, ortak çalışma duyurusu.
-- **İlgili ekip:** Bir etikettir; erişim kısıtlaması değildir. Tüm takım notları okuyabilir, ekip filtresiyle ilgililerini bulabilir.
-- **Son tarih:** İsteğe bağlı takvim tarihi. Geçmiş tarih işaretlenir; otomatik görev atama veya bildirim gönderilmez.
-- **Sabit not:** Yönetimin önemli test/organizasyon duyurularını üstte tutması.
-- **Arşiv:** İşlevini tamamlayan duyuruyu kaybetmeden aktif panodan kaldırma; geri getirilebilir.
-- **Silme:** Onay ekranından sonra kalıcıdır.
+## Notların kullanımı
 
-Herkes kendi notunu düzenleyebilir, arşivleyebilir ve silebilir. Takım sahibi veya `board.manage` iznine sahip kişiler tüm notları yönetebilir ve sabitleyebilir. İçerik düz metindir; HTML/komut çalıştırılmaz. Beğeni, takipçi, yorum veya sohbet akışı yoktur.
+Not ekle, üstündeki tutamaktan sürükle ve bırak. Konum D1'e kaydedilir; sayfayı yenilemek konumu değiştirmez. Klavyede tutamağa odaklanıp yön tuşlarıyla 10, Shift ile 40 piksel taşıyabilirsin. Escape devam eden sürüklemeyi iptal eder. Dokunmatik ekranda da tutamaktan taşıma desteklenir; alanın geri kalanı normal kaydırılır. Büyük panoya yatay/dikey kaydırarak ulaşılır.
 
-Başlık en fazla 120, metin en fazla 2000 karakterdir. Bir sayfada 24 not gösterilir; sabit olanlar önce gelir. Son güncelleme zamanı ve yazar görünür. Aynı not iki yerde değiştirilirse `409 note_conflict` döner; önceki sürüm yeni yazının üzerine geçirilmez. Taslak otomatik silinmez; kullanıcı güncel notu açıp değişikliklerini uzlaştırır.
+- **Özel pano:** Yalnız notun sahibi okuyabilir, düzenleyebilir, taşıyabilir ve silebilir. Yönetici veya `board.manage` izni bu erişimi açmaz. Takım rolü olmayan merkezi hesaplar da kendi özel panosunu kullanabilir.
+- **Ortak pano:** Takım üyeleri tüm ortak notları görebilir. Yazar kendi notunu, sahibi/moderatör tüm ortak notları düzenleyip taşıyabilir. `board.manage` ortak notları sabitlemeye de izin verir.
+- **Not / duyuru:** Test hazırlıkları, kısa kontrol listeleri ve toplantı bilgileri için. Ekip etiketi erişim sınırı değildir. Son tarih isteğe bağlıdır.
+- **Sabitleme:** Önem işaretidir; konumu kilitlemez. Özel panoda kendi notunu sabitleyebilirsin.
+- **Arşiv:** Aktif alandan kaldırır; filtrelerden geri getirilebilir. Silme onay sonrası kalıcıdır.
 
-## Canlı güncelleme
+Başlık 120, metin 2000 karaktere kadar düz metindir. HTML çalıştırılmaz. Not türü/ekip/arşiv filtreleri sağ üstteki filtre ikonuyla açılır. Canvas sayfası en fazla 200 not yükler; daha fazlasında sayfa geçişi sunulur. Konumlar sayfalar arasında korunur. Beğeni, takipçi veya sohbet yoktur.
 
-Notlar **D1** içinde kalıcıdır. Cloudflare **SQLite-backed Durable Object + WebSocket Hibernation** yalnız değişiklik bildirimi taşır. Gelen çerçeve şöyledir:
+## API ve gizlilik
 
-```json
-{"type":"board.changed"}
+Tüm uçlar merkezi STARBASE oturumu gerektirir; uygulama Bearer tokenları erişemez. Ortak pano ayrıca takım üyeliği gerektirir. Özel sahiplik kontrolü sunucudadır; istemcide gizlemekle sınırlı değildir. Başkasına ait özel not kimliğine erişim `404 note_not_found` döndürür. Notun kapsamı oluşturulduktan sonra PATCH ile değiştirilemez; yanlışlıkla özel içeriği yayımlamak mümkün değildir.
+
+| Uç | Kullanım |
+| --- | --- |
+| `GET /api/v1/board/notes?scope=private` | Kendi özel notların; varsayılan kapsam `private` |
+| `GET /api/v1/board/notes?scope=shared&limit=200` | Ortak pano; takım üyeliği kontrol edilir |
+| `POST /api/v1/board/notes` | `title`, `content`, isteğe bağlı `scope`, `x`, `y`, `kind`, `teamId`, `dueAt` |
+| `PATCH /api/v1/board/notes/:id` | İçerik alanları, `pinned`, `archived` + zorunlu `version` |
+| `PATCH /api/v1/board/notes/:id/position` | `{ "x": 240, "y": 160, "layoutVersion": 1 }` |
+| `DELETE /api/v1/board/notes/:id` | `{ "version": 1 }` |
+| `GET /api/v1/board/live?scope=private` | Kişisel WebSocket aboneliği; `scope=shared` ortak kanal |
+
+GET filtreleri: `page` (1+), `limit` (1–200, varsayılan 24), `archived` (`0`/`1`), `kind` (`note`/`announcement`), `teamId`. Yanıt: `notes`, `page`, `pageSize`, `total`, `hasMore`, `canModerate`. Her not `scope`, `x`, `y`, `layoutVersion`, `version`, yazar ve tarih alanlarını içerir. Koordinatlar tam sayı 0–20000 aralığındadır. `dueAt` Unix saniyesi veya `null`, `teamId` ekip kimliği veya `null` değeridir. Oluşturma yanıtındaki kimlikten sonra güncel alanlar GET ile alınır.
+
+```js
+// Yalnız STARBASE'nin kendi origin'inde, merkezi cookie oturumuyla:
+await fetch('/api/v1/board/notes', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ scope: 'private', title: 'Test hazırlığı', content: 'Sensörleri kontrol et', x: 80, y: 60 })
+});
 ```
 
-Not metni, kullanıcı adı veya yetki bilgisi WebSocket çerçevesinde bulunmaz. Alıcı, bildirimi alınca yetkisi her istekte tekrar kontrol edilen `/api/v1/board/notes` kaynağını okur. Dolayısıyla bir hesabın üyeliği veya oturumu iptal edilse de yeni içerik yetki kontrolü olmadan iletilmez. Süresi dolan abonelikler kapatılır; istemciden gelen mesajlar yayınlanmaz.
+İçerik sürümü `version`, konum sürümü `layoutVersion` bağımsızdır. Taşıma metin düzenlemesini geçersiz kılmaz. Eski içerik sürümü `409 note_conflict`, eski konum sürümü `409 note_position_conflict` döndürür. İstemci güncel konumu yeniden alır; metin düzenleme çakışmasında taslağı korur. Bir kullanıcı dakikada en fazla 30 yazma/taşıma işlemi yapabilir. Sürükleme sırasında ağ isteği gönderilmez, bırakınca bir kez kaydedilir.
 
-Bağlantı koparsa istemci artan gecikmeyle yeniden bağlanır, yeniden bağlanınca güncel içeriği alır. Gizli sekmeler bağlantıyı kapatır; görünür olunca tekrar kurar. Kaçırılmış bir bildirimi telafi etmek için görünür ve bağlı panoda 5 dakikada bir; bağlantı yokken 30 saniyede bir kontrol yapılır. Ağ kesintisi mesajı bir başarı gibi gösterilmez.
+## Canlı güncelleme ve kalıcılık
 
-Not yazımı kalıcılaştıktan sonra bildirim geçici olarak başarısız olursa API yine yazımın başarılı olduğunu döndürür (`liveDelivered:false`). Bu durumda diğer istemciler yeniden bağlanma, kontrol aralığı veya Yenile ile içeriği alır. Notu tekrar göndermek gerekmez.
+Notlar ve konumlar D1'de kalıcıdır. SQLite-backed Durable Object + WebSocket Hibernation yalnız `{"type":"board.changed"}` bildirimi taşır; metin veya kimlik bilgisi yayınlanmaz. Ortak pano `team-board`, her kişisel pano sunucunun oturumdan belirlediği ayrı `private:<userId>` hub'ını kullanır. İstemci başka kullanıcının hub'ını seçemez. HTTP okumalarının her birinde yetki tekrar kontrol edilir.
 
-## Erişim ve API
+Bağlantı koparsa artan gecikmeyle yeniden bağlanılır. Gizli sekmeler bağlantıyı kapatır. Görünür panoda kaçırılmış bildirimler bağlıyken 5 dakikada, bağlantı yokken 30 saniyede bir kontrol edilir. Süresi dolan abonelikler kapanır. İstemciden gelen mesajlar yayınlanmaz. Cookie değişiklikleri ve WebSocket aboneliği aynı origin kontrolünden geçer.
 
-Bütün uçlar merkezi STARBASE oturumu ve takım üyeliği gerektirir. Uygulama Bearer tokenları erişemez. Şifre/üyelik/hesap kontrolleri mevcut auth middleware'inden geçer. Cookie kullanan değişiklikler aynı origin şartına tabidir. WebSocket yükseltmesinde ayrıca tam Origin kontrolü yapılır.
+Bildirim geçici olarak başarısız olsa da D1'e kaydedilen yazım başarılıdır (`liveDelivered:false`); not tekrar gönderilmemelidir. Oluşturma/düzenleme/silme denetim kaydına aktör ve not kimliğiyle geçer; özel not içeriği denetim kaydına kopyalanmaz. Taşıma için sürekli olay günlüğü üretilmez.
 
-| Uç | Açıklama |
-| --- | --- |
-| `GET /api/v1/board/notes?page=1&archived=0&kind=announcement&teamId=software` | Filtreli sayfa; `notes`, `canModerate`, `total`, `hasMore` |
-| `POST /api/v1/board/notes` | `title`, `content`; isteğe bağlı `kind`, `teamId`, `dueAt` |
-| `PATCH /api/v1/board/notes/:id` | Değişen alanlar + zorunlu `version`; `pinned` yalnız moderatör |
-| `DELETE /api/v1/board/notes/:id` | `{version}`; yazar veya moderatör |
-| `GET /api/v1/board/live` | Aynı origin'den WebSocket upgrade; cookie ile abonelik |
+## Kurulum
 
-`kind`: `note` / `announcement`. `teamId`: ekip kimliği veya `null`. `dueAt`: UTC Unix saniyesi veya `null`. `archived` liste filtresi `0` / `1`; PATCH alanı boolean'dır. Sunucu yazar, sürüm ve tarihleri kendi belirler. Bir kullanıcı dakikada en fazla 30 not değişikliği yapabilir. Genel auth/CSRF kuralları ayrıca uygulanır.
+`npm run db:migrate` ile **0005_board_notes.sql** ve **0006_board_canvas.sql** uygulanır. Önceden var olan notlar **ortak** kalır; migration onlara ayrı başlangıç konumları verir. Yeni notların varsayılan kapsamı **özel**dir. Eski ortak pano istemcileri listeleme, oluşturma ve canlı abonelikte açıkça `scope=shared` göndermelidir.
 
-Yazma, düzenleme ve silme işlemleri aktör ve not kimliğiyle denetim kaydına geçer; not metni denetim kaydına kopyalanmaz.
+Worker binding'i `BOARD_HUB`, sınıfı `BoardHub`, migration etiketi `v1-board-hub`; yeni SQLite DO sınıfı tanımı hazırdır. Vite proxy'si `ws:true` kullanır. Yerel Firebase Auth Emulator ve Wrangler/D1 ile çalışır; bir Cloudflare hesabına dağıtım yapılmamıştır. D1 yedeği notları içerir; canlı katmanda kalıcı not metni tutulmaz. Üretimde migration ve Worker dağıtımı birlikte uygulanmalıdır.
 
-## Ücretsiz katman ve kurulum
-
-Yerelde `npm run db:migrate` ile **0005_board_notes.sql** uygulanır. Worker binding'i `BOARD_HUB`, sınıfı `BoardHub`, Durable Object migration etiketi `v1-board-hub` olarak hazırdır. Yeni sınıf `new_sqlite_classes` ile tanımlanır; eski KV-backed DO kullanılmaz. Vite proxy'sinde WebSocket iletimi açık olmalıdır (`ws:true`); bu depoda ayarlıdır.
-
-Cloudflare SQLite-backed Durable Objects'ı Workers Free planında sunar. Boştaki bağlantılar hibernation kullanır; sürekli aktif JavaScript döngüsü veya chat mesaj trafiği yoktur. Free planın istek/süre/depolama kotaları vardır; aşımda işlemler kısıtlanabilir. Ücretli plana otomatik yükseltme yapılmaz.
-
-Resmi kaynaklar: [ücretlendirme ve ücretsiz sınırlar](https://developers.cloudflare.com/durable-objects/platform/pricing/), [WebSocket Hibernation](https://developers.cloudflare.com/durable-objects/best-practices/websockets/).
-
-Bu değişiklik yerelde çalıştırılmıştır; henüz bir Cloudflare hesabına yayımlanmadı. Üretimde normal D1 migration ve Worker dağıtımı, binding ve DO migration ile birlikte yapılmalıdır. Notlar otomatik silinmez; arşivleme/silme takım tarafından yönetilir. D1 yedeği notları da içerir; canlı bağlantı katmanında kalıcı not verisi tutulmaz.
-
-## İleride değerli olabilecek ekler
-
-- Önemli test duyurularında **okudum teyidi**: Operasyonel iletişim için, beğeni sayısı gibi kullanılmadan.
-- **Toplantı/test tarihi bağlantısı**: YRT TAKVİM bağlandığında nottan ilgili etkinliğe gitme.
-- **Kontrol listesi şablonları**: Test öncesi standart adımları hızlıca not olarak açma.
-
-Bu üçü henüz uygulanmadı; mevcut sürümde canlı not, duyuru, ekip etiketi, son tarih, sabitleme ve arşiv vardır.
+Ücretsiz katman ve kota ayrıntıları: [Cloudflare Durable Objects fiyatlandırması](https://developers.cloudflare.com/durable-objects/platform/pricing/) ve [WebSocket Hibernation](https://developers.cloudflare.com/durable-objects/best-practices/websockets/). Kota/süreklilik sınırsız değildir; bu değişiklik ücretli hesap veya plan açmaz.

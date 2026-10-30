@@ -85,6 +85,15 @@ for (const f of fs
           503: { description: "Dependency or quota unavailable" },
         },
       };
+      if (route.startsWith("/api/v1/board/notes/")) {
+        op.responses[404] = {
+          description:
+            "Note not found or private note owned by another account",
+        };
+        op.responses[409] = {
+          description: "Stale content version or layoutVersion",
+        };
+      }
       const parameters = [...path.matchAll(/\{(\w+)\}/g)].map((m) => ({
         name: m[1],
         in: "path",
@@ -113,12 +122,33 @@ for (const f of fs
           required: false,
           schema: { type: "integer", minimum: 1, maximum: 10000, default: 1 },
         });
-      if (route === "/api/v1/board/notes") {
+      if (
+        method === "get" &&
+        (route === "/api/v1/board/notes" || route === "/api/v1/board/live")
+      ) {
+        parameters.push({
+          name: "scope",
+          in: "query",
+          required: false,
+          schema: {
+            type: "string",
+            enum: ["private", "shared"],
+            default: "private",
+          },
+        });
+      }
+      if (method === "get" && route === "/api/v1/board/notes") {
         parameters.push({
           name: "page",
           in: "query",
           required: false,
           schema: { type: "integer", minimum: 1, default: 1 },
+        });
+        parameters.push({
+          name: "limit",
+          in: "query",
+          required: false,
+          schema: { type: "integer", minimum: 1, maximum: 200, default: 24 },
         });
         for (const name of ["kind", "teamId", "archived"])
           parameters.push({

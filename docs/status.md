@@ -11,15 +11,15 @@
 - Kullanıcı yönetimi, mevcut şifreyi göstermeden geçici şifre belirleme, zorunlu şifre değişimi, e-posta güncelleme ve hesap kapatma.
 - Özel profil alanı tanımı ve tipli değerler; özel alanlar bu sürümde yönetimle sınırlı.
 - stardrop-ui tabanlı giriş/kayıt, hesap, yönetim ve geliştirici ekranları; OpenAPI çıktısı.
-- Ortak canlı not panosu: not/duyuru, ekip etiketi, son tarih, moderatör sabitlemesi, arşiv, düzenleme/silme ve sürüm çakışması kontrolü.
-- İlk açılan Pano: Türkçe üye araması, departman/ekip filtreleri, ekipten üyeye gezinti ve özel alanları içermeyen takım profilleri.
+- Özel/ortak serbest not panosu: sürükle-bırak ve kalıcı konumlar, özel notlarda yalnız sahip erişimi, bağımsız konum sürümleri; not/duyuru, ekip etiketi, son tarih, moderatör sabitlemesi, arşiv, düzenleme/silme ve sürüm çakışması kontrolü.
+- Varsayılan özel pano, üzerine gelince açılan menü ve uygulama yörüngesi. Takım dizininde Türkçe üye araması, departman/ekip filtreleri, ekipten üyeye gezinti ve özel alanları içermeyen takım profilleri.
 - Auth akışında otomatik uygulama giriş/çıkış geçmişi; süre dolumu ve iptal, gerçek çıkıştan ayrı tutulur.
 - İndirilebilir, bağımsız SDK arşivi ve kopyalanabilir örneklerle beş bölümlü geliştirici ekranı.
 - TypeScript/React SDK (ayrı contracts paketi gerektirmeyen derlenmiş arşiv), Vite örneği ve derlenebilir Rust native istemcisi; mevcut Tauri uygulamasına komut köprüsü örneği.
 
 ## Doğrulananlar
 
-54 API/SDK ve canlı pano testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
+57 API/SDK ve canlı pano testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
 
 Playwright masaüstü/mobil ekran kontrolleri ve gerçek yerel Firebase Auth Emulator + Wrangler/D1 üzerinde kayıt/doğrulama/giriş/yönetim/şifre sıfırlama akışı. İki farklı origin’de çalışan gerçek Vite uygulamasında merkezi oturum, ilk bağlantı izni, sonraki bağlantıda otomatik devam, CORS ve kapsamla sınırlı profil paylaşımı doğrulandı. Emülatör API smoke testi. TypeScript kontrolü, Vite üretim derlemesi ve Rust `cargo check --locked`.
 

@@ -951,6 +951,19 @@
         },
         "parameters": [
           {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "private",
+                "shared"
+              ],
+              "default": "private"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -958,6 +971,17 @@
               "type": "integer",
               "minimum": 1,
               "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 24
             }
           },
           {
@@ -1016,42 +1040,6 @@
             "description": "Dependency or quota unavailable"
           }
         },
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "name": "kind",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "archived",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1102,6 +1090,26 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "scope": {
+                    "default": "private",
+                    "type": "string",
+                    "enum": [
+                      "private",
+                      "shared"
+                    ]
+                  },
+                  "x": {
+                    "default": 40,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 20000
+                  },
+                  "y": {
+                    "default": 40,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 20000
                   }
                 },
                 "required": [
@@ -1137,6 +1145,12 @@
           },
           "403": {
             "description": "Permission denied"
+          },
+          "404": {
+            "description": "Note not found or private note owned by another account"
+          },
+          "409": {
+            "description": "Stale content version or layoutVersion"
           },
           "429": {
             "description": "Rate limited"
@@ -1246,6 +1260,12 @@
           "403": {
             "description": "Permission denied"
           },
+          "404": {
+            "description": "Note not found or private note owned by another account"
+          },
+          "409": {
+            "description": "Stale content version or layoutVersion"
+          },
           "429": {
             "description": "Rate limited"
           },
@@ -1286,6 +1306,88 @@
         }
       }
     },
+    "/api/v1/board/notes/{id}/position": {
+      "patch": {
+        "operationId": "patch__api_v1_board_notes__id_position",
+        "tags": [
+          "board"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "404": {
+            "description": "Note not found or private note owned by another account"
+          },
+          "409": {
+            "description": "Stale content version or layoutVersion"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 20000
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 20000
+                  },
+                  "layoutVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "layoutVersion"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/board/live": {
       "get": {
         "operationId": "get__api_v1_board_live",
@@ -1318,6 +1420,19 @@
           }
         },
         "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "private",
+                "shared"
+              ],
+              "default": "private"
+            }
+          },
           {
             "name": "Upgrade",
             "in": "header",

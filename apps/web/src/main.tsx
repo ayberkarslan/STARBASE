@@ -83,6 +83,9 @@ function App() {
     [apps, setApps] = useState<any[]>([]),
     [consent, setConsent] = useState<any>(null),
     [selected, setSelected] = useState<any>(null);
+  const [memberVerificationUrl, setMemberVerificationUrl] = useState<
+    string | null
+  >(null);
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const path = location.pathname;
@@ -294,7 +297,7 @@ function App() {
             </section>
             <section className="auth">
               <div className="auth-heading">
-                <span className="eyebrow">STARBASE HESABI</span>
+                <span className="eyebrow">STARBASE HESABINA</span>
                 <h2>
                   {
                     {
@@ -728,8 +731,11 @@ function App() {
                 <CreateMember
                   org={org}
                   onCreated={async (result) => {
-                    setRows(await api("/admin/users"));
+                    setRows((existing) => [result.user, ...existing]);
                     setSelected(result.user);
+                    setMemberVerificationUrl(
+                      result.developmentVerificationUrl ?? null,
+                    );
                     setNotice(
                       result.verificationDelivered
                         ? "Üye oluşturuldu. Doğrulama e-postası gönderildi; ilk girişte şifre değişimi istenecek."
@@ -738,6 +744,13 @@ function App() {
                   }}
                 />
               </div>
+              {memberVerificationUrl && (
+                <TextField
+                  label="Üyenin yerel test doğrulama bağlantısı"
+                  value={memberVerificationUrl}
+                  readOnly
+                />
+              )}
               <Invitations run={act} />
               <p>Kişiler, ekipler ve erişimler.</p>
               <div className="table">

@@ -15,6 +15,7 @@ test("real Firebase account and administration", async ({ page, request }) => {
   const password = randomBytes(24).toString("base64url");
   const email = username + "@example.com";
   let uid = "";
+  const addedMembers: string[] = [];
   const servers: ChildProcess[] = [];
   test.setTimeout(60000);
   const sql = (query: string) => {
@@ -94,6 +95,46 @@ test("real Firebase account and administration", async ({ page, request }) => {
       path: "/tmp/starbase-members.png",
       fullPage: true,
     });
+    await page.getByRole("button", { name: "Üye ekle", exact: true }).click();
+    const memberDialog = page.getByRole("dialog", {
+      name: "Üye ekle",
+      exact: true,
+    });
+    await memberDialog.getByLabel("İsim", { exact: true }).fill("Added");
+    await memberDialog.getByLabel("Soyisim", { exact: true }).fill("Member");
+    await memberDialog.getByLabel("Kullanıcı adı").fill(username + "_member");
+    await memberDialog
+      .getByLabel("E-posta", { exact: true })
+      .fill(username + "_member@example.com");
+    await memberDialog.getByRole("combobox", { name: "teamId" }).click();
+    await memberDialog
+      .getByRole("option", { name: "Aviyonik / Yazılım" })
+      .click();
+    await memberDialog
+      .getByLabel("Geçici şifre", { exact: true })
+      .fill(randomBytes(24).toString("base64url"));
+    await memberDialog
+      .getByLabel("Yönetici şifren", { exact: true })
+      .fill(password);
+    const newMemberResponse = page.waitForResponse(
+      (r) =>
+        r.url() === origin + "/api/v1/admin/users" &&
+        r.request().method() === "POST",
+    );
+    await memberDialog.getByRole("button", { name: "Üyeyi oluştur" }).click();
+    const newMember = await newMemberResponse;
+    expect(newMember.status()).toBe(201);
+    const createdMember = await newMember.json();
+    addedMembers.push(createdMember.user.id);
+    await expect(memberDialog).not.toBeVisible();
+    await expect(
+      page.getByText(username + "_member@example.com", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".admin-forms .org-row")
+        .getByText("Aviyonik / Yazılım", { exact: true }),
+    ).toBeVisible();
     await page
       .getByRole("button", { name: "Departmanlar", exact: true })
       .click();
@@ -231,6 +272,15 @@ test("real Firebase account and administration", async ({ page, request }) => {
     ).toBeVisible();
   } finally {
     for (const server of servers) server.kill();
+    for (const id of addedMembers) {
+      await request.post(
+        "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=demo-key",
+        { headers: { Authorization: "Bearer owner" }, data: { localId: id } },
+      );
+      sql(
+        `DELETE FROM memberships WHERE user_id='${id}'; DELETE FROM user_roles WHERE user_id='${id}'; DELETE FROM users WHERE id='${id}';`,
+      );
+    }
     if (uid) {
       await request.post(
         "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=demo-key",

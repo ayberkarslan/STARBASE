@@ -16,7 +16,7 @@ Workers Free günlük 100.000 istek, D1 günlük 100.000 satır yazımı ve 5 mi
 
 Ücretli plana otomatik geçilmez. Kota biterse servis erişimi kısıtlanabilir. Çalışan kullanıcı sınırı kodlanmamıştır; 20 eşzamanlı kullanıcı temel hedeftir. Testte 50 eşzamanlı profil isteği doğrulanır; bu ücretsiz plan için sınırsız kapasite/SLA garantisi değildir.
 
-Oturum, kod ve rate limit tablolarının eski satırlarını günlük temizle; cron handler bu amaçla eklenmiştir. Denetim kayıtları 90 gün tutulur. D1 export ile düzenli yedek al; Firebase hesapları ayrı bir kimlik deposudur. Restore işlemini boş bir deneme ortamında doğrula. Worker canlılık: `/api/v1/health`.
+Oturum, kod ve rate limit tablolarının eski satırlarını günlük temizle; cron handler bu amaçla eklenmiştir. Yeni pano/geçmiş için 0004 migration da uygulanmalıdır. Cron uygulama ziyaretlerini süre dolduğunda kapatır ve 90 günden eski ayrıntıları siler; son giriş/çıkış özetlerini korur. SDK indirme dosyası root `npm run build` ile otomatik üretilir. Denetim kayıtları 90 gün tutulur. D1 export ile düzenli yedek al; Firebase hesapları ayrı bir kimlik deposudur. Restore işlemini boş bir deneme ortamında doğrula. Worker canlılık: `/api/v1/health`.
 
 Şifre, hesap kapatma ve e-posta yönetimini STARBASE panelinden yürüt. Firebase konsolundan değişiklik yapılırsa STARBASE oturumlarını da iptal et; kısa ömürlü uygulama erişim tokenları ve merkezi oturumlar kendi oturum deposuna bağlıdır. Mevcut sürüm dış Firebase değişiklikleri için event listener sağlamaz.
 

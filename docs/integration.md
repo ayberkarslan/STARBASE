@@ -1,64 +1,222 @@
-# Uygulama entegrasyonu
+# STARBASE uygulama entegrasyonu
 
-Yönetimden her web/desktop uygulaması için ayrı kimlik oluştur. Dönüş adresi tam eşleşir; wildcard yoktur. Origin, URL'nin protokol + host + port bölümüdür. `profile`, `email`, `organization` kapsamlarından gerekenleri kaydet. Uygulamaya özel iş verilerini uygulamanın kendi deposunda sakla.
+Bu belge Vite, React, Tauri ve kaynak API geliştiricileri içindir. Giriş/çıkış geçmişi auth akışında otomatik oluşur; ayrı olay gönderme, heartbeat veya analiz servisi kurulmaz. STARBASE kendi SDK protokolünü kullanır; genel OAuth/OIDC sağlayıcısı değildir.
+
+## 1. Yönetimden uygulama kaydı
+
+Her web ve masaüstü uygulaması için ayrı `clientId` oluştur. Kaydın değerleri:
+
+| Alan | Örnek | Kural |
+| --- | --- | --- |
+| Kimlik | `starlab-web` | Küçük harf, rakam ve tire; izin anahtarlarının öneki |
+| Dönüş adresi | `http://127.0.0.1:5180/callback` | Tam eşleşme; wildcard yok |
+| Origin | `http://127.0.0.1:5180` | Protokol + host + port; path yok |
+| Kapsamlar | `profile`, `organization` | Yalnız gereken alanları seç |
+
+Üretim dönüş adresleri HTTPS olmalıdır; localhost/127.0.0.1 native ve geliştirme için kullanılabilir. localhost ile 127.0.0.1 aynı origin değildir. Frontend'e client secret veya Firebase özel anahtarı konmaz.
+
+## 2. Tek dosyayla SDK kurulumu
+
+STARBASE `/docs` ekranından **SDK paketini indir** bağlantısını kullan:
+
+```sh
+npm install ./starbase-sdk.tgz
+```
+
+Arşiv derlenmiş JavaScript ve TypeScript tiplerini içerir. Ayrı contracts paketi, Firebase SDK'sı veya STARBASE deposunun kopyası gerekmez. React adaptörü isteğe bağlıdır. Henüz npm registry yayını yapılmadı; rastgele aynı adlı bir paketi kurma.
+
+Depodan paket üretmek için `npm run pack:sdk` çalıştır. Versiyonlu arşiv `artifacts/` dizinine; indirilebilir kopya `apps/web/public/downloads/starbase-sdk.tgz` yoluna yazılır. `npm run build` SDK paketini de üretir. `node scripts/check-sdk.mjs` arşivin bağımsız JavaScript ve tip kullanımını doğrular.
+
+## 3. Vite bağlantısı
 
 ```ts
-import {Starbase} from '@starbase/sdk';
-const client = new Starbase({
-  baseUrl: 'https://YOUR-STARBASE.workers.dev',
+// src/lib/starbase.ts — modül düzeyinde tek istemci
+import { Starbase } from '@starbase/sdk';
+
+export const starbase = new Starbase({
+  baseUrl: import.meta.env.VITE_STARBASE_URL,
   clientId: 'starlab-web',
   redirectUri: location.origin + '/callback',
   storage: sessionStorage
 });
-await client.login(['profile', 'organization']);
-// /callback sayfasında:
-const user = await client.handleCallback();
-// Sonraki açılışlarda:
-const profile = await client.getProfile();
-await client.logout();
 ```
 
-SDK şu an workspace TypeScript paketidir; npm'e yayımlanmamıştır. Başka depoda `packages/sdk` ve `packages/contracts` paketlerini birlikte al veya monorepo workspace bağlantısını kullan. React adaptörü `@starbase/sdk/react` içindeki `StarbaseProvider`, `useStarbase` yüzeyidir. SDK `hasPermission` yalnız düğme/görünüm durumunu belirler.
+```dotenv
+VITE_STARBASE_URL=http://127.0.0.1:5173
+```
 
-## Sunucu tarafı yetki
+STARBASE farklı portta çalışıyorsa bu adresi değiştir. Worker adresi yerine merkezi arayüz adresini kullan; yerelde arayüz API'yi proxy eder. Üretimde arayüz ve API aynı Worker originindedir.
 
 ```ts
-import { requireStarbasePermission } from '@starbase/sdk';
-const user = await requireStarbasePermission(
-  process.env.STARBASE_URL!,
-  request.headers.get('authorization')!.replace(/^Bearer /, ''),
-  'sponsorluk.hassas_veri.okuma'
-);
-// Ancak bu kontrol başarılıysa hassas kaynağı döndür.
+// Giriş düğmesinin onClick işlemi
+await starbase.login(['profile', 'organization']);
+
+// /callback sayfasında; bu sayfa auth guard dışında kalmalı
+const profile = await starbase.handleCallback();
+// Ardından kendi router'ınla ana sayfaya geç.
+
+// Sonraki uygulama açılışında mevcut oturumu geri yükle
+const currentUser = await starbase.getProfile();
+
+// Gerçek çıkış düğmesi
+await starbase.logout();
 ```
 
-Kaynak sunucu ayrıca tokenın beklediği uygulamaya ait olduğunu kontrol etmelidir: `/me` cevabındaki `applicationId` ile kendi uygulama kimliğini eşleştir. API'nin reddini erişim reddi olarak ele al; API erişilemiyorsa korunan veriyi döndürme.
+Kullanıcı merkezi STARBASE oturumuna sahipse tekrar şifre istenmez. İlk bağlantıda alan onayı gösterilir; kapsam artarsa yeniden onay gerekir. Callback kodu tek kullanımlık ve PKCE/state'e bağlıdır. Callback URL'sini, şifre veya tokenları loglama.
 
-## HTTP yüzeyi
+### React
 
-Tam istek şemaları `/api/openapi.json` adresindedir; `npm run openapi` kaynak route tanımlarından günceller. Yanıt hataları `{error:{code}}` biçimindedir. 401 oturum, 403 kapsam/yetki, 429 deneme sınırı, 503 sağlayıcı/veritabanı veya kota hatasıdır.
+```tsx
+import { StarbaseProvider, useStarbase } from '@starbase/sdk/react';
+import { starbase } from './lib/starbase';
 
-- `/auth/register`, `/auth/login`, `/auth/recover`, `/auth/resend`, `/auth/verify`, `/auth/reset`, `/auth/password`
-- `/authorize`, `/auth/exchange`, `/auth/refresh`, `/auth/logout`, `/auth/logout-all`
-- `/me`, `/permissions`, `/organization`, `/connections`, `/sessions`
-- `/admin/users`, `/admin/departments`, `/admin/teams`, `/admin/memberships`
-- `/admin/apps`, `/admin/roles`, `/admin/permissions`, `/admin/role-assignments`
-- `/admin/invites`, `/invites/accept`, `/admin/profile-fields`, `/admin/profile-values/:id`, `/admin/audit`
+// Uygulama kökü
+<StarbaseProvider client={starbase}>
+  <App />
+</StarbaseProvider>
 
-Tüm yollar `/api/v1` ile başlar. Cookie kullanan yazma istekleri aynı origin üzerinden yapılır. Uygulama istekleri Bearer token kullanır. Üretimde register/recover için `x-turnstile-token` gerekir.
+// Bileşen içinde
+const client = useStarbase();
+<button onClick={() => client.login(['profile'])}>STARBASE ile giriş yap</button>
+```
 
-## Çalışan Vite örneği
+`StarbaseProvider` framework adaptörüdür; router veya uygulama ekranlarını yönetmez. İstemciyi her render'da yeniden oluşturma. Aynı istemcide eşzamanlı `handleCallback()` çağrıları tek kod değişiminde birleştirilir; React StrictMode'un tekrarlanan effect çağrıları desteklenir. Eşzamanlı token yenilemeleri de birleştirilir.
 
-`VITE_STARBASE_URL` ortam değişkenini yerel STARBASE arayüz adresinle eşleştir (varsayılan `http://127.0.0.1:5173`). `VITE_STARBASE_CLIENT_ID` varsayılanı `starlab-web`; `VITE_STARBASE_SCOPES` virgülle ayrılmış kapsamları belirler. `starlab-web` uygulamasında `http://127.0.0.1:5180/callback` ve origin `http://127.0.0.1:5180` kaydet. `npm run example:web` ile aç. İkinci uygulamayı farklı kimlik ve portla kaydederek tarayıcı merkezi oturumunun yeniden şifre istemediğini doğrula.
+### Profil kapsamları
 
-## Tauri
+| Kapsam | Alanlar |
+| --- | --- |
+| Her zaman | `id`, `username`, uygulama oturumunda `applicationId` |
+| `profile` | `firstName`, `lastName` |
+| `email` | `email`, `emailVerified` |
+| `organization` | `memberships`: departman ve ekip kimliği/adı |
 
-`examples/tauri/native` derlenebilir Rust istemcisidir. Sistem tarayıcısını verilen callback ile açar, 127.0.0.1:43817 loopback callback'i dinler, PKCE/state kontrol eder, refresh tokenını işletim sistemi keyring'inde tutar. Kaydetmen gereken callback: `http://127.0.0.1:43817/callback`.
+Özel yönetim alanları, tüm roller ve diğer uygulamaların izinleri profile eklenmez. Kullanıcı bağlantıyı kaldırırsa ilgili uygulama oturumları iptal olur.
 
-`examples/tauri/src-tauri/commands.rs` mevcut Tauri projesine eklenebilecek komut köprüsüdür. Opener plugin ve `invoke_handler` kaydı projenin mevcut builder'ına eklenir. WebView'e refresh token veya şifre verilmez. Komutları eşzamanlı çağırma; native istemci yenilemelerini tek bir uygulama durumunda sırala. Gerçek işletim sistemi keyring ve tarayıcı dönüşü GUI üzerinde ayrıca denenmelidir.
+## 4. Kaynak API'de yetki kontrolü
+
+```ts
+// Frontend
+const token = await starbase.getAccessToken();
+const response = await fetch('/api/projects', {
+  headers: { Authorization: 'Bearer ' + token }
+});
+```
+
+```ts
+// Kendi API sunucun
+import { requireStarbasePermission } from '@starbase/sdk';
+
+const user = await requireStarbasePermission(
+  process.env.STARBASE_URL!,
+  bearerToken,
+  'starlab-web.projects.read'
+);
+// Yalnız başarılıysa korunan kaynağı döndür.
+```
+
+İzin anahtarı kaydedilen uygulama kimliğiyle başlamalıdır. Yönetici izni tanımlar, role ekler ve rolü kişiye atar. Yardımcı hem izni hem dönen `applicationId` değerini kontrol eder. `hasPermission()` yalnız arayüz davranışı içindir; kaynak API'de bu doğrulama zorunludur. STARBASE erişilemiyorsa korunan veriyi döndürme. Offline JWT doğrulaması yoktur; tokenlar opaque oturum anahtarlarıdır.
+
+## 5. Oturum ve uygulama geçmişi
+
+```ts
+const history = await starbase.getApplicationHistory(1);
+// applications: uygulama bazında son giriş / gerçek son çıkış
+// visits: 20 oturumluk sayfa
+// page, pageSize, total, hasMore
+```
+
+Uygulama tokenı yalnız **o uygulamadaki kendi** geçmişini görür. Başka kullanıcılar veya diğer uygulamaların geçmişleri uygulamalara açılmaz. Merkezi panelde, takım üyeleri takım profillerinin uygulama geçmişini görebilir. İlk bağlantı izin ekranı bunu belirtir.
+
+| İşlem | Oluşan kayıt |
+| --- | --- |
+| Başarılı kod değişimi / `handleCallback()` | Bir uygulama girişi |
+| Token refresh / `getProfile()` / uygulama yeniden açılışı | Yeni giriş oluşmaz |
+| `logout()` | Gerçek çıkış tarihi ve `logout` |
+| Merkezi “tüm oturumları kapat” | İlgili açık uygulama oturumlarında `logout` |
+| Bağlantı kaldırma, şifre değişimi, yönetimden kapatma, refresh replay | `revoked`; gerçek son çıkış tarihi değişmez |
+| Oturum geçerliliğinin dolması | `expired`; gerçek son çıkış tarihi değişmez |
+| Sekme/pencere kapanması, çökme, ağ kesintisi | Çıkış uydurulmaz; bildirim yoksa çıkış boş kalır |
+
+Tarihler UTC Unix **saniyesidir**. Gösterim için `new Date(timestamp * 1000)` kullan. Bu veri online durumu veya çalışma süresi değildir. `beforeunload` ile çıkış zamanını garanti etmeye çalışma. Logout ağ hatasında SDK yerel bilgiyi temizler ve hatayı çağırana iletir; sunucuda çıkış oluşmayabilir. Merkezi Oturumlar ekranından kalan oturum kapatılabilir.
+
+Geçmiş bu özelliğin devreye alınmasından itibaren oluşur; eski giriş tarihleri tahmin edilmez. Ayrıntılı oturumlar 90 gün tutulur. Uygulama başına son giriş/çıkış özeti, kullanıcı/uygulama silinene kadar korunur. Günlük cron süre dolumlarını ve eski ayrıntıları temizler. Son çıkış önceki oturuma ait olabilir; sonraki giriş yapılmış olması bu tarihi silmez.
+
+## 6. Takım panosu ve dizin API'si
+
+Bu uçlar **yalnız merkezi oturum ve takım üyeliği** gerektirir; uygulama Bearer tokenları erişemez. Kaydolan fakat takıma davet edilmemiş hesaplar dizini göremez. Hesap devre dışıysa listeden ve profilden çıkarılır. Üyelerin e-postaları, yönetim yetkileri ve özel profil alanları paylaşılmaz.
+
+| Uç | Sonuç |
+| --- | --- |
+| `GET /api/v1/directory/users?q=&departmentId=&teamId=&page=1` | `{users,page,pageSize:24,total,hasMore}` |
+| `GET /api/v1/directory/teams` | Departman/ekip listeleri ve benzersiz üye sayıları |
+| `GET /api/v1/directory/users/:id` | Takım profili, üyelikler, uygulama özetleri ve ilk oturum sayfası |
+| `GET /api/v1/directory/users/:id/activity?page=1` | Uygulama özetleri ve 20 oturumluk sayfa |
+| `GET /api/v1/me/applications?page=1` | Kendi geçmişin; uygulama tokenında yalnız ilgili uygulama |
+
+Arama isim, soyisim ve kullanıcı adında yapılır; Türkçe karakterler ve harf büyüklüğü normalize edilir. `%` ve `_` gibi kullanıcı girdileri SQL wildcard'ı olarak işletilmez. Filtreler birlikte uygulanır. Arşivlenmiş ekipler gezinti filtresine dahil edilmez.
+
+## 7. Tauri / native
+
+`examples/tauri/native` derlenebilir Rust istemcisidir. Sistem tarayıcısını açar, PKCE/state doğrular ve refresh tokenını işletim sistemi keyring'inde tutar. Kaydedilecek dönüş adresi: `http://127.0.0.1:43817/callback`. Masaüstü için `starlab-desktop` gibi ayrı kimlik kullan.
+
+```rust
+let client = starbase_native::Starbase::new(
+    "https://YOUR-STARBASE.workers.dev", "starlab-desktop"
+)?;
+let profile = client.login(open_browser).await?;
+let restored = client.get_profile().await?;
+client.logout().await?;
+```
+
+`examples/tauri/src-tauri/commands.rs` komutlarını mevcut builder'ın `invoke_handler` listesine ekle ve opener plugin kaydını yap. Frontend `invoke('starbase_login')`, `invoke('starbase_profile')`, `invoke('starbase_logout')` çağırır. Refresh token veya servis anahtarı JavaScript'e taşınmaz. Native istemci eşzamanlı işlemleri sıraya alır. `logout()` bildirimi başarılı olduktan sonra anahtarlığı temizler; çevrimdışıysa hata döner ve yeniden denenebilir. `clear_local_session()` yalnız yerel temizlemedir, sunucu çıkış tarihi üretmez.
+
+Gerçek işletim sisteminde tarayıcı dönüşü ve keyring ayrıca denenmelidir; bu depoda native istemcinin derlemesi doğrulanır.
+
+## 8. Hatalar ve sorun çözümü
+
+SDK API hataları `StarbaseError` üzerinde `code` ve `status` taşır. Ağ/bağlantı hataları platform hatası olabilir.
+
+```ts
+import { StarbaseError } from '@starbase/sdk';
+try {
+  await starbase.getProfile();
+} catch (error) {
+  if (error instanceof StarbaseError && error.status === 401) {
+    // Kullanıcıya yeniden giriş düğmesi göster.
+  } else {
+    // İzin veya bağlantı hatasını göster; korunan veriyi açma.
+  }
+}
+```
+
+| Kod/durum | Çözüm |
+| --- | --- |
+| `origin_rejected` | Kaydedilen origin ile gerçek protokol/host/port eşleşmesini kontrol et |
+| `invalid_authorization` | clientId, tam redirectUri ve izinli kapsamları kontrol et |
+| `state_mismatch`, `missing_login`, `invalid_code` | Girişi aynı sekmede baştan başlat; callback'i kopyalama veya kodu tekrar değiştirme |
+| `session_expired`, `refresh_reused`, 401 | Yeniden giriş; refresh tokenları istemciler arasında kopyalanmaz |
+| `permission_denied`, `application_mismatch`, 403 | İzin öneki, kullanıcı rolü ve uygulama kimliğini kontrol et |
+| `team_membership_required` | Takım davetini kabul et veya yönetimden üyelik iste |
+| 429 | Deneme sıklığını azalt; kullanıcıya bekleyip yeniden deneme sun |
+| 503 | Sağlayıcı/veritabanı/ağ veya ücretsiz kota; erişimi açık bırakma |
+
+## 9. Çalışan örnek ve doğrulama
+
+`npm run example:web` varsayılan olarak 5180 portunda açılır. `VITE_STARBASE_URL`, `VITE_STARBASE_CLIENT_ID`, `VITE_STARBASE_SCOPES` ortam değişkenlerini uygulama kaydıyla eşleştir. Örnek hem oturum geri yükleme hem gerçek logout gösterir.
+
+```sh
+npm run emulators
+npm run dev:api
+npm run dev
+# Ayrı terminalde, gerçek yerel servisler açıkken:
+STARBASE_LIVE_TEST=1 npm run test:ui
+```
+
+Gerçek entegrasyon testi iki ayrı origin'de Vite örneklerini boş portlarda açar; giriş, çıkış, tekrar giriş, onay, profil kapsamı ve profil geçmişini doğrular. Test kullanıcılarını temizler; üretim verisine karşı çalıştırılmaz.
 
 ## Yönetimden üye oluşturma
 
-Üyeler ekranındaki **Üye ekle** düğmesi `POST /api/v1/admin/users` çağırır. Merkezi oturum, `users.manage` izni ve yöneticinin mevcut şifresi gerekir. İstek alanları: `firstName`, `lastName`, `username`, `email`, `temporaryPassword`, `currentPassword`; isteğe bağlı `teamId`.
+Üyeler ekranındaki **Üye ekle**, `POST /api/v1/admin/users` çağırır. Merkezi oturum, `users.manage` izni ve yöneticinin mevcut şifresi gerekir. Alanlar: `firstName`, `lastName`, `username`, `email`, `temporaryPassword`, `currentPassword`; isteğe bağlı `teamId`. Kişi normal üye olur, ilk girişte şifresini değiştirir. E-posta gönderimi başarısızsa oluşturulan hesap korunur; `verificationDelivered` durumu belirtir. Yerel emülatör test bağlantısı panelde gösterilir.
 
-Hesap normal takım üyesi olarak oluşturulur; rol yükseltmesi bu işlemle yapılmaz. Seçilen ekip aynı işlemde atanır. Doğrulama e-postası gönderilir ve ilk girişte zorunlu şifre değişimi uygulanır. Geçici şifre yalnız Firebase'e iletilir; yanıt veya denetim kaydında bulunmaz. E-posta gönderimi başarısız olsa bile oluşturulan hesap korunur; `verificationDelivered` bu durumu belirtir. Yerel emülatörde paylaşılabilir test doğrulama bağlantısı panelde gösterilir.
+Tam HTTP istek şemaları `/api/openapi.json` adresindedir. Yeni route eklenince `npm run openapi` ile güncellenir. Cookie ile yazma işlemleri aynı origin'den yapılır; uygulama çağrıları Bearer kullanır. Üretimde kayıt/kurtarma için `x-turnstile-token` gerekir.

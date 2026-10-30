@@ -29,3 +29,35 @@ for (const viewport of [
       .getByLabel("Şifre", { exact: true })
       .fill("starbase-test-password");
   });
+
+test("developer docs expose the standalone SDK and API contract", async ({
+  page,
+  request,
+}) => {
+  const origin = process.env.STARBASE_TEST_URL ?? "http://127.0.0.1:5173";
+  await page.goto(origin + "/docs");
+  await expect(
+    page.getByRole("heading", { name: "Takımına bağlan." }),
+  ).toBeVisible();
+  const download = await request.get(origin + "/downloads/starbase-sdk.tgz");
+  expect(download.status()).toBe(200);
+  const bytes = await download.body();
+  expect([...bytes.subarray(0, 2)]).toEqual([0x1f, 0x8b]);
+  await page.getByRole("button", { name: "Vite / React", exact: true }).click();
+  await expect(
+    page
+      .locator(".developer-docs")
+      .getByText("React bağlantısı", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "API", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: "OpenAPI JSON’u aç" }),
+  ).toBeVisible();
+  const schema = await (await request.get(origin + "/api/openapi.json")).json();
+  expect(schema.paths["/api/v1/directory/users"].get.security).toEqual([
+    { central: [] },
+  ]);
+  expect(
+    schema.paths["/api/v1/auth/logout"].post.security.length,
+  ).toBeGreaterThan(0);
+});

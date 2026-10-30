@@ -1,3 +1,4 @@
+import { DeveloperDocs } from "./developer-docs";
 import { TeamDirectory, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
@@ -125,6 +126,8 @@ function App() {
     }
   }, [user]);
   useEffect(() => {
+    setError("");
+    setNotice("");
     setRows([]);
     setSelected(null);
     if (!user) return;
@@ -1035,38 +1038,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
   );
 }
 function Docs() {
-  return (
-    <article className="docs">
-      <span className="eyebrow">GELİŞTİRİCİ MERKEZİ / v0.1</span>
-      <h1>
-        Bir kez bağlan.
-        <br />
-        Tüm ekibe ulaş.
-      </h1>
-      <p>
-        STARBASE, uygulamanla kullanıcı arasında ortak bir kimlik katmanı
-        sağlar.
-      </p>
-      <h2>01 / Uygulamanı kaydet</h2>
-      <p>
-        Yönetim panelinde uygulama kimliğini, tam dönüş adresini ve originini
-        tanımla.
-      </p>
-      <h2>02 / SDK’yı bağla</h2>
-      <pre>{`import { Starbase } from '@starbase/sdk';\n\nconst starbase = new Starbase({\n  baseUrl: 'https://starbase.example',\n  clientId: 'starlab',\n  redirectUri: location.origin + '/callback',\n  storage: sessionStorage\n});\n\nawait starbase.login(['profile', 'organization']);`}</pre>
-      <h2>03 / Profili al</h2>
-      <pre>{`// /callback sayfasında\nconst profile = await starbase.handleCallback();\n\n// Sonraki açılışlarda\nconst currentUser = await starbase.getProfile();`}</pre>
-      <h2>04 / Yetkiyi sunucuda doğrula</h2>
-      <p>
-        Arayüzde bir düğmeyi gizlemek veriyi korumaz. Kaynak API, STARBASE
-        tokenını ve gerekli uygulama iznini her istekte kontrol etmelidir.
-      </p>
-      <p>Ayrıntılı kurulum ve güvenlik sözleşmesi: depodaki docs/ dizini.</p>
-      <Button onClick={() => location.assign("/")} variant="bare">
-        <ArrowLeft size={16} /> Hesap merkezine dön
-      </Button>
-    </article>
-  );
+  return <DeveloperDocs />;
 }
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

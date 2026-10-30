@@ -1,6 +1,6 @@
 # STARBASE
 
-Yıldız Roket Takımı için merkezi hesap, profil paylaşımı ve yetkilendirme servisi. Firebase Auth + Cloudflare Workers/D1; React/Vite arayüzü ve projeye sabitlenmiş stardrop-ui 0.3.0.
+Yıldız Roket Takımı için merkezi hesap, takım panosu, üye/ekip dizini, profil paylaşımı ve yetkilendirme servisi. Firebase Auth + Cloudflare Workers/D1; React/Vite arayüzü ve projeye sabitlenmiş stardrop-ui 0.3.0.
 
 ## Yerelde çalıştırma
 
@@ -51,4 +51,4 @@ Tarayıcı testleri için `npx playwright install chromium` çalıştır. Test a
 - [Ücretsiz üretim kurulumu](docs/deployment.md)
 - [Teslim ve doğrulama durumu](docs/status.md)
 
-Geliştirici ekranı `/docs`, OpenAPI `/api/openapi.json`. STARBASE protokolü kendi SDK'sıyla kullanılır; genel OAuth/OIDC sağlayıcısı değildir. Online durum ve kullanım süresi takibi içermez.
+Geliştirici ekranı `/docs`, OpenAPI `/api/openapi.json`. STARBASE protokolü kendi SDK'sıyla kullanılır; genel OAuth/OIDC sağlayıcısı değildir. Uygulama giriş/çıkış tarihleri auth akışında otomatik tutulur; online durum ve kullanım süresi ölçülmez. Pano yalnız takım üyelerine açıktır. SDK arşivi geliştirici ekranından indirilebilir; `npm run pack:sdk` ile ayrıca üretilir.

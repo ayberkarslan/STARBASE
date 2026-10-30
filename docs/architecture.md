@@ -25,3 +25,11 @@ Ek profil alanları `profile_fields` kayıtlarında tipli tanımlanır; değerle
 Firebase ve D1 arasında dağıtık transaction yoktur. Kayıt önce kullanıcı adı rezervasyonu yapar; Firebase reddinde rezervasyon geri alınır. Ağ zaman aşımı veya Firebase başarılı/D1 başarısız senaryosunda iki sistemi yönetici kontrol ederek uzlaştırmalıdır. E-posta gönderim hatası hesabı silmez; yeniden doğrulama e-postası istenebilir. Kullanıcı güncellemesinde upstream hata olursa oturumlar kapalı kalır; değişiklik yeniden denenebilir.
 
 Bu sürüm MFA içermez. Firebase konsolundan yapılan dış değişikliklerin STARBASE oturumlarına etkisi kurulum notlarında açıklanır. Denetim kayıtlarında kişisel veri bulunduğundan erişim yönetimle sınırlıdır.
+
+## Takım dizini ve uygulama erişim kayıtları
+
+Pano/dizin merkezi oturum ve takım üyeliği gerektirir; yönetici izni gerekmez. Normal kayıt olup takıma girmemiş hesaplar dizini okuyamaz. Arama ve ekip filtreleri sayfalanır; profil yanıtında e-posta, özel alanlar ve yetkiler bulunmaz. Uygulama tokenlarına dizin açılmaz.
+
+Kod değişimi bir `application_visits` satırı oluşturur; refresh yeni ziyaret üretmez. Ziyaret trigger'ları `application_usage` özetini günceller. Auth logout ziyaretin gerçek çıkışını atomik olarak işaretleyip aileyi iptal eder. Oturum ailesinin diğer iptal yolları veritabanı trigger'ıyla `revoked` kaydı üretir. Süre dolumları `expired` olarak okunur ve günlük cron ile kalıcılaştırılır. Hiçbiri gerçek son çıkışı uydurmaz. Böylece şifre değişimi, bağlantı kaldırma, replay ve yönetim işlemlerinde ayrı takip kodu unutulmaz.
+
+Ayrıntılar 90 gün sonra temizlenir; son giriş/çıkış özetleri korunur. Önceki oturumlar geriye dönük tahmin edilmez. Pencere kapanma olayı veya heartbeat kullanılmaz; online durumu ve çalışma süresi ölçülmez. Ücretsiz katmandaki ilave yazımlar yalnız auth olaylarında ve günlük temizlikte gerçekleşir; profil gezintisi okuma yapar.

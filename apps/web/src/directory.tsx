@@ -79,6 +79,9 @@ export function ApplicationHistoryView({
             ))}
           </div>
           <h4>Son oturumlar</h4>
+          {!data.visits.length && (
+            <p>Son 90 günde ayrıntılı oturum kaydı bulunmuyor.</p>
+          )}
           <div className="visit-list">
             {data.visits.map((v) => (
               <div key={v.id} className="visit-row">

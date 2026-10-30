@@ -243,3 +243,63 @@
     grid-template-columns: 1fr;
   }
 }
+.developer-docs {
+  width: 100%;
+  max-width: 1040px;
+}
+.developer-docs .sd-tabbar {
+  margin: 28px 0;
+}
+.docs-code {
+  position: relative;
+}
+.docs-code > .sd-button {
+  position: absolute;
+  right: 14px;
+  top: 10px;
+}
+.docs-code pre {
+  padding-top: 48px;
+}
+.developer-docs dl {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.developer-docs dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.docs-endpoints > div {
+  padding: 20px 0;
+  border-bottom: 1px solid #ffffff40;
+}
+.docs-endpoints code {
+  font: 12px/1.8 monospace;
+  overflow-wrap: anywhere;
+}
+.developer-docs .sd-disclosure p {
+  padding: 0 12px;
+}
+.docs-footer {
+  margin-top: 44px;
+}
+@media (max-width: 650px) {
+  .developer-docs {
+    padding: 20px 0;
+  }
+  .developer-docs dl {
+    grid-template-columns: 85px minmax(0, 1fr);
+    font-size: 10px;
+  }
+  .docs-code pre {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .developer-docs h1 {
+    font-size: 26px;
+  }
+}

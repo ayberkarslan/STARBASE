@@ -7,6 +7,7 @@
 - Merkezi oturum, PKCE ile tek kullanımlık uygulama kodu, dönen refresh tokenları ve iptal edilebilir oturum aileleri.
 - Kapsamla sınırlı profil paylaşımı ve kaynak sunucu için uygulama/izin kontrol yardımcısı.
 - Departman/ekip oluşturma ve arşivleme API'si, çoklu ekip üyeliği, davetler, dinamik roller ve izinler.
+- Yönetim panelinden doğrudan üye hesabı ve isteğe bağlı ekip ataması oluşturma.
 - Kullanıcı yönetimi, mevcut şifreyi göstermeden geçici şifre belirleme, zorunlu şifre değişimi, e-posta güncelleme ve hesap kapatma.
 - Özel profil alanı tanımı ve tipli değerler; özel alanlar bu sürümde yönetimle sınırlı.
 - stardrop-ui tabanlı giriş/kayıt, hesap, yönetim ve geliştirici ekranları; OpenAPI çıktısı.
@@ -14,7 +15,7 @@
 
 ## Doğrulananlar
 
-21 API/SDK testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
+28 API/SDK testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
 
 Playwright masaüstü/mobil ekran kontrolleri ve gerçek yerel Firebase Auth Emulator + Wrangler/D1 üzerinde kayıt/doğrulama/giriş/yönetim/şifre sıfırlama akışı. İki farklı origin’de çalışan gerçek Vite uygulamasında merkezi oturum, ilk bağlantı izni, sonraki bağlantıda otomatik devam, CORS ve kapsamla sınırlı profil paylaşımı doğrulandı. Emülatör API smoke testi. TypeScript kontrolü, Vite üretim derlemesi ve Rust `cargo check --locked`.
 

@@ -56,3 +56,9 @@ Tüm yollar `/api/v1` ile başlar. Cookie kullanan yazma istekleri aynı origin 
 `examples/tauri/native` derlenebilir Rust istemcisidir. Sistem tarayıcısını verilen callback ile açar, 127.0.0.1:43817 loopback callback'i dinler, PKCE/state kontrol eder, refresh tokenını işletim sistemi keyring'inde tutar. Kaydetmen gereken callback: `http://127.0.0.1:43817/callback`.
 
 `examples/tauri/src-tauri/commands.rs` mevcut Tauri projesine eklenebilecek komut köprüsüdür. Opener plugin ve `invoke_handler` kaydı projenin mevcut builder'ına eklenir. WebView'e refresh token veya şifre verilmez. Komutları eşzamanlı çağırma; native istemci yenilemelerini tek bir uygulama durumunda sırala. Gerçek işletim sistemi keyring ve tarayıcı dönüşü GUI üzerinde ayrıca denenmelidir.
+
+## Yönetimden üye oluşturma
+
+Üyeler ekranındaki **Üye ekle** düğmesi `POST /api/v1/admin/users` çağırır. Merkezi oturum, `users.manage` izni ve yöneticinin mevcut şifresi gerekir. İstek alanları: `firstName`, `lastName`, `username`, `email`, `temporaryPassword`, `currentPassword`; isteğe bağlı `teamId`.
+
+Hesap normal takım üyesi olarak oluşturulur; rol yükseltmesi bu işlemle yapılmaz. Seçilen ekip aynı işlemde atanır. Doğrulama e-postası gönderilir ve ilk girişte zorunlu şifre değişimi uygulanır. Geçici şifre yalnız Firebase'e iletilir; yanıt veya denetim kaydında bulunmaz. E-posta gönderimi başarısız olsa bile oluşturulan hesap korunur; `verificationDelivered` bu durumu belirtir. Yerel emülatörde paylaşılabilir test doğrulama bağlantısı panelde gösterilir.

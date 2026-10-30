@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import ts from "typescript";
 import { z } from "zod";
+const usernamePattern = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 const credentials = z.object({
   username: z.string().regex(/^[a-z0-9][a-z0-9._-]{2,31}$/),
   password: z.string().min(12).max(128),
@@ -69,8 +70,9 @@ for (const f of fs
             schema = new Function(
               "z",
               "credentials",
+              "usernamePattern",
               `return (${expression});`,
-            )(z, credentials);
+            )(z, credentials, usernamePattern);
           } catch {}
         }
         ts.forEachChild(v, findBody);

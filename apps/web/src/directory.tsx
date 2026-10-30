@@ -1,3 +1,4 @@
+import { BoardNotes } from "./board-notes";
 import { useEffect, useState } from "react";
 import {
   Button,
@@ -16,6 +17,7 @@ import {
   AppWindow,
   ChevronRight,
   RefreshCw,
+  StickyNote,
 } from "lucide-react";
 import type {
   DirectoryPage,
@@ -222,7 +224,7 @@ export function TeamDirectory({
   currentUserId: string;
   teamsOnly?: boolean;
 }) {
-  const [view, setView] = useState(teamsOnly ? "teams" : "people"),
+  const [view, setView] = useState(teamsOnly ? "teams" : "notes"),
     [query, setQuery] = useState(""),
     [department, setDepartment] = useState(""),
     [team, setTeam] = useState(""),
@@ -311,11 +313,22 @@ export function TeamDirectory({
         value={view}
         onChange={setView}
         items={[
+          ...(!teamsOnly
+            ? [
+                {
+                  value: "notes",
+                  label: "Not panosu",
+                  icon: <StickyNote size={16} />,
+                },
+              ]
+            : []),
           { value: "people", label: "Üyeler", icon: <Users size={16} /> },
           { value: "teams", label: "Ekipler", icon: <Layers size={16} /> },
         ]}
       />
-      {view === "people" ? (
+      {view === "notes" ? (
+        <BoardNotes currentUserId={currentUserId} teams={org.teams} />
+      ) : view === "people" ? (
         <>
           <div className="directory-filters">
             <SearchField

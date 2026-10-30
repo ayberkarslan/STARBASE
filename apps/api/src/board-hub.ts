@@ -9,11 +9,14 @@ export class BoardHub {
     ) {
       if (this.state.getWebSockets().length >= 256)
         return new Response("Connection limit", { status: 429 });
+      const expires = Number(url.searchParams.get("expires"));
+      if (!Number.isFinite(expires) || expires <= Date.now() / 1000)
+        return new Response("Session expired", { status: 403 });
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       this.state.acceptWebSocket(server);
       server.serializeAttachment({
-        expires: Number(url.searchParams.get("expires")),
+        expires,
       });
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -23,7 +26,11 @@ export class BoardHub {
           const attachment = socket.deserializeAttachment() as {
             expires: number;
           };
-          if (!attachment || attachment.expires <= Date.now() / 1000) {
+          if (
+            !attachment ||
+            !Number.isFinite(attachment.expires) ||
+            attachment.expires <= Date.now() / 1000
+          ) {
             socket.close(1008, "Session expired");
             continue;
           }

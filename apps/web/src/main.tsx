@@ -306,13 +306,13 @@ function App() {
                     }[mode]
                   }
                 </h2>
-                <p>
-                  {mode === "login"
-                    ? "Devam etmek için hesabına giriş yap."
-                    : mode === "register"
+                {mode !== "login" && (
+                  <p>
+                    {mode === "register"
                       ? "Bir hesapla tüm platformlara bağlan."
                       : "Hesabının güvenliğini birlikte koruyalım."}
-                </p>
+                  </p>
+                )}
               </div>
               <form onSubmit={submit}>
                 {mode === "register" && (
@@ -436,7 +436,6 @@ function App() {
               <div className="auth-bottom">
                 {mode === "login" ? (
                   <>
-                    Henüz hesabın yok mu?{" "}
                     <Button variant="bare" onClick={() => setMode("register")}>
                       Hesap oluştur <ArrowUpRight size={14} />
                     </Button>

@@ -474,11 +474,11 @@ function BoardCanvas({
                     key={n.id}
                     note={n}
                     canMove={canEdit}
-                    onMove={async (x, y) => {
+                    onMove={async (x, y, layoutVersion) => {
                       try {
                         await request(
                           "/board/notes/" + n.id + "/position",
-                          { x, y, layoutVersion: n.layoutVersion },
+                          { x, y, layoutVersion },
                           "PATCH",
                         );
                         await reload.current();
@@ -634,6 +634,11 @@ function BoardCanvas({
       <Dialog
         open={editor !== null}
         title={editor === "new" ? "Panoya not ekle" : "Notu düzenle"}
+        description={
+          scope === "private"
+            ? "Bu not yalnızca senin panonda görünecek."
+            : "Takım üyelerinin tamamı bu notu görebilir."
+        }
         onClose={() => {
           if (!saving) setEditor(null);
         }}
@@ -749,7 +754,7 @@ function MovableNote({
 }: {
   note: Note;
   canMove: boolean;
-  onMove: (x: number, y: number) => Promise<void>;
+  onMove: (x: number, y: number, layoutVersion: number) => Promise<void>;
   children: ReactNode;
 }) {
   const [position, setPosition] = useState({ x: note.x, y: note.y });
@@ -761,6 +766,7 @@ function MovableNote({
     x: number;
     y: number;
     pointerId: number;
+    layoutVersion: number;
   } | null>(null);
   const positionRef = useRef(position);
   const move = (p: { x: number; y: number }) => {
@@ -770,11 +776,11 @@ function MovableNote({
   useEffect(() => {
     if (!drag.current) move({ x: note.x, y: note.y });
   }, [note.x, note.y, note.layoutVersion]);
-  const commit = async () => {
+  const commit = async (layoutVersion = note.layoutVersion) => {
     const p = positionRef.current;
     setPending(true);
     try {
-      await onMove(p.x, p.y);
+      await onMove(p.x, p.y, layoutVersion);
     } catch {
       move({ x: note.x, y: note.y });
     } finally {
@@ -803,6 +809,7 @@ function MovableNote({
             clientY: e.clientY,
             ...position,
             pointerId: e.pointerId,
+            layoutVersion: note.layoutVersion,
           };
           setMoving(true);
         }}
@@ -826,7 +833,7 @@ function MovableNote({
           if (e.currentTarget.hasPointerCapture(e.pointerId))
             e.currentTarget.releasePointerCapture(e.pointerId);
           if (d.x !== positionRef.current.x || d.y !== positionRef.current.y)
-            void commit();
+            void commit(d.layoutVersion);
         }}
         onPointerCancel={() => {
           drag.current = null;

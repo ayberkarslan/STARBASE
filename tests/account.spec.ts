@@ -23,7 +23,7 @@ test("real Firebase account and administration", async ({
   let notesContext: import("@playwright/test").BrowserContext | undefined;
   const memberPassword = randomBytes(24).toString("base64url");
   const servers: ChildProcess[] = [];
-  test.setTimeout(60000);
+  test.setTimeout(90000);
   const sql = (query: string) => {
     const directory =
       "apps/api/.wrangler/state/v3/d1/miniflare-D1DatabaseObject";
@@ -87,12 +87,13 @@ test("real Firebase account and administration", async ({
     await page.getByLabel("Şifre", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Pano", exact: true }),
+      page.getByRole("heading", { name: "Sana ait bir alan.", exact: true }),
     ).toBeVisible();
     sql(`UPDATE users SET owner=1 WHERE id='${uid}';`);
     await page.reload();
+    await page.getByRole("button", { name: "Menü", exact: true }).hover();
     await page
-      .locator(".workspace-body>aside")
+      .locator(".workspace-menu")
       .getByRole("button", { name: "Üyeler", exact: true })
       .click();
     await expect(page.getByText(email, { exact: true })).toBeVisible();
@@ -144,8 +145,9 @@ test("real Firebase account and administration", async ({
         .locator(".admin-forms .org-row")
         .getByText("Aviyonik / Yazılım", { exact: true }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Menü", exact: true }).hover();
     await page
-      .locator(".workspace-body>aside")
+      .locator(".workspace-menu")
       .getByRole("button", { name: "Pano", exact: true })
       .click();
     notesContext = await browser.newContext();
@@ -171,6 +173,105 @@ test("real Firebase account and administration", async ({
       .fill(personalPassword);
     await memberPage
       .getByRole("button", { name: "Giriş yap", exact: true })
+      .click();
+    await expect(page.locator(".notes-connection")).toContainText(
+      "Canlı güncelleniyor",
+    );
+    await expect(memberPage.locator(".notes-connection")).toContainText(
+      "Canlı güncelleniyor",
+    );
+    // Each account starts in a private board, including users without team roles.
+    await expect(
+      page.getByRole("button", { name: "Kendi panom", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Menü", exact: true }).hover();
+    await expect(page.locator(".workspace-menu")).toBeVisible();
+    await page.mouse.move(700, 200);
+    await expect(page.locator(".workspace-menu")).toHaveCount(0);
+    await page.getByRole("button", { name: "Not ekle", exact: true }).click();
+    const personal = page.getByRole("dialog", { name: "Panoya not ekle" });
+    await personal
+      .getByLabel("Başlık", { exact: true })
+      .fill(username + " özel not");
+    await personal
+      .getByLabel("Not", { exact: true })
+      .fill("Yalnızca bana ait.");
+    await personal
+      .getByRole("button", { name: "Panoya ekle", exact: true })
+      .click();
+    const personalNote = page
+      .locator(".sticky-note")
+      .filter({ hasText: username + " özel not" });
+    await expect(personalNote).toBeVisible();
+    const memberPrivate: any = await (
+      await memberPage.request.get(origin + "/api/v1/board/notes?scope=private")
+    ).json();
+    expect(
+      memberPrivate.notes.some((n: any) => n.title === username + " özel not"),
+    ).toBe(false);
+    const handle = personalNote.locator("..").getByRole("button", {
+      name: username + " özel not notunu taşı",
+      exact: true,
+    });
+    const start = await handle.boundingBox();
+    const moved = page.waitForResponse(
+      (r) => r.url().endsWith("/position") && r.request().method() === "PATCH",
+    );
+    await page.mouse.move(start!.x + 25, start!.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(start!.x + 205, start!.y + 102, { steps: 12 });
+    await page.mouse.up();
+    expect((await moved).status()).toBe(200);
+    await page.reload();
+    await expect(personalNote).toBeVisible();
+    const saved: any = await (
+      await page.request.get(origin + "/api/v1/board/notes?scope=private")
+    ).json();
+    const savedNote = saved.notes.find(
+      (n: any) => n.title === username + " özel not",
+    );
+    expect(savedNote.x).toBeGreaterThanOrEqual(200);
+    expect(savedNote.y).toBeGreaterThanOrEqual(120);
+    await expect(personalNote.locator("..")).toHaveCSS(
+      "transform",
+      `matrix(1, 0, 0, 1, ${savedNote.x}, ${savedNote.y})`,
+    );
+    const keyboardMove = page.waitForResponse(
+      (r) => r.url().endsWith("/position") && r.request().method() === "PATCH",
+    );
+    await handle.focus();
+    await handle.press("Shift+ArrowRight");
+    expect((await keyboardMove).status()).toBe(200);
+    await expect(personalNote.locator("..")).toHaveCSS(
+      "transform",
+      `matrix(1, 0, 0, 1, ${savedNote.x + 40}, ${savedNote.y})`,
+    );
+    const touchContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      storageState: await page.context().storageState(),
+    });
+    try {
+      const touchPage = await touchContext.newPage();
+      await touchPage.goto(origin);
+      await touchPage.getByRole("button", { name: "Menü", exact: true }).tap();
+      await expect(touchPage.locator(".workspace-menu")).toBeVisible();
+      await touchPage
+        .locator(".workspace-menu")
+        .getByRole("button", { name: "Pano", exact: true })
+        .tap();
+      await expect(touchPage.locator(".workspace-menu")).toHaveCount(0);
+    } finally {
+      await touchContext.close();
+    }
+    await page.screenshot({
+      path: "/tmp/starbase-private-canvas.png",
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "Ortak pano", exact: true }).click();
+    await memberPage
+      .getByRole("button", { name: "Ortak pano", exact: true })
       .click();
     await expect(page.locator(".notes-connection")).toContainText(
       "Canlı güncelleniyor",
@@ -250,6 +351,9 @@ test("real Firebase account and administration", async ({
       fullPage: true,
     });
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(
+      page.getByRole("button", { name: "Menü", exact: true }),
+    ).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -268,14 +372,15 @@ test("real Firebase account and administration", async ({
     await expect(remoteNote).not.toBeVisible();
     await notesContext.close();
     notesContext = undefined;
+    await page.getByRole("button", { name: "Menü", exact: true }).hover();
     await page
-      .locator(".team-directory")
-      .getByRole("button", { name: "Üyeler", exact: true })
+      .locator(".workspace-menu")
+      .getByRole("button", { name: "Takım dizini", exact: true })
       .click();
     await page.getByRole("searchbox", { name: "Üye ara" }).fill("Added Member");
     await page
       .locator(".member-card")
-      .filter({ hasText: "Added Member" })
+      .filter({ hasText: "@" + username + "_member" })
       .click();
     const publicProfile = page.getByRole("dialog", {
       name: "Added Member",
@@ -292,8 +397,9 @@ test("real Firebase account and administration", async ({
     await publicProfile
       .getByRole("button", { name: "Kapat", exact: true })
       .click();
+    await page.getByRole("button", { name: "Menü", exact: true }).hover();
     await page
-      .locator(".workspace-body>aside")
+      .locator(".workspace-menu")
       .getByRole("button", { name: "Ekipler", exact: true })
       .click();
     await page
@@ -302,11 +408,16 @@ test("real Firebase account and administration", async ({
       .filter({ hasText: "Yazılım" })
       .click();
     await expect(
-      page.locator(".member-card").filter({ hasText: "Added Member" }),
+      page
+        .locator(".member-card")
+        .filter({ hasText: "@" + username + "_member" }),
     ).toBeVisible();
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.screenshot({ path: "/tmp/starbase-board.png", fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(
+      page.getByRole("button", { name: "Menü", exact: true }),
+    ).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -317,6 +428,7 @@ test("real Firebase account and administration", async ({
       fullPage: true,
     });
     await page.setViewportSize({ width: 1280, height: 720 });
+    await page.getByRole("button", { name: "Menü", exact: true }).hover();
     await page
       .getByRole("button", { name: "Departmanlar", exact: true })
       .click();
@@ -327,6 +439,7 @@ test("real Firebase account and administration", async ({
       path: "/tmp/starbase-departments.png",
       fullPage: true,
     });
+    await page.getByRole("button", { name: "Menü", exact: true }).hover();
     await page
       .getByRole("button", { name: "Roller ve izinler", exact: true })
       .click();
@@ -462,7 +575,7 @@ test("real Firebase account and administration", async ({
     await page.getByLabel("Şifre", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Pano", exact: true }),
+      page.getByRole("heading", { name: "Sana ait bir alan.", exact: true }),
     ).toBeVisible();
     await page.goto(origin + "/docs");
     await expect(

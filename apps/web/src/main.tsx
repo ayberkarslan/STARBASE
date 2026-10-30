@@ -72,9 +72,11 @@ function App() {
   const [user, setUser] = useState<any>(null),
     [loading, setLoading] = useState(true),
     [tab, setTab] = useState(
-      new URLSearchParams(location.search).get("view") === "sessions"
-        ? "sessions"
-        : "board",
+      location.pathname === "/docs"
+        ? "docs"
+        : new URLSearchParams(location.search).get("view") === "sessions"
+          ? "sessions"
+          : "board",
     ),
     [mode, setMode] = useState("login"),
     [error, setError] = useState(""),

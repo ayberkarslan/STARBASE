@@ -334,6 +334,10 @@ test("real Firebase account and administration", async ({ page, request }) => {
     await expect(
       page.getByRole("heading", { name: "Pano", exact: true }),
     ).toBeVisible();
+    await page.goto(origin + "/docs");
+    await expect(
+      page.getByRole("heading", { name: "Takımına bağlan.", exact: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Çıkış", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Tekrar hoş geldin." }),

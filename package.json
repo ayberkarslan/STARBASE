@@ -12,7 +12,11 @@
     "build": "npm run build -w @starbase/web",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:migrate": "npm run db:migrate -w @starbase/api"
+    "db:migrate": "npm run db:migrate -w @starbase/api",
+    "emulators": "firebase emulators:start --only auth --project demo-starbase",
+    "example:web": "vite examples/vite --host 127.0.0.1 --port 5180",
+    "openapi": "node scripts/openapi.mjs",
+    "test:ui": "playwright test"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
@@ -20,6 +24,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "firebase-tools": "^15.34.2",
     "prettier": "^3.9.10",
     "typescript": "^5.7.0",
     "vitest": "^5.0.5"

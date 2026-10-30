@@ -26,7 +26,7 @@ export function Captcha() {
           script.src =
             "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
           script.async = true;
-          document.head.append(script);
+          document.head.appendChild(script);
         }
         const render = () => {
           if (cancelled) return;

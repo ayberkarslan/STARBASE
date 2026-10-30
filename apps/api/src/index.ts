@@ -1,3 +1,4 @@
+import spec from "./openapi.json";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
@@ -127,6 +128,7 @@ app.use("/api/v1/*", async (c, next) => {
     fail(403, "password_change_required");
   await next();
 });
+app.get("/api/openapi.json",c=>c.json(spec));
 auth(app);
 identity(app);
 organization(app);

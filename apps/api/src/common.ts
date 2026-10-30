@@ -66,7 +66,12 @@ export async function issue(
   const value = token();
   const ttl = kind === "access" ? 600 : 604800;
   await c.env.DB.prepare(
-    "INSERT INTO sessions(hash,user_id,app_id,kind,expires,family,scopes,created_at) VALUES(?,?,?,?,?,?,?,?)",
+    "INSERT OR IGNORE INTO families(id,user_id,app_id,expires) VALUES(?,?,?,?)",
+  )
+    .bind(family, uid, appId, now() + 604800)
+    .run();
+  const inserted = await c.env.DB.prepare(
+    "INSERT INTO sessions(hash,user_id,app_id,kind,expires,family,scopes,created_at) SELECT ?,?,?,?,MIN(?,expires),?,?,? FROM families WHERE id=? AND revoked=0 AND expires>? RETURNING hash",
   )
     .bind(
       await hash(value),
@@ -77,8 +82,11 @@ export async function issue(
       family,
       JSON.stringify(scopes),
       now(),
+      family,
+      now(),
     )
-    .run();
+    .first();
+  if (!inserted) fail(401, "session_revoked");
   return value;
 }
 export async function permit(c: any, permission: string) {
@@ -135,6 +143,7 @@ export const credentials = z.object({
   password: z.string().min(12).max(128),
 });
 export async function reauthenticate(c: any, password: string) {
+  await rate(c);
   try {
     await firebase(c.env, "signInWithPassword", {
       email: c.get("user").email,

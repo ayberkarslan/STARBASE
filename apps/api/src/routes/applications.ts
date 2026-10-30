@@ -52,7 +52,13 @@ export function register(app: App) {
       !/^[A-Za-z0-9_-]{43}$/.test(pkce)
     )
       fail(400, "invalid_authorization");
+    const prior = await c.env.DB.prepare(
+      "SELECT scopes FROM consents WHERE user_id=? AND app_id=?",
+    )
+      .bind(c.get("user").id, a.id)
+      .first<{ scopes: string }>();
     return c.json({
+      approved: !!prior && allowedScopes(scopes, JSON.parse(prior.scopes)),
       id: a.id,
       name: a.name,
       scopes,
@@ -126,7 +132,7 @@ export function register(app: App) {
         "DELETE FROM consents WHERE user_id=? AND app_id=?",
       ).bind(c.get("user").id, c.req.param("id")),
       c.env.DB.prepare(
-        "DELETE FROM sessions WHERE user_id=? AND app_id=?",
+        "UPDATE families SET revoked=1 WHERE user_id=? AND app_id=?",
       ).bind(c.get("user").id, c.req.param("id")),
     ]);
     return c.json({ ok: true });

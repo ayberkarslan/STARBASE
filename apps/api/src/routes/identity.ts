@@ -31,7 +31,11 @@ export function register(app: App) {
       s.kind === "central"
         ? ["profile", "email", "organization"]
         : JSON.parse(s.scopes);
-    const result: any = { id: u.id, username: u.username };
+    const result: any = {
+      id: u.id,
+      username: u.username,
+      ...(s.app_id ? { applicationId: s.app_id } : {}),
+    };
     if (scopes.includes("profile"))
       Object.assign(result, { firstName: u.first_name, lastName: u.last_name });
     if (scopes.includes("email"))
@@ -53,7 +57,7 @@ export function register(app: App) {
     return c.json(
       (
         await c.env.DB.prepare(
-          "SELECT family,app_id,kind,created_at,expires FROM sessions WHERE user_id=? AND used=0 AND expires>? AND kind IN ('central','refresh')",
+          "SELECT family,app_id,kind,created_at,expires FROM sessions WHERE family IN (SELECT id FROM families WHERE revoked=0) AND user_id=? AND used=0 AND expires>? AND kind IN ('central','refresh')",
         )
           .bind(c.get("user").id, now())
           .all()
@@ -63,7 +67,9 @@ export function register(app: App) {
   app.delete("/api/v1/sessions/:family", async (c) => {
     if (c.get("session").kind !== "central")
       fail(403, "central_session_required");
-    await c.env.DB.prepare("DELETE FROM sessions WHERE family=? AND user_id=?")
+    await c.env.DB.prepare(
+      "UPDATE families SET revoked=1 WHERE id=? AND user_id=?",
+    )
       .bind(c.req.param("family"), c.get("user").id)
       .run();
     return c.json({ ok: true });

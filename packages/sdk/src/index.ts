@@ -138,12 +138,7 @@ export class Starbase {
     }
   }
   async logoutAll() {
-    try {
-      await this.request("/auth/logout-all", {}, true);
-    } finally {
-      this.tokens = null;
-      this.options.storage?.removeItem(`starbase.${this.options.clientId}`);
-    }
+    location.assign(new URL("/?view=sessions", this.options.baseUrl).href);
   }
 }
 
@@ -160,5 +155,8 @@ export async function requireStarbasePermission(
   if (!permissions.includes(permission)) throw new Error("permission_denied");
   const profile = await fetch(`${baseUrl}/api/v1/me`, { headers });
   if (!profile.ok) throw new Error("invalid_session");
-  return profile.json() as Promise<Profile>;
+  const user = (await profile.json()) as Profile;
+  if (user.applicationId !== permission.split(".")[0])
+    throw new Error("application_mismatch");
+  return user;
 }

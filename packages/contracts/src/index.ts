@@ -1,6 +1,7 @@
 export type ProfileScope = "profile" | "email" | "organization";
 export interface Profile {
   id: string;
+  applicationId?: string;
   username: string;
   firstName?: string;
   lastName?: string;

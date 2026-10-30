@@ -80,6 +80,9 @@ export function register(app: App) {
     await c.env.DB.prepare("INSERT OR IGNORE INTO memberships VALUES(?,?,?)")
       .bind(b.userId, b.departmentId, b.teamId)
       .run();
+    await c.env.DB.prepare("INSERT OR IGNORE INTO user_roles VALUES(?,?)")
+      .bind(b.userId, "member")
+      .run();
     await audit(c, "membership.assign", b.userId);
     return c.json({ ok: true });
   });
@@ -151,7 +154,9 @@ export function register(app: App) {
         c.env.DB.prepare(
           "UPDATE users SET must_change_password=1 WHERE id=?",
         ).bind(uid),
-        c.env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(uid),
+        c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?").bind(
+          uid,
+        ),
       ]);
       await adminUpdate(c.env, uid, {
         password: b.temporaryPassword,
@@ -187,7 +192,7 @@ export function register(app: App) {
     if (!old) fail(404, "not_found");
     if (old.owner && (b.disabled || !c.get("user").owner))
       fail(403, "owner_protected");
-    await c.env.DB.prepare("DELETE FROM sessions WHERE user_id=?")
+    await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?")
       .bind(uid)
       .run();
     await adminUpdate(c.env, uid, {
@@ -474,7 +479,7 @@ export function register(app: App) {
         Number(b.disabled),
         c.req.param("id"),
       ),
-      c.env.DB.prepare("DELETE FROM sessions WHERE app_id=?").bind(
+      c.env.DB.prepare("UPDATE families SET revoked=1 WHERE app_id=?").bind(
         c.req.param("id"),
       ),
     ]);

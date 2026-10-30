@@ -91,7 +91,7 @@ app.use("/api/v1/*", async (c, next) => {
   const raw = bearer ?? getCookie(c, "starbase");
   if (!raw) fail(401, "authentication_required");
   const session = await c.env.DB.prepare(
-    "SELECT * FROM sessions WHERE hash=? AND expires>? AND used=0",
+    "SELECT s.* FROM sessions s JOIN families f ON f.id=s.family WHERE s.hash=? AND s.expires>? AND s.used=0 AND f.revoked=0",
   )
     .bind(await hash(raw!), now())
     .first<Session>();
@@ -128,7 +128,7 @@ app.use("/api/v1/*", async (c, next) => {
     fail(403, "password_change_required");
   await next();
 });
-app.get("/api/openapi.json",c=>c.json(spec));
+app.get("/api/openapi.json", (c) => c.json(spec));
 auth(app);
 identity(app);
 organization(app);
@@ -139,4 +139,20 @@ app.notFound((c) =>
     ? c.json({ error: { code: "not_found" } }, 404)
     : c.env.ASSETS.fetch(c.req.raw),
 );
-export default app;
+export { app };
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledController, env: import("./common").Env) {
+    const timestamp = now();
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM sessions WHERE expires<?").bind(timestamp),
+      env.DB.prepare("DELETE FROM families WHERE expires<?").bind(timestamp),
+      env.DB.prepare("DELETE FROM codes WHERE expires<?").bind(timestamp),
+      env.DB.prepare("DELETE FROM limits WHERE expires<?").bind(timestamp),
+      env.DB.prepare("DELETE FROM invites WHERE expires<?").bind(timestamp),
+      env.DB.prepare("DELETE FROM audit WHERE created_at<?").bind(
+        timestamp - 90 * 86400,
+      ),
+    ]);
+  },
+};

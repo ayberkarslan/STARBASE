@@ -286,3 +286,75 @@ export function RolesList({ run }: { run: Run }) {
     )
   );
 }
+
+export function AppsList({ run }: { run: Run }) {
+  const [apps, setApps] = useState<any[]>([]);
+  useEffect(() => {
+    request("/admin/apps")
+      .then(setApps)
+      .catch(() => {});
+  }, []);
+  return (
+    <Panel title="Kayıtlı uygulamalar">
+      {apps.map((a) => (
+        <div className="org-row" key={a.id}>
+          <span>
+            {a.name}
+            <small>
+              {a.id} · {a.disabled ? "Kapalı" : "Açık"}
+            </small>
+          </span>
+          <Button
+            onClick={() =>
+              run(async () => {
+                await request(
+                  "/admin/apps/" + a.id,
+                  { disabled: !a.disabled },
+                  "PUT",
+                );
+                setApps(await request("/admin/apps"));
+              })
+            }
+          >
+            {a.disabled ? "Etkinleştir" : "Erişimi kapat"}
+          </Button>
+        </div>
+      ))}
+    </Panel>
+  );
+}
+export function EditOrganization({
+  kind,
+  item,
+  run,
+}: {
+  kind: "departments" | "teams";
+  item: any;
+  run: Run;
+}) {
+  return (
+    <details>
+      <summary>Düzenle</summary>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          run(async () => {
+            await request(
+              "/admin/" + kind + "/" + item.id,
+              { name: f.get("name"), archived: f.has("archived") },
+              "PUT",
+            );
+            location.reload();
+          });
+        }}
+      >
+        <TextField name="name" label="Ad" defaultValue={item.name} required />
+        <label>
+          <input type="checkbox" name="archived" /> Arşivle
+        </label>
+        <Button type="submit">Kaydet</Button>
+      </form>
+    </details>
+  );
+}

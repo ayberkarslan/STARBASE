@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import app from "./index";
+import { app } from "./index";
 import { hash, challenge, now } from "./security";
 let db: DatabaseSync;
 let env: any;
@@ -26,6 +26,7 @@ beforeEach(async () => {
   db = new DatabaseSync(":memory:");
   db.exec(readFileSync("apps/api/migrations/0001_core.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0002_invites.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0003_families.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     DB: {
@@ -53,6 +54,11 @@ beforeEach(async () => {
   db.prepare(
     "INSERT INTO users(id,username,email,first_name,last_name,verified,created_at) VALUES(?,?,?,?,?,?,?)",
   ).run("u2", "bob", "b@test.com", "Bob", "Test", 1, now());
+  db.prepare("INSERT INTO families(id,user_id,expires) VALUES(?,?,?)").run(
+    "f",
+    "u1",
+    now() + 1000,
+  );
   db.prepare(
     "INSERT INTO sessions(hash,user_id,kind,expires,family,created_at) VALUES(?,?,?,?,?,?)",
   ).run(await hash("central"), "u1", "central", now() + 1000, "f", now());

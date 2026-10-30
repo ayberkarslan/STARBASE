@@ -14,3 +14,6 @@ migrations_dir = "migrations"
 PUBLIC_ORIGIN = "http://localhost:8787"
 FIREBASE_PROJECT_ID = "demo-starbase"
 FIREBASE_API_KEY = "demo-key"
+
+[triggers]
+crons = ["0 3 * * *"]

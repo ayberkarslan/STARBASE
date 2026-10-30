@@ -5,6 +5,8 @@ import {
   Fields,
   Sessions,
   RolesList,
+  AppsList,
+  EditOrganization,
 } from "./management";
 import React, { useEffect, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
@@ -64,7 +66,11 @@ const messages: Record<string, string> = {
 function App() {
   const [user, setUser] = useState<any>(null),
     [loading, setLoading] = useState(true),
-    [tab, setTab] = useState("account"),
+    [tab, setTab] = useState(
+      new URLSearchParams(location.search).get("view") === "sessions"
+        ? "sessions"
+        : "account",
+    ),
     [mode, setMode] = useState("login"),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -193,6 +199,19 @@ function App() {
       }
     });
   }
+  useEffect(() => {
+    if (consent?.approved) {
+      api("/authorize", {
+        clientId: consent.id,
+        redirectUri: consent.redirect,
+        scopes: consent.scopes,
+        challenge: consent.challenge,
+        state: consent.state,
+      })
+        .then((r) => location.assign(r.redirect))
+        .catch((e) => setError(e.message));
+    }
+  }, [consent]);
   const brand = (
     <span className="brand">
       <Orbit size={22} />
@@ -313,7 +332,7 @@ function App() {
                     name="username"
                     required
                     autoComplete="username"
-                    pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,31}"
+                    pattern={"[a-zA-Z0-9][a-zA-Z0-9._\\-]{2,31}"}
                   />
                 )}
                 {["register", "recover"].includes(mode) && (
@@ -355,6 +374,9 @@ function App() {
                     Şifremi unuttum
                   </Button>
                 )}
+                {["register", "recover"].includes(mode) && (
+                  <Captcha key={mode} />
+                )}
                 {status}
                 <Button
                   type="submit"
@@ -375,26 +397,27 @@ function App() {
                   <ArrowUpRight size={17} />
                 </Button>
               </form>
-              {mode === "login" && (
-                <Button
-                  variant="bare"
-                  onClick={() =>
-                    act(async () => {
-                      const form = document.querySelector("form")!;
-                      const f = new FormData(form);
-                      await api("/auth/resend", {
-                        username: f.get("username"),
-                        password: f.get("password"),
-                      });
-                      setNotice(
-                        "Bilgiler doğruysa doğrulama e-postası gönderildi.",
-                      );
-                    })
-                  }
-                >
-                  Doğrulama e-postasını yeniden gönder
-                </Button>
-              )}
+              {mode === "login" &&
+                error === messages.email_verification_required && (
+                  <Button
+                    variant="bare"
+                    onClick={() =>
+                      act(async () => {
+                        const form = document.querySelector("form")!;
+                        const f = new FormData(form);
+                        await api("/auth/resend", {
+                          username: f.get("username"),
+                          password: f.get("password"),
+                        });
+                        setNotice(
+                          "Bilgiler doğruysa doğrulama e-postası gönderildi.",
+                        );
+                      })
+                    }
+                  >
+                    Doğrulama e-postasını yeniden gönder
+                  </Button>
+                )}
               <div className="auth-bottom">
                 {mode === "login" ? (
                   <>
@@ -582,6 +605,9 @@ function App() {
               <div className="cards">
                 {org.departments.map((d: any) => (
                   <Panel key={d.id} title={d.name}>
+                    {user.owner && (
+                      <EditOrganization kind="departments" item={d} run={act} />
+                    )}
                     {org.teams
                       .filter((t: any) => t.department_id === d.id)
                       .map((t: any) => (
@@ -730,6 +756,7 @@ function App() {
           {tab === "applications" && (
             <>
               <h1>Uygulamalar</h1>
+              <AppsList run={act} />
               <AdminForm kind="app" run={act} />
             </>
           )}

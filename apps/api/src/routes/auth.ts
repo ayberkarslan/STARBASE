@@ -130,7 +130,7 @@ export function register(app: App) {
     return c.json({ message: "Hesap mevcutsa kurtarma e-postası gönderildi." });
   });
   app.post("/api/v1/auth/logout", async (c) => {
-    await c.env.DB.prepare("DELETE FROM sessions WHERE family=?")
+    await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE id=?")
       .bind(c.get("session").family)
       .run();
     deleteCookie(c, "starbase", { path: "/" });
@@ -139,7 +139,7 @@ export function register(app: App) {
   app.post("/api/v1/auth/logout-all", async (c) => {
     if (c.get("session").kind !== "central")
       fail(403, "central_session_required");
-    await c.env.DB.prepare("DELETE FROM sessions WHERE user_id=?")
+    await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?")
       .bind(c.get("user").id)
       .run();
     deleteCookie(c, "starbase", { path: "/" });
@@ -207,13 +207,13 @@ export function register(app: App) {
     );
     const h = await hash(b.refreshToken);
     const old = await c.env.DB.prepare(
-      "SELECT * FROM sessions WHERE hash=? AND kind='refresh' AND app_id=?",
+      "SELECT s.* FROM sessions s JOIN families f ON f.id=s.family WHERE s.hash=? AND s.kind='refresh' AND s.app_id=? AND f.revoked=0",
     )
       .bind(h, b.clientId)
       .first<any>();
     if (!old || old.expires <= now()) fail(401, "session_expired");
     if (old.used) {
-      await c.env.DB.prepare("DELETE FROM sessions WHERE family=?")
+      await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE id=?")
         .bind(old.family)
         .run();
       fail(401, "refresh_reused");
@@ -246,7 +246,7 @@ export function register(app: App) {
       .bind(h)
       .first();
     if (!claimed) {
-      await c.env.DB.prepare("DELETE FROM sessions WHERE family=?")
+      await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE id=?")
         .bind(old.family)
         .run();
       fail(401, "refresh_reused");
@@ -297,6 +297,9 @@ export function register(app: App) {
     } catch {
       return fail(401, "invalid_credentials");
     }
+    await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?")
+      .bind(c.get("user").id)
+      .run();
     await adminUpdate(c.env, c.get("user").id, {
       password: b.password,
       validSince: String(now()),
@@ -305,7 +308,7 @@ export function register(app: App) {
       c.env.DB.prepare(
         "UPDATE users SET must_change_password=0 WHERE id=?",
       ).bind(c.get("user").id),
-      c.env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(
+      c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?").bind(
         c.get("user").id,
       ),
     ]);
@@ -318,20 +321,26 @@ export function register(app: App) {
       c,
       z.object({ code: z.string(), password: z.string().min(12).max(128) }),
     );
-    const result = await firebase(c.env, "resetPassword", {
+    const verified = await firebase(c.env, "resetPassword", {
+      oobCode: b.code,
+    });
+    const u = await c.env.DB.prepare("SELECT id FROM users WHERE email=?")
+      .bind(verified.email)
+      .first<{ id: string }>();
+    if (u)
+      await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?")
+        .bind(u.id)
+        .run();
+    await firebase(c.env, "resetPassword", {
       oobCode: b.code,
       newPassword: b.password,
     });
-    const u = await c.env.DB.prepare("SELECT id FROM users WHERE email=?")
-      .bind(result.email)
-      .first<{ id: string }>();
     if (u)
-      await c.env.DB.batch([
-        c.env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(u.id),
-        c.env.DB.prepare(
-          "UPDATE users SET must_change_password=0 WHERE id=?",
-        ).bind(u.id),
-      ]);
+      await c.env.DB.prepare(
+        "UPDATE users SET must_change_password=0 WHERE id=?",
+      )
+        .bind(u.id)
+        .run();
     return c.json({ ok: true });
   });
   app.post("/api/v1/auth/verify", async (c) => {

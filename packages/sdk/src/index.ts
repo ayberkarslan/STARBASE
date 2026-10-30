@@ -14,3 +14,14 @@ export class Starbase {
  async logout(){try{await this.request('/auth/logout',{},true)}finally{this.tokens=null;this.options.storage?.removeItem(`starbase.${this.options.clientId}`)}}
  async logoutAll(){try{await this.request('/auth/logout-all',{},true)}finally{this.tokens=null;this.options.storage?.removeItem(`starbase.${this.options.clientId}`)}}
 }
+
+/** Resource servers call this on each protected request; never trust client UI checks. */
+export async function requireStarbasePermission(baseUrl:string,accessToken:string,permission:string){
+ const headers={Authorization:`Bearer ${accessToken}`};
+ const response=await fetch(`${baseUrl}/api/v1/permissions`,{headers});
+ if(!response.ok)throw new Error('invalid_session');
+ const permissions=await response.json() as string[];
+ if(!permissions.includes(permission))throw new Error('permission_denied');
+ const profile=await fetch(`${baseUrl}/api/v1/me`,{headers});
+ if(!profile.ok)throw new Error('invalid_session');return profile.json() as Promise<Profile>;
+}

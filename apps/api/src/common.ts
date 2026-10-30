@@ -13,6 +13,7 @@ import {
 } from "./security";
 export type Env = AdminEnv & {
   DB: D1Database;
+  BOARD_HUB: DurableObjectNamespace;
   PUBLIC_ORIGIN: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
@@ -158,3 +159,20 @@ export type App = Hono<{
   Bindings: Env;
   Variables: { session: Session; user: any };
 }>;
+
+export async function requireTeamMember(
+  c: import("hono").Context<{
+    Bindings: Env;
+    Variables: { session: Session; user: any };
+  }>,
+) {
+  if (c.get("session").kind !== "central")
+    fail(403, "central_session_required");
+  if (
+    !c.get("user").owner &&
+    !(await c.env.DB.prepare("SELECT 1 FROM user_roles WHERE user_id=?")
+      .bind(c.get("user").id)
+      .first())
+  )
+    fail(403, "team_membership_required");
+}

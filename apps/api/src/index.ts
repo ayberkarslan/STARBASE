@@ -1,3 +1,5 @@
+export { BoardHub } from "./board-hub";
+import { register as board } from "./routes/board";
 import { register as directory } from "./routes/directory";
 import { register as members } from "./routes/members";
 import spec from "./openapi.json";
@@ -62,7 +64,10 @@ app.use("/api/*", async (c, next) => {
     c.header("Access-Control-Allow-Origin", origin);
     c.header("Vary", "Origin");
     c.header("Access-Control-Allow-Headers", "content-type,authorization");
-    c.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    c.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    );
   }
   if (c.req.method === "OPTIONS") return c.body(null, 204);
   if (
@@ -137,6 +142,7 @@ organization(app);
 management(app);
 members(app);
 directory(app);
+board(app);
 applications(app);
 app.notFound((c) =>
   c.req.path.startsWith("/api/")

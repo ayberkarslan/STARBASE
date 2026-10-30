@@ -30,8 +30,13 @@ beforeEach(async () => {
   db.exec(
     readFileSync("apps/api/migrations/0004_directory_activity.sql", "utf8"),
   );
+  db.exec(readFileSync("apps/api/migrations/0005_board_notes.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
+    BOARD_HUB: {
+      idFromName: (name: string) => name,
+      get: () => ({ fetch: async () => new Response(null, { status: 204 }) }),
+    },
     DB: {
       prepare: (s: string) => new Statement(s),
       batch: async (s: Statement[]) => {
@@ -494,5 +499,259 @@ describe("team directory and application history", () => {
     expect(
       db.prepare("SELECT COUNT(*) count FROM application_usage").get(),
     ).toMatchObject({ count: 1 });
+  });
+});
+
+describe("shared board notes", () => {
+  async function memberRequest(
+    path: string,
+    payload?: unknown,
+    method?: string,
+  ) {
+    db.prepare("INSERT OR IGNORE INTO user_roles VALUES(?,?)").run(
+      "u2",
+      "member",
+    );
+    db.prepare(
+      "INSERT OR IGNORE INTO families(id,user_id,expires) VALUES(?,?,?)",
+    ).run("bob-family", "u2", now() + 1000);
+    db.prepare(
+      "INSERT OR IGNORE INTO sessions(hash,user_id,kind,expires,family,created_at) VALUES(?,?,?,?,?,?)",
+    ).run(
+      await hash("bob-central"),
+      "u2",
+      "central",
+      now() + 1000,
+      "bob-family",
+      now(),
+    );
+    return app.request(
+      "https://base.test/api/v1" + path,
+      {
+        method: method ?? (payload ? "POST" : "GET"),
+        headers: {
+          Origin: "https://base.test",
+          Cookie: "starbase=bob-central",
+          "Content-Type": "application/json",
+        },
+        body: payload ? JSON.stringify(payload) : undefined,
+      },
+      env,
+    );
+  }
+  const input = {
+    title: "Test hazırlığı",
+    content: "Aviyonik kontrol listesi hazır.",
+    kind: "announcement",
+    teamId: "software",
+    dueAt: 1900000000,
+  };
+  it("allows team members to post with server-owned authorship", async () => {
+    const r = await memberRequest("/board/notes", {
+      ...input,
+      authorId: "u1",
+      pinned: true,
+    });
+    expect(r.status).toBe(201);
+    const feed: any = await (await memberRequest("/board/notes")).json();
+    expect(feed.notes[0]).toMatchObject({
+      authorId: "u2",
+      pinned: 0,
+      kind: "announcement",
+      teamId: "software",
+      version: 1,
+    });
+    expect(feed.canModerate).toBe(false);
+  });
+  it("blocks outsiders and application tokens from the board", async () => {
+    db.exec("UPDATE users SET owner=0 WHERE id='u1'");
+    expect((await call("/board/notes")).status).toBe(403);
+    db.exec("UPDATE users SET owner=1 WHERE id='u1'");
+    const t: any = await (
+      await call("/auth/exchange", await loginCode(), "")
+    ).json();
+    expect((await call("/board/notes", undefined, t.accessToken)).status).toBe(
+      403,
+    );
+  });
+  it("rejects empty and oversized content or archived teams", async () => {
+    expect(
+      (await memberRequest("/board/notes", { ...input, content: "" })).status,
+    ).toBe(400);
+    expect(
+      (
+        await memberRequest("/board/notes", {
+          ...input,
+          content: "a".repeat(2001),
+        })
+      ).status,
+    ).toBe(400);
+    db.exec("UPDATE teams SET archived=1 WHERE id='software'");
+    expect((await memberRequest("/board/notes", input)).status).toBe(400);
+  });
+  it("only permits owners or board moderators to edit others notes", async () => {
+    const note: any = await (await memberRequest("/board/notes", input)).json();
+    db.exec("UPDATE users SET owner=0 WHERE id='u1'");
+    db.prepare("INSERT INTO user_roles VALUES(?,?)").run("u1", "member");
+    expect(
+      (
+        await call(
+          "/board/notes/" + note.id,
+          { title: "Hijack", version: 1 },
+          "central",
+          "PATCH",
+        )
+      ).status,
+    ).toBe(403);
+    db.exec(
+      "INSERT INTO roles VALUES('mod','Moderator'); INSERT INTO role_permissions VALUES('mod','board.manage'); INSERT INTO user_roles VALUES('u1','mod');",
+    );
+    expect(
+      (
+        await call(
+          "/board/notes/" + note.id,
+          { title: "Moderated", version: 1 },
+          "central",
+          "PATCH",
+        )
+      ).status,
+    ).toBe(200);
+  });
+  it("keeps pinning administrative and preserves other fields in partial updates", async () => {
+    const note: any = await (await memberRequest("/board/notes", input)).json();
+    expect(
+      (
+        await memberRequest(
+          "/board/notes/" + note.id,
+          { pinned: true, version: 1 },
+          "PATCH",
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await call(
+          "/board/notes/" + note.id,
+          { pinned: true, version: 1 },
+          "central",
+          "PATCH",
+        )
+      ).status,
+    ).toBe(200);
+    const feed: any = await (await call("/board/notes")).json();
+    expect(feed.notes[0]).toMatchObject({
+      kind: "announcement",
+      teamId: "software",
+      dueAt: input.dueAt,
+      pinned: 1,
+      version: 2,
+    });
+  });
+  it("rejects stale edits without overwriting another user change", async () => {
+    const note: any = await (await memberRequest("/board/notes", input)).json();
+    expect(
+      (
+        await memberRequest(
+          "/board/notes/" + note.id,
+          { title: "New title", version: 1 },
+          "PATCH",
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await memberRequest(
+          "/board/notes/" + note.id,
+          { title: "Old edit", version: 1 },
+          "PATCH",
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      db.prepare("SELECT title FROM board_notes WHERE id=?").get(note.id),
+    ).toMatchObject({ title: "New title" });
+  });
+  it("archives, restores and deletes the authors own note", async () => {
+    const note: any = await (await memberRequest("/board/notes", input)).json();
+    await memberRequest(
+      "/board/notes/" + note.id,
+      { archived: true, version: 1 },
+      "PATCH",
+    );
+    expect(
+      ((await (await memberRequest("/board/notes")).json()) as any).total,
+    ).toBe(0);
+    expect(
+      ((await (await memberRequest("/board/notes?archived=1")).json()) as any)
+        .total,
+    ).toBe(1);
+    await memberRequest(
+      "/board/notes/" + note.id,
+      { archived: false, version: 2 },
+      "PATCH",
+    );
+    expect(
+      (await memberRequest("/board/notes/" + note.id, { version: 2 }, "DELETE"))
+        .status,
+    ).toBe(409);
+    expect(
+      (await memberRequest("/board/notes/" + note.id, { version: 3 }, "DELETE"))
+        .status,
+    ).toBe(200);
+  });
+  it("filters by kind and team and orders pinned notes first", async () => {
+    await memberRequest("/board/notes", input);
+    const note: any = await (
+      await memberRequest("/board/notes", {
+        title: "General",
+        content: "All members",
+      })
+    ).json();
+    await call(
+      "/board/notes/" + note.id,
+      { pinned: true, version: 1 },
+      "central",
+      "PATCH",
+    );
+    const feed: any = await (await call("/board/notes")).json();
+    expect(feed.notes[0].id).toBe(note.id);
+    expect(
+      (
+        (await (
+          await call("/board/notes?kind=announcement&teamId=software")
+        ).json()) as any
+      ).total,
+    ).toBe(1);
+  });
+  it("keeps a successful write if realtime notification is temporarily unavailable", async () => {
+    env.BOARD_HUB.get = () => ({
+      fetch: async () => {
+        throw new Error("offline");
+      },
+    });
+    const r = await memberRequest("/board/notes", input);
+    expect(r.status).toBe(201);
+    expect(((await r.json()) as any).liveDelivered).toBe(false);
+    expect(
+      db.prepare("SELECT COUNT(*) count FROM board_notes").get(),
+    ).toMatchObject({ count: 1 });
+  });
+  it("requires the same-origin websocket handshake", async () => {
+    expect((await call("/board/live")).status).toBe(400);
+    expect(
+      (
+        await app.request(
+          "https://base.test/api/v1/board/live",
+          {
+            headers: {
+              Cookie: "starbase=central",
+              Origin: "https://lab.test",
+              Upgrade: "websocket",
+            },
+          },
+          env,
+        )
+      ).status,
+    ).toBe(403);
   });
 });

@@ -1,3 +1,4 @@
+import { startVisit, logoutVisit } from "../activity";
 import { localVerificationUrl } from "../local-actions";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -141,18 +142,24 @@ export function register(app: App) {
     return c.json({ message: "Hesap mevcutsa kurtarma e-postası gönderildi." });
   });
   app.post("/api/v1/auth/logout", async (c) => {
-    await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE id=?")
-      .bind(c.get("session").family)
-      .run();
+    await c.env.DB.batch([
+      logoutVisit(c.env, c.get("user").id, c.get("session").family),
+      c.env.DB.prepare("UPDATE families SET revoked=1 WHERE id=?").bind(
+        c.get("session").family,
+      ),
+    ]);
     deleteCookie(c, "starbase", { path: "/" });
     return c.json({ ok: true });
   });
   app.post("/api/v1/auth/logout-all", async (c) => {
     if (c.get("session").kind !== "central")
       fail(403, "central_session_required");
-    await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?")
-      .bind(c.get("user").id)
-      .run();
+    await c.env.DB.batch([
+      logoutVisit(c.env, c.get("user").id),
+      c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?").bind(
+        c.get("user").id,
+      ),
+    ]);
     deleteCookie(c, "starbase", { path: "/" });
     return c.json({ ok: true });
   });
@@ -191,25 +198,24 @@ export function register(app: App) {
       .first();
     if (!a || !u) fail(403, "access_denied");
     const family = crypto.randomUUID();
-    return c.json({
-      accessToken: await issue(
-        c,
-        code.user_id,
-        "access",
-        b.clientId,
-        JSON.parse(code.scopes),
-        family,
-      ),
-      refreshToken: await issue(
-        c,
-        code.user_id,
-        "refresh",
-        b.clientId,
-        JSON.parse(code.scopes),
-        family,
-      ),
-      expiresIn: 600,
-    });
+    const accessToken = await issue(
+      c,
+      code.user_id,
+      "access",
+      b.clientId,
+      JSON.parse(code.scopes),
+      family,
+    );
+    const refreshToken = await issue(
+      c,
+      code.user_id,
+      "refresh",
+      b.clientId,
+      JSON.parse(code.scopes),
+      family,
+    );
+    await startVisit(c.env, family);
+    return c.json({ accessToken, refreshToken, expiresIn: 600 });
   });
   app.post("/api/v1/auth/refresh", async (c) => {
     const b = await body(

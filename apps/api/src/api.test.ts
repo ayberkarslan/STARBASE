@@ -27,6 +27,9 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0001_core.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0002_invites.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0003_families.sql", "utf8"));
+  db.exec(
+    readFileSync("apps/api/migrations/0004_directory_activity.sql", "utf8"),
+  );
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     DB: {

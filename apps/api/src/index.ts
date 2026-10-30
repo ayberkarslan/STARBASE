@@ -1,3 +1,4 @@
+import { register as directory } from "./routes/directory";
 import { register as members } from "./routes/members";
 import spec from "./openapi.json";
 import { Hono } from "hono";
@@ -135,6 +136,7 @@ identity(app);
 organization(app);
 management(app);
 members(app);
+directory(app);
 applications(app);
 app.notFound((c) =>
   c.req.path.startsWith("/api/")
@@ -146,7 +148,15 @@ export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledController, env: import("./common").Env) {
     const timestamp = now();
+    await env.DB.prepare(
+      "UPDATE application_visits SET ended_at=expires_at,end_reason='expired' WHERE ended_at IS NULL AND expires_at<=?",
+    )
+      .bind(timestamp)
+      .run();
     await env.DB.batch([
+      env.DB.prepare(
+        "DELETE FROM application_visits WHERE ended_at IS NOT NULL AND ended_at<?",
+      ).bind(timestamp - 90 * 86400),
       env.DB.prepare("DELETE FROM sessions WHERE expires<?").bind(timestamp),
       env.DB.prepare("DELETE FROM families WHERE expires<?").bind(timestamp),
       env.DB.prepare("DELETE FROM codes WHERE expires<?").bind(timestamp),

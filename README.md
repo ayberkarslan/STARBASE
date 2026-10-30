@@ -23,7 +23,7 @@ npm run dev
 
 Arayüz: http://127.0.0.1:5173; API: http://127.0.0.1:8787; Firebase Emulator UI: http://127.0.0.1:4000. Vite başka port seçerse `.dev.vars` içindeki PUBLIC_ORIGIN değerini o adresle eşleştir. `localhost` ile `127.0.0.1` adreslerini karıştırma.
 
-Kayıt ol; emülatör konsolundaki doğrulama bağlantısıyla e-postayı doğrula ve giriş yap. Sonra ilk takım sahibini ata:
+Kayıt ol; yalnız yerel emülatörde gösterilen **Yerel doğrulama ekranını aç** düğmesiyle e-postanı doğrula ve giriş yap. Mevcut doğrulanmamış hesapta giriş denemesinden sonra **Doğrulama e-postasını yeniden gönder** ile aynı yerel bağlantıyı alabilirsin. Gerçek ortamda doğrulama bağlantısı yalnız e-postayla iletilir. Sonra ilk takım sahibini ata:
 
 ```sh
 node scripts/owner.mjs kullaniciadi

@@ -81,6 +81,7 @@ function App() {
     [apps, setApps] = useState<any[]>([]),
     [consent, setConsent] = useState<any>(null),
     [selected, setSelected] = useState<any>(null);
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const path = location.pathname;
   const params = new URLSearchParams(location.search);
@@ -163,14 +164,19 @@ function App() {
         else await load();
       }
       if (mode === "register") {
-        await api("/auth/register", {
+        const registered = await api("/auth/register", {
           username: field(f, "username"),
           password: field(f, "password"),
           email: field(f, "email"),
           firstName: field(f, "firstName"),
           lastName: field(f, "lastName"),
         });
-        setNotice("Doğrulama e-postanı kontrol et.");
+        setVerificationUrl(registered.developmentVerificationUrl ?? null);
+        setNotice(
+          registered.developmentVerificationUrl
+            ? "Yerel test ortamı gerçek e-posta göndermez. Aşağıdaki düğmeyle doğrulayabilirsin."
+            : "Doğrulama e-postanı kontrol et.",
+        );
         setMode("login");
       }
       if (mode === "recover") {
@@ -407,12 +413,17 @@ function App() {
                       act(async () => {
                         const form = document.querySelector("form")!;
                         const f = new FormData(form);
-                        await api("/auth/resend", {
+                        const resent = await api("/auth/resend", {
                           username: f.get("username"),
                           password: f.get("password"),
                         });
+                        setVerificationUrl(
+                          resent.developmentVerificationUrl ?? null,
+                        );
                         setNotice(
-                          "Bilgiler doğruysa doğrulama e-postası gönderildi.",
+                          resent.developmentVerificationUrl
+                            ? "Yerel doğrulama bağlantın hazır."
+                            : "Bilgiler doğruysa doğrulama e-postası gönderildi.",
                         );
                       })
                     }
@@ -420,6 +431,11 @@ function App() {
                     Doğrulama e-postasını yeniden gönder
                   </Button>
                 )}
+              {verificationUrl && (
+                <Button onClick={() => location.assign(verificationUrl)}>
+                  Yerel doğrulama ekranını aç <ArrowUpRight size={14} />
+                </Button>
+              )}
               <div className="auth-bottom">
                 {mode === "login" ? (
                   <>

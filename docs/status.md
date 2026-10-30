@@ -14,7 +14,7 @@
 
 ## Doğrulananlar
 
-19 API/SDK testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
+21 API/SDK testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
 
 Playwright masaüstü/mobil ekran kontrolleri ve gerçek yerel Firebase Auth Emulator + Wrangler/D1 üzerinde kayıt/doğrulama/giriş/yönetim/şifre sıfırlama akışı. İki farklı origin’de çalışan gerçek Vite uygulamasında merkezi oturum, ilk bağlantı izni, sonraki bağlantıda otomatik devam, CORS ve kapsamla sınırlı profil paylaşımı doğrulandı. Emülatör API smoke testi. TypeScript kontrolü, Vite üretim derlemesi ve Rust `cargo check --locked`.
 

@@ -39,16 +39,24 @@ test("real Firebase account and administration", async ({ page, request }) => {
     throw new Error("local STARBASE database not found; run db:migrate first");
   };
   try {
-    const r = await request.post(origin + "/api/v1/auth/register", {
-      data: {
-        username,
-        password,
-        email,
-        firstName: "Browser",
-        lastName: "Test",
-      },
-      headers: { Origin: origin },
-    });
+    await page.goto(origin);
+    await page
+      .getByRole("button", { name: "Hesap oluştur", exact: true })
+      .click();
+    await page.getByLabel("İsim", { exact: true }).fill("Browser");
+    await page.getByLabel("Soyisim", { exact: true }).fill("Test");
+    await page.getByLabel("Kullanıcı adı").fill(username);
+    await page.getByLabel("E-posta", { exact: true }).fill(email);
+    await page.getByLabel("Şifre", { exact: true }).fill(password);
+    const registrationResponse = page.waitForResponse(
+      (r) =>
+        r.url() === origin + "/api/v1/auth/register" &&
+        r.request().method() === "POST",
+    );
+    await page
+      .getByRole("button", { name: "Hesap oluştur", exact: true })
+      .click();
+    const r = await registrationResponse;
     expect(r.status()).toBe(201);
     const identity = await (
       await request.post(
@@ -58,13 +66,15 @@ test("real Firebase account and administration", async ({ page, request }) => {
     ).json();
     uid = identity.localId;
     expect(uid).toMatch(/^[A-Za-z0-9_-]+$/);
-    await request.post(
-      "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-starbase/accounts:update",
-      {
-        headers: { Authorization: "Bearer owner" },
-        data: { localId: uid, emailVerified: true },
-      },
-    );
+    await page
+      .getByRole("button", { name: "Yerel doğrulama ekranını aç" })
+      .click();
+    await page
+      .getByRole("button", { name: "E-postayı doğrula", exact: true })
+      .click();
+    await expect(
+      page.getByText("E-posta adresin doğrulandı.", { exact: true }),
+    ).toBeVisible();
     await page.goto(origin);
     await page.getByLabel("Kullanıcı adı").fill(username);
     await page.getByLabel("Şifre", { exact: true }).fill(password);

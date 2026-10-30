@@ -42,8 +42,8 @@ export function WorkspaceMenu({ children }: { children: ReactNode }) {
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
-          setOpen(false);
           root.current?.querySelector("button")?.focus();
+          setOpen(false);
         }
       }}
       onBlur={(e) => {

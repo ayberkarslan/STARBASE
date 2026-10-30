@@ -148,3 +148,32 @@
     padding-bottom: 125px;
   }
 }
+@media (max-width: 800px) {
+  .workspace > .sd-desktop-header {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-rows: 68px;
+    gap: 12px;
+    min-height: 68px;
+  }
+  .workspace > .sd-desktop-header > div:first-child {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .workspace .sd-desktop-brand {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+  }
+  .workspace > .sd-desktop-header > div:last-child {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .workspace .sd-desktop-brand .brand {
+    font-size: 11px;
+  }
+  .workspace > .sd-desktop-header .sd-button {
+    font-size: 9px;
+    gap: 6px;
+  }
+}

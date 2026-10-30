@@ -10,3 +10,8 @@ async fn starbase_login(app:tauri::AppHandle)->Result<serde_json::Value,String>{
 async fn starbase_profile()->Result<serde_json::Value,String>{
  starbase_native::Starbase::new("https://YOUR-STARBASE.workers.dev","starlab-desktop")?.get_profile().await
 }
+
+#[tauri::command]
+async fn starbase_logout()->Result<(),String>{
+ starbase_native::Starbase::new("https://YOUR-STARBASE.workers.dev","starlab-desktop")?.logout().await
+}

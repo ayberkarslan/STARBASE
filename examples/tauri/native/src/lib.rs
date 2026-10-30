@@ -136,6 +136,36 @@ impl Starbase {
             .map_err(|_| "credential storage failed")?;
         self.profile(&tokens.access_token).await
     }
+    /// Report an explicit sign-out before clearing the OS credential store.
+    pub async fn logout(&self) -> Result<(), String> {
+        let _guard = SESSION_LOCK.lock().await;
+        let refresh = self.vault()?.get_password().map_err(|_| "login required")?;
+        let tokens = self
+            .post(
+                "/api/v1/auth/refresh",
+                serde_json::json!({"refreshToken":refresh,"clientId":self.client_id}),
+            )
+            .await?;
+        self.vault()?
+            .set_password(&tokens.refresh_token)
+            .map_err(|_| "credential storage failed")?;
+        let response = self
+            .http
+            .post(
+                self.base
+                    .join("/api/v1/auth/logout")
+                    .map_err(|_| "invalid URL")?,
+            )
+            .bearer_auth(&tokens.access_token)
+            .json(&serde_json::json!({}))
+            .send()
+            .await
+            .map_err(|_| "sign-out could not be reported; retry when connected")?;
+        if !response.status().is_success() {
+            return Err("sign-out rejected".into());
+        }
+        self.clear_local_session()
+    }
     pub fn clear_local_session(&self) -> Result<(), String> {
         self.vault()?
             .delete_credential()

@@ -81,11 +81,14 @@ test("real Firebase account and administration", async ({ page, request }) => {
     await page.getByLabel("Şifre", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Merhaba, Browser." }),
+      page.getByRole("heading", { name: "Pano", exact: true }),
     ).toBeVisible();
     sql(`UPDATE users SET owner=1 WHERE id='${uid}';`);
     await page.reload();
-    await page.getByRole("button", { name: "Üyeler", exact: true }).click();
+    await page
+      .locator(".workspace-body>aside")
+      .getByRole("button", { name: "Üyeler", exact: true })
+      .click();
     await expect(page.getByText(email, { exact: true })).toBeVisible();
     await page.getByText(email, { exact: true }).click();
     await expect(
@@ -135,6 +138,55 @@ test("real Firebase account and administration", async ({ page, request }) => {
         .locator(".admin-forms .org-row")
         .getByText("Aviyonik / Yazılım", { exact: true }),
     ).toBeVisible();
+    await page
+      .locator(".workspace-body>aside")
+      .getByRole("button", { name: "Pano", exact: true })
+      .click();
+    await page.getByRole("searchbox", { name: "Üye ara" }).fill("Added Member");
+    await page
+      .locator(".member-card")
+      .filter({ hasText: "Added Member" })
+      .click();
+    const publicProfile = page.getByRole("dialog", {
+      name: "Added Member",
+      exact: true,
+    });
+    await expect(
+      publicProfile.getByText("Yazılım", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      publicProfile.getByText(username + "_member@example.com", {
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await publicProfile
+      .getByRole("button", { name: "Kapat", exact: true })
+      .click();
+    await page
+      .locator(".workspace-body>aside")
+      .getByRole("button", { name: "Ekipler", exact: true })
+      .click();
+    await page
+      .locator(".directory-team-list")
+      .getByRole("button")
+      .filter({ hasText: "Yazılım" })
+      .click();
+    await expect(
+      page.locator(".member-card").filter({ hasText: "Added Member" }),
+    ).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: "/tmp/starbase-board.png", fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: "/tmp/starbase-board-mobile.png",
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page
       .getByRole("button", { name: "Departmanlar", exact: true })
       .click();
@@ -222,10 +274,18 @@ test("real Firebase account and administration", async ({ page, request }) => {
       ).toBeVisible();
       await page.getByRole("button", { name: "İzin ver ve devam et" }).click();
       await expect(page.locator("#app")).toContainText("applicationId");
-      const profile = JSON.parse(await page.locator("#app").innerText());
+      const profile = JSON.parse(
+        await page.locator("[data-profile]").innerText(),
+      );
       expect(profile.username).toBe(username);
       expect(profile.applicationId).toBe(clientId);
       expect(profile.email).toBeUndefined();
+      await page
+        .getByRole("button", { name: "Çıkış yap", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "STARBASE ile giriş yap" }),
+      ).toBeVisible();
       // Existing approval and central session complete the second visit automatically.
       await page.goto(appOrigin);
       await page
@@ -234,6 +294,14 @@ test("real Firebase account and administration", async ({ page, request }) => {
       await expect(page.locator("#app")).toContainText("applicationId");
       await page.goto(origin);
     }
+    const activity = await (
+      await page.request.get(origin + "/api/v1/directory/users/" + uid)
+    ).json();
+    expect(activity.applications).toHaveLength(2);
+    expect(
+      activity.applications.every((a: any) => a.lastSignOutAt !== null),
+    ).toBe(true);
+    expect(activity.total).toBe(4);
     const temporary = randomBytes(24).toString("base64url");
     const reset = await page.request.post(
       origin + "/api/v1/admin/users/" + uid + "/password",
@@ -264,7 +332,7 @@ test("real Firebase account and administration", async ({ page, request }) => {
     await page.getByLabel("Şifre", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Merhaba, Browser." }),
+      page.getByRole("heading", { name: "Pano", exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Çıkış", exact: true }).click();
     await expect(
@@ -287,7 +355,7 @@ test("real Firebase account and administration", async ({ page, request }) => {
         { headers: { Authorization: "Bearer owner" }, data: { localId: uid } },
       );
       sql(
-        `DELETE FROM codes WHERE user_id='${uid}'; DELETE FROM consents WHERE user_id='${uid}'; DELETE FROM sessions WHERE user_id='${uid}'; DELETE FROM families WHERE user_id='${uid}'; DELETE FROM users WHERE id='${uid}'; DELETE FROM apps WHERE id LIKE '${username.replaceAll("_", "-")}-%';`,
+        `DELETE FROM application_visits WHERE user_id='${uid}'; DELETE FROM application_usage WHERE user_id='${uid}'; DELETE FROM codes WHERE user_id='${uid}'; DELETE FROM consents WHERE user_id='${uid}'; DELETE FROM sessions WHERE user_id='${uid}'; DELETE FROM families WHERE user_id='${uid}'; DELETE FROM users WHERE id='${uid}'; DELETE FROM apps WHERE id LIKE '${username.replaceAll("_", "-")}-%';`,
       );
     }
   }

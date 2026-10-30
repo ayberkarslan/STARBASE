@@ -21,3 +21,7 @@ Oturum, kod ve rate limit tablolarının eski satırlarını günlük temizle; c
 Şifre, hesap kapatma ve e-posta yönetimini STARBASE panelinden yürüt. Firebase konsolundan değişiklik yapılırsa STARBASE oturumlarını da iptal et; kısa ömürlü uygulama erişim tokenları ve merkezi oturumlar kendi oturum deposuna bağlıdır. Mevcut sürüm dış Firebase değişiklikleri için event listener sağlamaz.
 
 Canlı dağıtım bu depoda otomatik yapılmaz; gerçek Firebase/Cloudflare hesap ayarları ve secret'lar kurulumda sağlanır. Canlı mail teslimi, sağlayıcı kotası ve Cloudflare CPU bütçesi hedef hesapta smoke test ile doğrulanmalıdır.
+
+## Canlı ortak notlar
+
+0005 D1 migration ve `BOARD_HUB` Durable Object binding/sınıf migration'ı yapılandırmada hazırdır. Workers Free ile uyumlu SQLite-backed sınıf kullanılır. Yayında WebSocket yükseltmesi ve tam `PUBLIC_ORIGIN` kontrolü ayrıca doğrulanmalıdır. Ayrıntılar [ortak pano belgesinde](board-notes.md).

@@ -11,6 +11,7 @@
 - Kullanıcı yönetimi, mevcut şifreyi göstermeden geçici şifre belirleme, zorunlu şifre değişimi, e-posta güncelleme ve hesap kapatma.
 - Özel profil alanı tanımı ve tipli değerler; özel alanlar bu sürümde yönetimle sınırlı.
 - stardrop-ui tabanlı giriş/kayıt, hesap, yönetim ve geliştirici ekranları; OpenAPI çıktısı.
+- Ortak canlı not panosu: not/duyuru, ekip etiketi, son tarih, moderatör sabitlemesi, arşiv, düzenleme/silme ve sürüm çakışması kontrolü.
 - İlk açılan Pano: Türkçe üye araması, departman/ekip filtreleri, ekipten üyeye gezinti ve özel alanları içermeyen takım profilleri.
 - Auth akışında otomatik uygulama giriş/çıkış geçmişi; süre dolumu ve iptal, gerçek çıkıştan ayrı tutulur.
 - İndirilebilir, bağımsız SDK arşivi ve kopyalanabilir örneklerle beş bölümlü geliştirici ekranı.
@@ -18,7 +19,7 @@
 
 ## Doğrulananlar
 
-42 API/SDK testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
+54 API/SDK ve canlı pano testi: kod tekrar kullanımı, PKCE, kapsam filtresi, yenileme tekrar kullanımı, oturum iptali, admin sınırı, hesap durumu, CSRF ve 50 paralel profil okuması dahil. Test deposu SQLite üzerinde D1 arayüzünü uygular; bu sonuç üretim yük/SLA testi değildir.
 
 Playwright masaüstü/mobil ekran kontrolleri ve gerçek yerel Firebase Auth Emulator + Wrangler/D1 üzerinde kayıt/doğrulama/giriş/yönetim/şifre sıfırlama akışı. İki farklı origin’de çalışan gerçek Vite uygulamasında merkezi oturum, ilk bağlantı izni, sonraki bağlantıda otomatik devam, CORS ve kapsamla sınırlı profil paylaşımı doğrulandı. Emülatör API smoke testi. TypeScript kontrolü, Vite üretim derlemesi ve Rust `cargo check --locked`.
 
@@ -28,7 +29,7 @@ Native örnekte sunucuya bildiren logout metodu derlendi. SDK arşivi depodan ba
 
 ## Gerçek hesap bilgileriyle tamamlanacaklar
 
-Firebase proje/servis hesabı ve Cloudflare D1/Worker secret'ları; canlı yayın, gerçek e-posta teslimi, Turnstile hostname, ücretsiz kota/CPU bütçesi ve yedekten dönme denemesi. Ücretsiz servislerin süreklilik garantisi yoktur.
+Firebase proje/servis hesabı ve Cloudflare D1/Worker secret'ları; canlı yayın, gerçek e-posta teslimi, Turnstile hostname, ücretsiz kota/CPU bütçesi ve yedekten dönme denemesi. Ücretsiz servislerin süreklilik garantisi yoktur. Canlı notlar için SQLite-backed Durable Object binding/migration hazırdır; yerel iki ayrı hesapla gerçek WebSocket yayını doğrulandı.
 
 Tauri native istemcisi derlendi; gerçek GUI üzerinde sistem tarayıcısı + işletim sistemi keyring dönüşü henüz denenmedi. Komut köprüsü mevcut Tauri projesinin builder/plugin ayarlarıyla birleştirilecek; bağımsız tam Tauri masaüstü paketi bu depoda yoktur. B4 dosyaları değiştirilmedi.
 

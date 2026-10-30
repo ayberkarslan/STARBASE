@@ -48,6 +48,7 @@ Tarayıcı testleri için `npx playwright install chromium` çalıştır. Test a
 
 - [Mimari ve güvenlik](docs/architecture.md)
 - [API ve entegrasyon](docs/integration.md)
+- [Canlı ortak not panosu](docs/board-notes.md)
 - [Ücretsiz üretim kurulumu](docs/deployment.md)
 - [Teslim ve doğrulama durumu](docs/status.md)
 

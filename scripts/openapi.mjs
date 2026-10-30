@@ -6,6 +6,13 @@ const credentials = z.object({
   username: z.string().regex(/^[a-z0-9][a-z0-9._-]{2,31}$/),
   password: z.string().min(12).max(128),
 });
+const fields = z.object({
+  title: z.string().trim().min(1).max(120),
+  content: z.string().trim().min(1).max(2000),
+  kind: z.enum(["note", "announcement"]),
+  teamId: z.string().min(1).nullable(),
+  dueAt: z.number().int().min(0).max(4102444800).nullable(),
+});
 const spec = {
   openapi: "3.1.0",
   info: {
@@ -32,7 +39,7 @@ for (const f of fs
       ts.isCallExpression(n) &&
       ts.isPropertyAccessExpression(n.expression) &&
       n.expression.expression.getText(ast) === "app" &&
-      ["get", "post", "put", "delete"].includes(n.expression.name.text)
+      ["get", "post", "put", "patch", "delete"].includes(n.expression.name.text)
     ) {
       const method = n.expression.name.text;
       const route = n.arguments[0].text;
@@ -53,6 +60,7 @@ for (const f of fs
       const centralOnly =
         route.startsWith("/api/v1/admin/") ||
         route.startsWith("/api/v1/directory/") ||
+        route.startsWith("/api/v1/board/") ||
         [
           "/api/v1/authorize",
           "/api/v1/connections",
@@ -105,6 +113,33 @@ for (const f of fs
           required: false,
           schema: { type: "integer", minimum: 1, maximum: 10000, default: 1 },
         });
+      if (route === "/api/v1/board/notes") {
+        parameters.push({
+          name: "page",
+          in: "query",
+          required: false,
+          schema: { type: "integer", minimum: 1, default: 1 },
+        });
+        for (const name of ["kind", "teamId", "archived"])
+          parameters.push({
+            name,
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          });
+      }
+      if (route === "/api/v1/board/live") {
+        delete op.responses[200];
+        op.responses[101] = {
+          description: "WebSocket subscription; invalidation-only frames",
+        };
+        parameters.push({
+          name: "Upgrade",
+          in: "header",
+          required: true,
+          schema: { type: "string", enum: ["websocket"] },
+        });
+      }
       if (parameters.length) op.parameters = parameters;
       let schema;
       let created = false;
@@ -123,8 +158,9 @@ for (const f of fs
               "z",
               "credentials",
               "usernamePattern",
+              "fields",
               `return (${expression});`,
-            )(z, credentials, usernamePattern);
+            )(z, credentials, usernamePattern, fields);
           } catch {}
         }
         ts.forEachChild(v, findBody);

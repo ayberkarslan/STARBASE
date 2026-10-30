@@ -204,6 +204,21 @@ export function DeveloperDocs() {
             değildir. Tarihler UTC Unix saniyesidir; gösterimde yerel saate
             dönüştür.
           </p>
+          <h2>Ortak canlı pano</h2>
+          <p>
+            Notlar yalnız merkezi takım oturumuyla erişilir; uygulama SDK
+            tokenlarına açılmaz. GET /board/notes ile oku; POST ile oluştur;
+            PATCH ve DELETE işlemlerinde notun version değerini gönder. 409
+            note_conflict, notun başka bir yerde değiştiğini belirtir.
+            board.manage izni diğer üyelerin notlarını yönetme ve sabitleme
+            yetkisi verir.
+          </p>
+          <p>
+            GET /board/live aynı origin cookie ile WebSocket aboneliğidir.
+            Yalnız board.changed bildirimi taşır; notlar daima yetkili HTTP
+            API’den yeniden okunur. Ek SDK entegrasyonu gerekmez. Kapsamlı
+            kurulum ve fikirler depodaki docs/board-notes.md belgesindedir.
+          </p>
           <h2>Sık karşılaşılan hatalar</h2>
           <Disclosure title="Giriş ekranından geri dönemiyorum">
             <p>

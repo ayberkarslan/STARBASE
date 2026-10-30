@@ -2,9 +2,9 @@ import {Hono} from 'hono';
 import {HTTPException} from 'hono/http-exception';
 import {getCookie,setCookie,deleteCookie} from 'hono/cookie';
 import {z} from 'zod';
-import {firebase,type FirebaseEnv} from './firebase';
+import {firebase,adminUpdate,type AdminEnv} from './firebase';
 import {now,token,hash,challenge,usernamePattern,allowedScopes} from './security';
-type Env=FirebaseEnv&{DB:D1Database;PUBLIC_ORIGIN:string;ASSETS:Fetcher};
+type Env=AdminEnv&{DB:D1Database;PUBLIC_ORIGIN:string;ASSETS:Fetcher};
 type Session={hash:string;user_id:string;app_id:string|null;scopes:string;family:string;kind:string;expires:number};
 const app=new Hono<{Bindings:Env;Variables:{session:Session;user:any}}>();
 const fail=(status:400|401|403|404|409|429|503,code:string):never=>{throw new HTTPException(status,{message:code})};
@@ -29,10 +29,11 @@ async function issue(c:any,uid:string,kind:string,appId:string|null=null,scopes:
  await c.env.DB.prepare('INSERT INTO sessions(hash,user_id,app_id,kind,expires,family,scopes,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(await hash(value),uid,appId,kind,now()+ttl,family,JSON.stringify(scopes),now()).run();return value;
 }
 app.use('/api/v1/*',async(c,next)=>{
- if(['/api/v1/health','/api/v1/auth/register','/api/v1/auth/login','/api/v1/auth/recover','/api/v1/auth/exchange','/api/v1/auth/refresh'].includes(c.req.path))return next();
+ if(['/api/v1/health','/api/v1/auth/register','/api/v1/auth/login','/api/v1/auth/recover','/api/v1/auth/exchange','/api/v1/auth/refresh','/api/v1/auth/reset','/api/v1/auth/verify'].includes(c.req.path))return next();
  const bearer=c.req.header('authorization')?.replace(/^Bearer /,'');const raw=bearer??getCookie(c,'starbase');if(!raw)fail(401,'authentication_required');
  const session=await c.env.DB.prepare('SELECT * FROM sessions WHERE hash=? AND expires>? AND used=0').bind(await hash(raw!),now()).first<Session>();if(!session)fail(401,'session_expired');
  if(bearer&&session!.kind!=='access'||!bearer&&session!.kind!=='central')fail(401,'invalid_session');
+ if(session!.app_id){const enabled=await c.env.DB.prepare('SELECT a.id FROM apps a JOIN consents co ON co.app_id=a.id WHERE a.id=? AND co.user_id=? AND a.disabled=0').bind(session!.app_id,session!.user_id).first();if(!enabled)fail(403,'access_denied')}
  const user=await c.env.DB.prepare('SELECT * FROM users WHERE id=? AND disabled=0').bind(session!.user_id).first<any>();if(!user)fail(401,'account_unavailable');
  c.set('session',session!);c.set('user',user);
  if(user.must_change_password&&!['/api/v1/auth/password','/api/v1/auth/logout'].includes(c.req.path))fail(403,'password_change_required');
@@ -40,7 +41,7 @@ app.use('/api/v1/*',async(c,next)=>{
 });
 async function permit(c:any,permission:string){if(c.get('session').kind!=='central')fail(403,'central_session_required');if(c.get('user').owner)return;
  const found=await c.env.DB.prepare('SELECT 1 FROM user_roles ur JOIN role_permissions rp ON rp.role_id=ur.role_id WHERE ur.user_id=? AND rp.permission_id=?').bind(c.get('user').id,permission).first();if(!found)fail(403,'permission_denied');}
-async function rate(c:any){const key=`${c.req.header('cf-connecting-ip')??'local'}:${Math.floor(now()/60)}`;const row=await c.env.DB.prepare('INSERT INTO limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count').bind(key,now()+120).first<{count:number}>();if(row!.count>15)fail(429,'try_later')}
+async function rate(c:any){const key=`${c.req.header('cf-connecting-ip')??'local'}:${Math.floor(now()/60)}`;const row=await c.env.DB.prepare('INSERT INTO limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count').bind(key,now()+120).first();if(row!.count>15)fail(429,'try_later')}
 app.get('/api/v1/health',c=>c.json({service:'STARBASE',version:'0.1.0'}));
 const credentials=z.object({username:z.string().transform(s=>s.toLowerCase()).refine(s=>usernamePattern.test(s)),password:z.string().min(12).max(128)});
 app.post('/api/v1/auth/register',async c=>{
@@ -108,6 +109,27 @@ app.delete('/api/v1/connections/:id',async c=>{if(c.get('session').kind!=='centr
 app.post('/api/v1/admin/apps',async c=>{await permit(c,'apps.manage');const b=await body(c,z.object({id:z.string().regex(/^[a-z0-9-]{3,40}$/),name:z.string().min(1),redirects:z.array(z.string().url()).min(1),origins:z.array(z.string().url()),scopes:z.array(z.enum(['profile','email','organization']))}));for(const r of b.redirects){const u=new URL(r);if(u.protocol!=='https:'&&!['localhost','127.0.0.1'].includes(u.hostname))fail(400,'https_required')}
  await c.env.DB.prepare('INSERT INTO apps(id,name,redirects,origins,scopes) VALUES(?,?,?,?,?)').bind(b.id,b.name,JSON.stringify(b.redirects),JSON.stringify(b.origins),JSON.stringify(b.scopes)).run();await audit(c,'app.create',b.id);return c.json({id:b.id},201)});
 app.get('/api/v1/permissions',async c=>{const s=c.get('session');return c.json((await c.env.DB.prepare('SELECT DISTINCT rp.permission_id FROM user_roles ur JOIN role_permissions rp ON ur.role_id=rp.role_id WHERE ur.user_id=?').bind(c.get('user').id).all<{permission_id:string}>()).results.map(r=>r.permission_id).filter(p=>s.kind==='central'||p.startsWith(s.app_id+'.')))});
+
+app.post('/api/v1/auth/password',async c=>{if(c.get('session').kind!=='central')fail(403,'central_session_required');const b=await body(c,z.object({currentPassword:z.string(),password:z.string().min(12).max(128)}));try{await firebase(c.env,'signInWithPassword',{email:c.get('user').email,password:b.currentPassword,returnSecureToken:true})}catch{return fail(401,'invalid_credentials')}
+ await adminUpdate(c.env,c.get('user').id,{password:b.password,validSince:String(now())});await c.env.DB.batch([c.env.DB.prepare('UPDATE users SET must_change_password=0 WHERE id=?').bind(c.get('user').id),c.env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(c.get('user').id)]);deleteCookie(c,'starbase',{path:'/'});return c.json({ok:true})});
+app.post('/api/v1/auth/reset',async c=>{await rate(c);const b=await body(c,z.object({code:z.string(),password:z.string().min(12).max(128)}));const result=await firebase(c.env,'resetPassword',{oobCode:b.code,newPassword:b.password});const u=await c.env.DB.prepare('SELECT id FROM users WHERE email=?').bind(result.email).first<{id:string}>();if(u)await c.env.DB.batch([c.env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(u.id),c.env.DB.prepare('UPDATE users SET must_change_password=0 WHERE id=?').bind(u.id)]);return c.json({ok:true})});
+app.post('/api/v1/auth/verify',async c=>{await rate(c);const b=await body(c,z.object({code:z.string()}));await firebase(c.env,'update',{oobCode:b.code});return c.json({ok:true})});
+app.post('/api/v1/admin/users/:id/password',async c=>{await permit(c,'users.manage');const b=await body(c,z.object({currentPassword:z.string(),temporaryPassword:z.string().min(12).max(128).optional()}));await reauthenticate(c,b.currentPassword);const uid=c.req.param('id');const target=await c.env.DB.prepare('SELECT email,owner FROM users WHERE id=?').bind(uid).first<any>();if(!target)fail(404,'not_found');if(target.owner&&!c.get('user').owner)fail(403,'permission_denied');
+ if(b.temporaryPassword){
+ // Lock first: partial upstream failure must not leave active application sessions.
+ await c.env.DB.batch([c.env.DB.prepare('UPDATE users SET must_change_password=1 WHERE id=?').bind(uid),c.env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid)]);
+ await adminUpdate(c.env,uid,{password:b.temporaryPassword,validSince:String(now())});await audit(c,'password.temporary',uid);
+ }else{await firebase(c.env,'sendOobCode',{requestType:'PASSWORD_RESET',email:target.email});await audit(c,'password.recovery',uid)}return c.json({ok:true})});
+async function reauthenticate(c:any,password:string){try{await firebase(c.env,'signInWithPassword',{email:c.get('user').email,password,returnSecureToken:true})}catch{return fail(401,'reauthentication_required')}}
+app.put('/api/v1/admin/users/:id',async c=>{await permit(c,'users.manage');const b=await body(c,z.object({firstName:z.string().min(1).max(80),lastName:z.string().min(1).max(80),email:z.string().email(),disabled:z.boolean(),currentPassword:z.string()}));await reauthenticate(c,b.currentPassword);const uid=c.req.param('id');const old=await c.env.DB.prepare('SELECT * FROM users WHERE id=?').bind(uid).first<any>();if(!old)fail(404,'not_found');if(old.owner&&(b.disabled||!c.get('user').owner))fail(403,'owner_protected');
+ await c.env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid).run();await adminUpdate(c.env,uid,{email:b.email,disableUser:b.disabled,...(old.email!==b.email?{emailVerified:false}:{}),validSince:String(now())});await c.env.DB.prepare('UPDATE users SET first_name=?,last_name=?,email=?,disabled=?,verified=? WHERE id=?').bind(b.firstName,b.lastName,b.email.toLowerCase(),Number(b.disabled),old.email===b.email?old.verified:0,uid).run();await audit(c,'user.update',uid);return c.json({ok:true})});
+app.get('/api/v1/admin/roles',async c=>{await permit(c,'roles.manage');return c.json({roles:(await c.env.DB.prepare('SELECT * FROM roles').all()).results,permissions:(await c.env.DB.prepare('SELECT * FROM permissions').all()).results,assignments:(await c.env.DB.prepare('SELECT * FROM user_roles').all()).results,grants:(await c.env.DB.prepare('SELECT * FROM role_permissions').all()).results})});
+app.post('/api/v1/admin/roles',async c=>{await permit(c,'roles.manage');const b=await body(c,z.object({name:z.string().min(1).max(80),permissions:z.array(z.string()),currentPassword:z.string()}));await reauthenticate(c,b.currentPassword);const id=crypto.randomUUID();await c.env.DB.batch([c.env.DB.prepare('INSERT INTO roles VALUES(?,?)').bind(id,b.name),...b.permissions.map((p:string)=>c.env.DB.prepare('INSERT INTO role_permissions VALUES(?,?)').bind(id,p))]);await audit(c,'role.create',id);return c.json({id},201)});
+app.post('/api/v1/admin/permissions',async c=>{await permit(c,'roles.manage');const b=await body(c,z.object({id:z.string().regex(/^[a-z][a-z0-9_.-]{2,100}$/),description:z.string().min(1),currentPassword:z.string()}));await reauthenticate(c,b.currentPassword);await c.env.DB.prepare('INSERT INTO permissions VALUES(?,?)').bind(b.id,b.description).run();await audit(c,'permission.create',b.id);return c.json({ok:true},201)});
+app.post('/api/v1/admin/role-assignments',async c=>{await permit(c,'roles.manage');const b=await body(c,z.object({userId:z.string(),roleId:z.string(),currentPassword:z.string()}));await reauthenticate(c,b.currentPassword);await c.env.DB.prepare('INSERT OR IGNORE INTO user_roles VALUES(?,?)').bind(b.userId,b.roleId).run();await audit(c,'role.assign',b.userId);return c.json({ok:true})});
+app.delete('/api/v1/admin/role-assignments',async c=>{await permit(c,'roles.manage');const b=await body(c,z.object({userId:z.string(),roleId:z.string(),currentPassword:z.string()}));await reauthenticate(c,b.currentPassword);await c.env.DB.prepare('DELETE FROM user_roles WHERE user_id=? AND role_id=?').bind(b.userId,b.roleId).run();await audit(c,'role.remove',b.userId);return c.json({ok:true})});
+app.post('/api/v1/admin/profile-fields',async c=>{await permit(c,'users.manage');const b=await body(c,z.object({key:z.string().regex(/^[a-z][a-z0-9_]{2,50}$/),label:z.string().min(1),type:z.enum(['text','number','date','boolean','select']),options:z.array(z.string()).default([])}));await c.env.DB.prepare('INSERT INTO profile_fields(key,label,type,options) VALUES(?,?,?,?)').bind(b.key,b.label,b.type,JSON.stringify(b.options)).run();return c.json({ok:true},201)});
+app.get('/api/v1/admin/profile-fields',async c=>{await permit(c,'users.manage');return c.json((await c.env.DB.prepare('SELECT * FROM profile_fields').all()).results)});
 
 app.notFound(c=>c.req.path.startsWith('/api/')?c.json({error:{code:'not_found'}},404):c.env.ASSETS.fetch(c.req.raw));
 export default app;

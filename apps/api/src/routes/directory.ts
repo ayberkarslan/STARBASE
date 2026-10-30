@@ -62,8 +62,8 @@ export function register(app: App) {
         ["ü", "u"],
       ])
         column = `replace(${column},'${from}','${to}')`;
-      conditions.push(`lower(${column}) LIKE ? ESCAPE '\'`);
-      bindings.push("%" + fold.replace(/[\\%_]/g, "\\$&") + "%");
+      conditions.push(`lower(${column}) LIKE ? ESCAPE '!'`);
+      bindings.push("%" + fold.replace(/[!%_]/g, "!$&") + "%");
     }
     if (b.departmentId || b.teamId) {
       conditions.push(

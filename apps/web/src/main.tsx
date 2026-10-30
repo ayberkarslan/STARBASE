@@ -284,9 +284,8 @@ function App() {
                 etrafında.
               </h1>
               <p>
-                Tasarla. Geliştir. Birlikte yüksel.
-                <br />
-                Yıldız’ın tüm platformları için ortak başlangıç noktan.
+                Yıldız Roket Takımının tüm yazılım platformları için ortak bir
+                erişim alanı.
               </p>
               <OrbitalIdentity />
             </section>

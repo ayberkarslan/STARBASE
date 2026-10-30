@@ -1,3 +1,4 @@
+import { OrbitalIdentity } from "./orbital-identity";
 import { FormSelect } from "./form-select";
 import { Captcha } from "./captcha";
 import {
@@ -222,7 +223,6 @@ function App() {
   }, [consent]);
   const brand = (
     <span className="brand">
-      <Orbit size={22} />
       <span>STARBASE</span>
     </span>
   );
@@ -253,7 +253,13 @@ function App() {
       <div className="login-page">
         <DesktopHeader
           brand={brand}
-          start={<span className="eyebrow">YILDIZ ROKET TAKIMI</span>}
+          start={
+            <img
+              className="team-logo"
+              src="/brand/yrt.png"
+              alt="Yıldız Roket Takımı"
+            />
+          }
           end={
             <Button
               variant="bare"
@@ -271,28 +277,18 @@ function App() {
         ) : (
           <main className="login-main">
             <section className="intro">
-              <span className="eyebrow">BİRLİKTE, DAHA İLERİYE.</span>
+              <span className="eyebrow">YILDIZDAN YILDIZLARA</span>
               <h1>
-                Tek hesap.
+                Aynı yıldızın
                 <br />
-                Tüm yörüngeler.
+                etrafında.
               </h1>
               <p>
                 Tasarla. Geliştir. Birlikte yüksel.
                 <br />
                 Yıldız’ın tüm platformları için ortak başlangıç noktan.
               </p>
-              <div className="orbital">
-                <div />
-                <div />
-                <div />
-                <span>✦</span>
-                <i />
-              </div>
-              <div className="platform-label">
-                <span>STARLAB</span>
-                <span>YILDIZ ROKET TAKIMI</span>
-              </div>
+              <OrbitalIdentity />
             </section>
             <section className="auth">
               <div className="auth-heading">
@@ -450,16 +446,11 @@ function App() {
                   </Button>
                 )}
               </div>
-              <div className="secure-note">
-                <Shield size={15} /> Merkezi hesap. Kontrollü erişim.
-              </div>
             </section>
           </main>
         )}
         <footer>
           <span>YILDIZ ROKET TAKIMI</span>
-          <span>ORTAK BİR HEDEF. TEK BİR BAŞLANGIÇ.</span>
-          <span>STARBASE / 01</span>
         </footer>
       </div>
     );

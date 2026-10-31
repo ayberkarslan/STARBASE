@@ -20,7 +20,8 @@
     "test:smoke": "node scripts/smoke.mjs",
     "build:sdk": "npm run build -w @starbase/sdk",
     "pack:sdk": "node scripts/pack-sdk.mjs",
-    "emulators:save": "firebase emulators:export .firebase-data --only auth --project demo-starbase --force"
+    "emulators:save": "firebase emulators:export .firebase-data --only auth --project demo-starbase --force",
+    "dev:all": "node scripts/dev-all.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

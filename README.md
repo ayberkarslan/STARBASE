@@ -29,7 +29,9 @@ Kayıt ol; yalnız yerel emülatörde gösterilen **Yerel doğrulama ekranını 
 node scripts/owner.mjs kullaniciadi
 ```
 
-Hesap merkezini yenile. Otomatik yönetici, varsayılan şifre veya üretim arka kapısı yoktur. Emulator kullanıcıları kalıcı değildir; yeniden başlatınca Firebase hesaplarını yeniden oluşturman veya emulator import/export kullanman gerekir. D1 verisi `.wrangler` içinde kalır.
+Hesap merkezini yenile. Otomatik yönetici, varsayılan şifre veya üretim arka kapısı yoktur. `npm run emulators` hesapları `.firebase-data/` klasöründen geri yükler ve Ctrl+C ile düzgün kapatıldığında tekrar kaydeder. Dışa aktarma tamamlanana kadar terminali kapatma. Kullanıcı kimliği aynı kaldığı için D1’deki admin yetkisi ve notlarla bağlantısı da korunur. D1 verisi `.wrangler` içinde kalır; iki klasörü de silme.
+
+Emülatör çalışırken ayrı bir terminalden `npm run emulators:save` ile anında kayıt alabilirsin. Elektrik kesintisi veya zorla sonlandırma, son kayıttan sonraki değişiklikleri kaybettirebilir. `.firebase-data/` hassas hesap verileri içerir ve Git’e dahil edilmez. Daha önce kaybolmuş Firebase hesapları bu ayarla geri gelmez. Eski komutla açık olan emülatörde önce `npm run emulators:save` çalıştır; ardından Ctrl+C ile kapatıp yeni `npm run emulators` komutuyla başlat.
 
 ## Doğrulama
 

@@ -13,13 +13,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "npm run db:migrate -w @starbase/api",
-    "emulators": "firebase emulators:start --only auth --project demo-starbase",
+    "emulators": "node scripts/emulators.mjs",
     "example:web": "vite examples/vite --host 127.0.0.1 --port 5180",
     "openapi": "node scripts/openapi.mjs",
     "test:ui": "playwright test",
     "test:smoke": "node scripts/smoke.mjs",
     "build:sdk": "npm run build -w @starbase/sdk",
-    "pack:sdk": "node scripts/pack-sdk.mjs"
+    "pack:sdk": "node scripts/pack-sdk.mjs",
+    "emulators:save": "firebase emulators:export .firebase-data --only auth --project demo-starbase --force"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

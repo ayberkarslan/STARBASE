@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm run dev -w @starbase/web",
     "dev:api": "npm run dev -w @starbase/api",
-    "build": "npm run pack:sdk && npm run build -w @starbase/web",
+    "build": "npm run pack:sdk && npm run build -w @stardrop/ui && npm run build -w @starbase/web",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "npm run db:migrate -w @starbase/api",

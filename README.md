@@ -13,7 +13,16 @@ npm run db:migrate
 npm run build
 ```
 
-Üç terminalde:
+Tek terminalde tüm servisleri başlat:
+
+```sh
+cd /home/ayberk/Projects/YRTHUB
+npm run dev:all
+```
+
+Firebase Auth, API ve arayüz birlikte açılır. Arayüz portu `.dev.vars` içindeki `PUBLIC_ORIGIN` adresinden alınır; Vite bu portu değiştirmez. Servisler hazır olunca adres terminale yazılır. Portlar doluysa açık servisleri kapatıp tekrar dene; script mevcut süreçleri sonlandırmaz. Ctrl+C önce arayüz/API’yi, ardından hesapları kaydederek Firebase’i kapatır; kaydın bitmesini bekle. Servislerden biri beklenmedik şekilde kapanırsa diğerleri de kapatılır. Script kurulum ve migration adımları tamamlandıktan sonra kullanılır.
+
+İstersen ayrı üç terminalde de çalıştırabilirsin:
 
 ```sh
 npm run emulators

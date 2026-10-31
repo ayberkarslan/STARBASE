@@ -20,6 +20,14 @@ cd /home/ayberk/Projects/YRTHUB
 npm run dev:all
 ```
 
+Bağımsız Starbase entegrasyon örneği olan React/Vite TODO uygulamasını ayrı terminalde çalıştır:
+
+```sh
+npm run dev:todo
+```
+
+Uygulama `http://127.0.0.1:5180` adresinde açılır; callback ve client kaydı için [apps/todo/README.md](apps/todo/README.md) adımlarını izle. `npm run build:todo` yalnız TODO uygulamasını derler. Login ve signup merkezi Starbase hesap ekranında kalır; uygulama `@starbase/sdk` kullanır ve kendi kimlik bilgisi endpoint’ini barındırmaz.
+
 Firebase Auth, API ve arayüz birlikte açılır. Arayüz portu `.dev.vars` içindeki `PUBLIC_ORIGIN` adresinden alınır; Vite bu portu değiştirmez. Servisler hazır olunca adres terminale yazılır. Portlar doluysa açık servisleri kapatıp tekrar dene; script mevcut süreçleri sonlandırmaz. Ctrl+C önce arayüz/API’yi, ardından hesapları kaydederek Firebase’i kapatır; kaydın bitmesini bekle. Servislerden biri beklenmedik şekilde kapanırsa diğerleri de kapatılır. Script kurulum ve migration adımları tamamlandıktan sonra kullanılır.
 
 İstersen ayrı üç terminalde de çalıştırabilirsin:

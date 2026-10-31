@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { IconButton } from "@stardrop/ui";
 import {
   Menu,
@@ -7,6 +13,40 @@ import {
   CalendarDays,
   ArrowUpRight,
 } from "lucide-react";
+
+const workspaceStars = Array.from({ length: 14 }, () => ({
+  x: Math.random() * 100,
+  y: Math.random() * 100,
+  size: [7, 8, 9, 11, 14][Math.floor(Math.random() * 5)],
+  delay: -Math.random() * 28,
+  duration: 22 + Math.random() * 18,
+  dim: 0.035 + Math.random() * 0.035,
+  bright: 0.14 + Math.random() * 0.08,
+}));
+
+export function WorkspaceStarfield() {
+  return (
+    <div className="workspace-starfield" aria-hidden="true">
+      {workspaceStars.map((star, index) => (
+        <span
+          key={index}
+          style={
+            {
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              width: `${star.size}px`,
+              height: `${star.size}px`,
+              "--star-delay": `${star.delay}s`,
+              "--star-duration": `${star.duration}s`,
+              "--star-dim": star.dim,
+              "--star-bright": star.bright,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
 
 export function WorkspaceMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);

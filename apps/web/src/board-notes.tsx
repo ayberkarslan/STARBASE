@@ -19,6 +19,7 @@ import {
 import {
   LockKeyhole,
   Users,
+  PanelsTopLeft,
   SlidersHorizontal,
   GripHorizontal,
   Plus,
@@ -83,16 +84,25 @@ const time = (n: number) =>
 export function BoardNotes(props: {
   currentUserId: string;
   teams: { id: string; name: string; departmentId: string }[];
+  scope: "empty" | "private" | "shared";
+  onScopeChange: (scope: "empty" | "private" | "shared") => void;
 }) {
-  const [scope, setScope] = useState<"private" | "shared">("private");
+  const { scope, onScopeChange } = props;
   return (
     <div className="board-desktop">
       <TabBar
         className="board-scope"
         label="Pano seçimi"
         value={scope}
-        onChange={(v) => setScope(v as "private" | "shared")}
+        onChange={(v) =>
+          onScopeChange(v as "empty" | "private" | "shared")
+        }
         items={[
+          {
+            value: "empty",
+            label: "Boş ekran",
+            icon: <PanelsTopLeft size={14} />,
+          },
           {
             value: "private",
             label: "Kendi panom",
@@ -101,7 +111,13 @@ export function BoardNotes(props: {
           { value: "shared", label: "Ortak pano", icon: <Users size={14} /> },
         ]}
       />
-      <BoardCanvas key={scope} {...props} scope={scope} />
+      {scope === "empty" ? (
+        <div className="blank-board" aria-label="Boş pano görünümü">
+          <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" />
+        </div>
+      ) : (
+        <BoardCanvas key={scope} {...props} scope={scope} />
+      )}
     </div>
   );
 }

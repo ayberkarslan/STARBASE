@@ -1,4 +1,8 @@
-import { WorkspaceMenu, ApplicationOrbit } from "./workspace-shell";
+import {
+  WorkspaceMenu,
+  WorkspaceStarfield,
+  ApplicationOrbit,
+} from "./workspace-shell";
 import { BoardNotes } from "./board-notes";
 import { DeveloperDocs } from "./developer-docs";
 import { TeamDirectory, MyApplicationHistory } from "./directory";
@@ -25,6 +29,7 @@ import {
   TabBar,
   EmptyState,
   SelectMenu,
+  StartupScreen,
 } from "@stardrop/ui";
 import {
   ArrowUpRight,
@@ -44,6 +49,10 @@ import "@stardrop/ui/styles.css";
 import "./style.css";
 import "./workspace-shell.css";
 import "./board-notes.css";
+let resolveStartupReady: (() => void) | undefined;
+const startupReady = new Promise<void>((resolve) => {
+  resolveStartupReady = resolve;
+});
 async function api(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -82,6 +91,9 @@ function App() {
           ? "sessions"
           : "board",
     ),
+    [boardScope, setBoardScope] = useState<"empty" | "private" | "shared">(
+      "private",
+    ),
     [mode, setMode] = useState("login"),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -106,6 +118,8 @@ function App() {
         setMode("change");
     } finally {
       setLoading(false);
+      resolveStartupReady?.();
+      resolveStartupReady = undefined;
     }
   }
   useEffect(() => {
@@ -236,9 +250,18 @@ function App() {
     }
   }, [consent]);
   const brand = (
-    <span className="brand">
+    <button
+      type="button"
+      className="brand workspace-home"
+      aria-label="STARBASE panoya dön"
+      onClick={() => {
+        setTab("board");
+        setBoardScope("private");
+      }}
+    >
+      <img src="/brand/yrt.png" alt="" />
       <span>STARBASE</span>
-    </span>
+    </button>
   );
   const status = (
     <>
@@ -512,11 +535,11 @@ function App() {
     );
   return (
     <div className="workspace">
+      <WorkspaceStarfield />
       <DesktopHeader
         brand={brand}
         start={
           <WorkspaceMenu>
-            <span className="eyebrow">ÇALIŞMA ALANI</span>
             {[
               { id: "board", name: "Pano", icon: Users },
               { id: "directory", name: "Takım dizini", icon: Users },
@@ -569,7 +592,6 @@ function App() {
                 >
                   <n.icon size={17} />
                   {n.name}
-                  <ArrowUpRight size={13} />
                 </button>
               ))}
             <div className="sidebar-foot">
@@ -600,7 +622,12 @@ function App() {
         >
           {status}
           {tab === "board" && (
-            <BoardNotes currentUserId={user.id} teams={org.teams} />
+            <BoardNotes
+              currentUserId={user.id}
+              teams={org.teams}
+              scope={boardScope}
+              onScopeChange={setBoardScope}
+            />
           )}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
@@ -1061,6 +1088,12 @@ function Docs() {
 }
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <StartupScreen
+      brand="STARBASE"
+      logo="/brand/yrt.png"
+      prepare={() => startupReady}
+    >
+      <App />
+    </StartupScreen>
   </React.StrictMode>,
 );

@@ -49,19 +49,15 @@
   min-height: 250px;
   padding: 24px;
   margin: 0;
-  border-radius: 2px 14px 2px 2px;
+  border-radius: 6px;
   overflow: hidden;
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease;
 }
-.sticky-note:before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 14px;
-  height: 14px;
-  border-left: 1px solid #ffffff40;
-  border-bottom: 1px solid #ffffff40;
-  background: #ffffff0a;
+.sticky-note.sd-panel:hover,
+.sticky-note.sd-panel:focus-within {
+  border-color: #ffffff78;
 }
 .sticky-note.is-pinned {
   border-top: 2px solid #fff;
@@ -80,9 +76,9 @@
   gap: 8px;
 }
 .sticky-note h3 {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 1.8;
+  line-height: 1.65;
   margin: 0 0 14px;
   overflow-wrap: anywhere;
 }
@@ -193,7 +189,8 @@
   margin: 26px 0 0;
   z-index: 2;
   border: 1px solid #ffffff30;
-  background: #070707;
+  border-radius: 6px;
+  background: #000;
   padding: 4px;
   gap: 4px;
 }
@@ -202,6 +199,10 @@
   min-height: 40px;
   padding: 0 22px;
   gap: 10px;
+  border-radius: 4px;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
 }
 .board-scope.sd-tabbar > button[aria-pressed="true"] {
   background: #fff;
@@ -209,6 +210,24 @@
 }
 .board-scope.sd-tabbar > button:before {
   display: none;
+}
+.board-scope.sd-tabbar > button::after {
+  display: none;
+}
+.blank-board {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+  padding: 24px;
+  transform: translateY(-76px);
+}
+.blank-board img {
+  display: block;
+  width: clamp(112px, 16vw, 190px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  opacity: 0.9;
 }
 .board-notes {
   display: flex;
@@ -259,8 +278,7 @@
   padding-bottom: 165px;
   scroll-behavior: auto;
   outline-offset: -2px;
-  background-image: radial-gradient(circle, #ffffff17 0.7px, transparent 0.9px);
-  background-size: 26px 26px;
+  background: transparent;
 }
 .board-surface {
   position: relative;
@@ -310,25 +328,27 @@
 .sticky-note.sd-panel {
   padding: 36px 22px 20px;
   min-height: 240px;
-  background: #0a0a0a;
-  border-color: #ffffff45;
-  border-radius: 0 12px 0 0;
+  background: #000;
+  border-color: #ffffff40;
+  border-radius: 6px;
 }
 .sticky-kicker {
   margin-bottom: 16px;
-  font-size: 8px;
-  opacity: 0.7;
+  font-size: 9px;
+  color: #ffffffc0;
+  opacity: 1;
 }
 .sticky-content {
   max-height: 180px;
   overflow: auto;
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.85;
 }
 .sticky-author {
-  font-size: 8px;
+  font-size: 9px;
 }
 .sticky-author time {
-  font-size: 7px;
+  font-size: 8px;
 }
 .sticky-actions {
   gap: 12px;
@@ -362,6 +382,9 @@
     font-size: 8px;
     padding: 0 16px;
     min-height: 34px;
+  }
+  .blank-board {
+    transform: translateY(-65.5px);
   }
   .notes-heading {
     padding: 24px 20px 16px;

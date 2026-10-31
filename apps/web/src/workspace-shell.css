@@ -1,6 +1,58 @@
+.workspace {
+  position: relative;
+  isolation: isolate;
+  background-color: #000;
+}
+.workspace-starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.workspace-starfield > span {
+  position: absolute;
+  display: block;
+  background: #fff;
+  clip-path: polygon(
+    50% 0,
+    55% 43%,
+    100% 50%,
+    55% 57%,
+    50% 100%,
+    45% 57%,
+    0 50%,
+    45% 43%
+  );
+  opacity: var(--star-dim);
+  transform: translate(-50%, -50%) scale(0.72);
+  animation: workspace-star-twinkle var(--star-duration) ease-in-out
+    var(--star-delay) infinite;
+}
+@keyframes workspace-star-twinkle {
+  0%,
+  76%,
+  100% {
+    opacity: var(--star-dim);
+    transform: translate(-50%, -50%) scale(0.72);
+    filter: none;
+  }
+  80% {
+    opacity: var(--star-bright);
+    transform: translate(-50%, -50%) scale(1.2);
+    filter: drop-shadow(0 0 3px #ffffff65);
+  }
+  83% {
+    opacity: var(--star-dim);
+    transform: translate(-50%, -50%) scale(0.76);
+    filter: none;
+  }
+}
 .workspace-body {
   display: block;
   position: relative;
+  z-index: 1;
 }
 .workspace .content {
   height: 100%;
@@ -17,48 +69,107 @@
 }
 .workspace .workspace-menu {
   position: absolute;
-  top: calc(100% + 15px);
-  left: -8px;
-  width: 264px;
-  max-height: calc(100dvh - 120px);
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(288px, calc(100vw - 24px));
+  max-height: calc(100dvh - 80px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 18px 12px;
+  gap: 0;
+  padding: 6px;
   background: #000;
-  border-radius: 8px;
-  border: 1px solid #ffffff38;
-  box-shadow: 20px 24px 80px #000b;
+  border: 1px solid #ffffff40;
+  border-radius: 6px;
+  box-shadow: 0 16px 44px #000b;
+  transform-origin: top left;
+  animation: workspace-menu-in 150ms ease-out both;
 }
 .workspace .workspace-menu > button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
   flex: none;
-  font-size: 10px;
   min-height: 42px;
+  padding: 10px 14px;
+  gap: 13px;
+  color: #fff;
   background: transparent;
-  border-radius: 6px;
+  border: 0;
+  border-radius: 4px;
+  font: 11px/1.6 Michroma, sans-serif;
+  text-align: left;
+  transition: color 150ms ease;
 }
 .workspace .workspace-menu > button:hover,
 .workspace .workspace-menu > button:focus-visible,
 .workspace .workspace-menu > button.active {
   background: transparent;
+  color: #fff;
+}
+.workspace .workspace-menu > button::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 2px;
+  background: #fff;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+.workspace .workspace-menu > button:hover::before,
+.workspace .workspace-menu > button:focus-visible::before,
+.workspace .workspace-menu > button.active::before {
+  opacity: 1;
 }
 .workspace-menu-anchor > .sd-icon-button {
   border-radius: 6px;
+  color: #fff;
+}
+.workspace-menu-anchor > .sd-icon-button:hover,
+.workspace-menu-anchor > .sd-icon-button[aria-expanded="true"] {
+  background: transparent;
+  color: #fff;
 }
 .workspace .workspace-menu > button svg:last-child {
-  display: block;
-}
-.workspace .workspace-menu > .eyebrow {
-  display: block;
-  font-size: 8px;
-  padding: 8px 12px 12px;
-  margin: 0;
+  flex: none;
+  margin-left: 0;
 }
 .workspace .workspace-menu .sidebar-foot {
   display: block;
+  margin: 6px 6px 0;
+  padding: 12px 8px 4px;
+  border-top: 1px solid #ffffff40;
+  color: #fff;
   font-size: 8px;
-  padding-top: 20px;
+  line-height: 2;
+  letter-spacing: 0;
+}
+@keyframes workspace-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-starfield > span {
+    animation: none;
+    transform: translate(-50%, -50%);
+  }
+  .workspace .workspace-menu,
+  .workspace .workspace-menu > button,
+  .workspace .workspace-menu > button::before {
+    animation: none;
+    transition: none;
+  }
 }
 .application-orbit {
   position: fixed;
@@ -96,6 +207,7 @@
   color: #fff;
   background: #050505;
   border: 1px solid #ffffff3b;
+  border-radius: 6px;
   cursor: pointer;
   font: inherit;
   font-size: 10px;
@@ -106,8 +218,8 @@
 }
 .orbit-application:hover,
 .orbit-application:focus-visible {
-  border-color: #fff;
-  background: #141414;
+  border-color: #ffffffa0;
+  background: #080808;
 }
 .orbit-node {
   display: grid;
@@ -137,7 +249,8 @@
     gap: 5px;
     letter-spacing: 0;
     flex-direction: column;
-    border: 0;
+    border: 1px solid #ffffff30;
+    border-radius: 6px;
     background: #000;
   }
   .orbit-node {

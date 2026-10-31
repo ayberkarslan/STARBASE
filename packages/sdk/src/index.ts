@@ -30,6 +30,7 @@ export class Starbase {
       baseUrl: string;
       clientId: string;
       redirectUri: string;
+      postLoginRedirect?: string;
       storage?: Storage;
       pendingStorage?: Storage;
     },
@@ -111,7 +112,10 @@ export class Starbase {
     });
     this.tokens.expiresIn = Date.now() / 1000 + this.tokens.expiresIn - 30;
     this.save();
-    history.replaceState(null, "", u.pathname);
+    const returnPath =
+      this.options.postLoginRedirect ??
+      new URL(".", this.options.redirectUri).pathname;
+    history.replaceState(null, "", returnPath);
     return this.getProfile();
   }
   private save() {

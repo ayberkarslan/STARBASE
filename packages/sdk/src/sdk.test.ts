@@ -144,4 +144,5 @@ it("deduplicates callback exchange for React strict effects", async () => {
       String(url).endsWith("/auth/exchange"),
     ),
   ).toHaveLength(1);
+  expect(history.replaceState).toHaveBeenCalledWith(null, "", "/");
 });

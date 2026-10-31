@@ -55,7 +55,10 @@ describe("StarbaseSession", () => {
     await expect(session.login()).rejects.toBe(failure);
 
     expect(starbase.login).toHaveBeenCalledWith(["profile"]);
-    expect(session.getSnapshot()).toEqual({ status: "anonymous", error: failure });
+    expect(session.getSnapshot()).toEqual({
+      status: "anonymous",
+      error: failure,
+    });
   });
 
   it("publishes signed-out state even when remote logout fails", async () => {

@@ -25,8 +25,11 @@ describe("StarbaseAuthProvider", () => {
     const html = renderToString(
       React.createElement(
         StarbaseAuthProvider,
-        { client, scopes: ["profile"] },
-        React.createElement(AuthProbe),
+        {
+          client,
+          scopes: ["profile"],
+          children: React.createElement(AuthProbe),
+        },
       ),
     );
 

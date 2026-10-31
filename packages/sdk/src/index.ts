@@ -1,4 +1,6 @@
 export type * from "./contracts";
+export { StarbaseSession } from "./session";
+export type { AuthSnapshot } from "./session";
 import type {
   Profile,
   ProfileScope,
@@ -29,6 +31,7 @@ export class Starbase {
       clientId: string;
       redirectUri: string;
       storage?: Storage;
+      pendingStorage?: Storage;
     },
   ) {}
   private async request<T>(
@@ -70,7 +73,7 @@ export class Starbase {
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
       .replace(/=+$/, "");
-    sessionStorage.setItem(
+    this.pendingStorage().setItem(
       "starbase.pending",
       JSON.stringify({ verifier, state }),
     );
@@ -94,12 +97,12 @@ export class Starbase {
   }
   private async finishCallback(url: string) {
     const u = new URL(url);
-    const saved = sessionStorage.getItem("starbase.pending");
+    const saved = this.pendingStorage().getItem("starbase.pending");
     if (!saved) throw new Error("missing_login");
     const p = JSON.parse(saved);
     if (u.searchParams.get("state") !== p.state)
       throw new Error("state_mismatch");
-    sessionStorage.removeItem("starbase.pending");
+    this.pendingStorage().removeItem("starbase.pending");
     this.tokens = await this.request<TokenSet>("/auth/exchange", {
       code: u.searchParams.get("code"),
       verifier: p.verifier,
@@ -117,6 +120,12 @@ export class Starbase {
         `starbase.${this.options.clientId}`,
         this.tokens.refreshToken,
       );
+  }
+  private pendingStorage(): Storage {
+    if (this.options.pendingStorage) return this.options.pendingStorage;
+    if (typeof sessionStorage === "undefined")
+      throw new StarbaseError("browser_storage_required", 0);
+    return sessionStorage;
   }
   async getAccessToken() {
     if (!this.tokens) {

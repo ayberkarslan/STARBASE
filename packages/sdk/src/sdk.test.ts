@@ -2,6 +2,35 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import { Starbase, requireStarbasePermission } from "./index";
 afterEach(() => vi.unstubAllGlobals());
 describe("SDK contracts", () => {
+  it("supports injected pending storage for PKCE login state", async () => {
+    const values = new Map<string, string>();
+    const pendingStorage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    };
+    const assign = vi.fn();
+    vi.stubGlobal("location", { assign });
+    const client = new Starbase({
+      baseUrl: "https://base.test",
+      clientId: "todo-app",
+      redirectUri: "https://todo.test/callback",
+      pendingStorage,
+    });
+
+    await client.login(["profile"]);
+
+    const saved = JSON.parse(values.get("starbase.pending")!);
+    const authorization = new URL(assign.mock.calls[0][0]);
+    expect(saved.state).toBe(authorization.searchParams.get("state"));
+    expect(saved.verifier).toHaveLength(64);
+    expect(authorization.searchParams.get("client_id")).toBe("todo-app");
+    expect(authorization.searchParams.get("redirect_uri")).toBe(
+      "https://todo.test/callback",
+    );
+    expect(authorization.searchParams.get("code_challenge")).toHaveLength(43);
+  });
+
   it("coalesces concurrent refreshes", async () => {
     const storage = {
       getItem: () => "refresh",

@@ -91,7 +91,8 @@ app.use("/api/v1/*", async (c, next) => {
       "/api/v1/auth/refresh",
       "/api/v1/auth/reset",
       "/api/v1/auth/verify",
-    ].includes(c.req.path)
+    ].includes(c.req.path) ||
+    /^\/api\/v1\/apps\/[a-z0-9-]{3,40}\/branding$/.test(c.req.path)
   )
     return next();
   const bearer = c.req.header("authorization")?.replace(/^Bearer /, "");

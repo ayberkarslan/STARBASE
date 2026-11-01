@@ -33,6 +33,25 @@ export function register(app: App) {
       ).results,
     ),
   );
+  app.get("/api/v1/apps/:id/branding", async (c) => {
+    const redirect = c.req.query("redirectUri") ?? "";
+    const application = await c.env.DB.prepare(
+      "SELECT id,name,logo_url logoUrl,redirects FROM apps WHERE id=? AND disabled=0",
+    )
+      .bind(c.req.param("id"))
+      .first<{
+        id: string;
+        name: string;
+        logoUrl: string;
+        redirects: string;
+      }>();
+    if (!application)
+      throw new HTTPException(404, { message: "application_not_found" });
+    if (!JSON.parse(application.redirects).includes(redirect))
+      throw new HTTPException(404, { message: "application_not_found" });
+    const { id, name, logoUrl } = application;
+    return c.json({ id, name, logoUrl });
+  });
   app.get("/api/v1/authorize", async (c) => {
     const id = c.req.query("client_id");
     const a = await c.env.DB.prepare(

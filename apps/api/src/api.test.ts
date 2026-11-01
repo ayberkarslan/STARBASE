@@ -32,6 +32,7 @@ beforeEach(async () => {
   );
   db.exec(readFileSync("apps/api/migrations/0005_board_notes.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0006_board_canvas.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0007_app_branding.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -241,6 +242,132 @@ describe("identity boundaries", () => {
     );
     const r = await call("/auth/recover", { email: "unknown@test.com" }, "");
     expect(r.status).toBe(200);
+  });
+});
+
+describe("application branding", () => {
+  it("returns branding only for a registered callback URI", async () => {
+    db.prepare("UPDATE apps SET logo_url=? WHERE id=?").run(
+      "https://lab.test/assets/starlab-mark.png",
+      "starlab",
+    );
+
+    const response = await call(
+      "/apps/starlab/branding?redirectUri=" +
+        encodeURIComponent("https://lab.test/callback"),
+      undefined,
+      "",
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: "starlab",
+      name: "STARLAB",
+      logoUrl: "https://lab.test/assets/starlab-mark.png",
+    });
+
+    const unregistered = await call(
+      "/apps/starlab/branding?redirectUri=" +
+        encodeURIComponent("https://other.test/callback"),
+      undefined,
+      "",
+    );
+    expect(unregistered.status).toBe(404);
+  });
+
+  it("lets app managers save an HTTPS logo and rejects unsafe logo schemes", async () => {
+    const response = await call("/admin/apps", {
+      id: "orbit-notes",
+      name: "Orbit Notes",
+      logoUrl: "https://orbit.test/orbit-notes.png",
+      redirects: ["https://orbit.test/callback"],
+      origins: ["https://orbit.test"],
+      scopes: ["profile"],
+    });
+    expect(response.status).toBe(201);
+    expect(
+      db.prepare("SELECT logo_url FROM apps WHERE id=?").get("orbit-notes")!
+        .logo_url,
+    ).toBe("https://orbit.test/orbit-notes.png");
+
+    const unsafe = await call("/admin/apps", {
+      id: "unsafe-brand",
+      name: "Unsafe Brand",
+      logoUrl: "javascript:alert(1)",
+      redirects: ["https://unsafe.test/callback"],
+      origins: ["https://unsafe.test"],
+      scopes: ["profile"],
+    });
+    expect(unsafe.status).toBe(400);
+  });
+
+  it("rejects logos hosted outside the registered application origins", async () => {
+    const response = await call("/admin/apps", {
+      id: "offsite-logo",
+      name: "Offsite Logo",
+      logoUrl: "https://cdn.test/logo.png",
+      redirects: ["https://orbit.test/callback"],
+      origins: ["https://orbit.test"],
+      scopes: ["profile"],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { code: "logo_origin_rejected" },
+    });
+  });
+
+  it("allows an app to use the default STARBASE mark", async () => {
+    const response = await call("/admin/apps", {
+      id: "plain-brand",
+      name: "Plain Brand",
+      redirects: ["https://plain.test/callback"],
+      origins: ["https://plain.test"],
+      scopes: ["profile"],
+    });
+
+    expect(response.status).toBe(201);
+    expect(
+      db.prepare("SELECT logo_url FROM apps WHERE id=?").get("plain-brand")!
+        .logo_url,
+    ).toBe("");
+  });
+
+  it("updates app name and logo without revoking application sessions", async () => {
+    db.prepare(
+      "INSERT INTO families(id,user_id,app_id,expires) VALUES(?,?,?,?)",
+    ).run("app-family", "u1", "starlab", now() + 1000);
+
+    const updated = await call(
+      "/admin/apps/starlab",
+      {
+        name: "Starlab Portal",
+        logoUrl: "https://lab.test/assets/starlab-new.png",
+      },
+      "central",
+      "PUT",
+    );
+    expect(updated.status).toBe(200);
+    expect(
+      db.prepare("SELECT name,logo_url FROM apps WHERE id=?").get("starlab"),
+    ).toEqual({
+      name: "Starlab Portal",
+      logo_url: "https://lab.test/assets/starlab-new.png",
+    });
+    expect(
+      db.prepare("SELECT revoked FROM families WHERE id=?").get("app-family")!
+        .revoked,
+    ).toBe(0);
+  });
+
+  it("keeps branding unavailable when an application is disabled", async () => {
+    await db.prepare("UPDATE apps SET disabled=1 WHERE id=?").run("starlab");
+    const response = await call(
+      "/apps/starlab/branding?redirectUri=" +
+        encodeURIComponent("https://lab.test/callback"),
+      undefined,
+      "",
+    );
+    expect(response.status).toBe(404);
   });
 });
 

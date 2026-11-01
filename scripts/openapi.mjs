@@ -56,6 +56,7 @@ for (const f of fs
         "/api/v1/auth/refresh",
         "/api/v1/health",
         "/api/v1/config",
+        "/api/v1/apps/:id/branding",
       ]);
       const centralOnly =
         route.startsWith("/api/v1/admin/") ||

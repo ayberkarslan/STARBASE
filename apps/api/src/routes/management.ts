@@ -23,6 +23,34 @@ import {
   credentials,
   type App,
 } from "../common";
+
+function validateLogoUrl(value: string) {
+  if (!value) return;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new HTTPException(400, { message: "invalid_logo_url" });
+  }
+  if (
+    url.username ||
+    url.password ||
+    (url.protocol !== "https:" &&
+      !(
+        url.protocol === "http:" &&
+        ["localhost", "127.0.0.1"].includes(url.hostname)
+      ))
+  )
+    throw new HTTPException(400, { message: "invalid_logo_url" });
+}
+
+function validateLogoOrigin(value: string, origins: string[]) {
+  if (!value) return;
+  const logoOrigin = new URL(value).origin;
+  if (!origins.some((origin) => new URL(origin).origin === logoOrigin))
+    throw new HTTPException(400, { message: "logo_origin_rejected" });
+}
+
 export function register(app: App) {
   app.get("/api/v1/admin/users/:id", async (c) => {
     await permit(c, "users.manage");
@@ -121,12 +149,18 @@ export function register(app: App) {
       c,
       z.object({
         id: z.string().regex(/^[a-z0-9-]{3,40}$/),
-        name: z.string().min(1),
+        name: z.string().trim().min(1).max(80),
+        logoUrl: z
+          .union([z.literal(""), z.string().url().max(2048)])
+          .optional()
+          .default(""),
         redirects: z.array(z.string().url()).min(1),
         origins: z.array(z.string().url()),
         scopes: z.array(z.enum(["profile", "email", "organization"])),
       }),
     );
+    validateLogoUrl(b.logoUrl);
+    validateLogoOrigin(b.logoUrl, b.origins);
     for (const r of b.redirects) {
       const u = new URL(r);
       if (
@@ -136,7 +170,7 @@ export function register(app: App) {
         fail(400, "https_required");
     }
     await c.env.DB.prepare(
-      "INSERT INTO apps(id,name,redirects,origins,scopes) VALUES(?,?,?,?,?)",
+      "INSERT INTO apps(id,name,redirects,origins,scopes,logo_url) VALUES(?,?,?,?,?,?)",
     )
       .bind(
         b.id,
@@ -144,6 +178,7 @@ export function register(app: App) {
         JSON.stringify(b.redirects),
         JSON.stringify(b.origins),
         JSON.stringify(b.scopes),
+        b.logoUrl,
       )
       .run();
     await audit(c, "app.create", b.id);
@@ -492,17 +527,49 @@ export function register(app: App) {
   });
   app.put("/api/v1/admin/apps/:id", async (c) => {
     await permit(c, "apps.manage");
-    const b = await body(c, z.object({ disabled: z.boolean() }));
-    await c.env.DB.batch([
-      c.env.DB.prepare("UPDATE apps SET disabled=? WHERE id=?").bind(
-        Number(b.disabled),
+    const b = await body(
+      c,
+      z
+        .object({
+          disabled: z.boolean().optional(),
+          name: z.string().trim().min(1).max(80).optional(),
+          logoUrl: z
+            .union([z.literal(""), z.string().url().max(2048)])
+            .optional(),
+        })
+        .refine((value) => Object.keys(value).length > 0),
+    );
+    const application = await c.env.DB.prepare(
+      "SELECT id,origins FROM apps WHERE id=?",
+    )
+      .bind(c.req.param("id"))
+      .first<{ id: string; origins: string }>();
+    if (!application)
+      throw new HTTPException(404, { message: "app_not_found" });
+    if (b.logoUrl !== undefined) {
+      validateLogoUrl(b.logoUrl);
+      validateLogoOrigin(b.logoUrl, JSON.parse(application.origins));
+    }
+    await c.env.DB.prepare(
+      "UPDATE apps SET disabled=COALESCE(?,disabled),name=COALESCE(?,name),logo_url=COALESCE(?,logo_url) WHERE id=?",
+    )
+      .bind(
+        b.disabled === undefined ? null : Number(b.disabled),
+        b.name ?? null,
+        b.logoUrl ?? null,
         c.req.param("id"),
-      ),
-      c.env.DB.prepare("UPDATE families SET revoked=1 WHERE app_id=?").bind(
-        c.req.param("id"),
-      ),
-    ]);
-    await audit(c, "app.status", c.req.param("id"));
+      )
+      .run();
+    if (b.disabled === true) {
+      await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE app_id=?")
+        .bind(c.req.param("id"))
+        .run();
+    }
+    await audit(
+      c,
+      b.disabled === undefined ? "app.branding" : "app.status",
+      c.req.param("id"),
+    );
     return c.json({ ok: true });
   });
 }

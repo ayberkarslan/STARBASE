@@ -128,6 +128,40 @@ header,
   width: 100%;
   margin: auto;
 }
+.application-login-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ffffff30;
+}
+.application-login-brand > img,
+.application-login-brand > svg {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 7px;
+  border: 1px solid #ffffff40;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.application-login-brand > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.application-login-brand small {
+  color: #ffffff70;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.application-login-brand strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+}
 .auth h2 {
   font-size: 24px;
   line-height: 1.7;
@@ -361,6 +395,70 @@ footer {
   padding: 18px 0;
   border-bottom: 1px solid #ffffff40;
   font-size: 11px;
+}
+.app-list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid #ffffff30;
+}
+.app-list-logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #ffffff40;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.app-list-logo-empty {
+  background: #ffffff08;
+}
+.app-list-name {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+}
+.app-list-name small {
+  overflow: hidden;
+  color: #ffffff70;
+  text-overflow: ellipsis;
+}
+.app-branding-editor {
+  position: relative;
+  flex: none;
+  font-size: 10px;
+}
+.app-branding-editor > summary {
+  padding: 8px;
+  border: 1px solid #ffffff40;
+  border-radius: 5px;
+  cursor: pointer;
+  list-style: none;
+}
+.app-branding-editor > summary::-webkit-details-marker {
+  display: none;
+}
+.app-branding-editor[open] > summary,
+.app-branding-editor > summary:hover {
+  border-color: #fff;
+}
+.app-branding-editor > form {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(330px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid #ffffff50;
+  border-radius: 6px;
+  background: #000;
+  box-shadow: 0 16px 40px #000;
 }
 .inline-form {
   display: flex;

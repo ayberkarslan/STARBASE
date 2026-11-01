@@ -313,13 +313,65 @@ export function AppsList({ run }: { run: Run }) {
   return (
     <Panel title="Kayıtlı uygulamalar">
       {apps.map((a) => (
-        <div className="org-row" key={a.id}>
-          <span>
+        <div className="app-list-row" key={a.id}>
+          {a.logo_url ? (
+            <img
+              className="app-list-logo"
+              src={a.logo_url}
+              alt=""
+              referrerPolicy="no-referrer"
+              onError={(event) => {
+                event.currentTarget.hidden = true;
+              }}
+            />
+          ) : (
+            <span
+              className="app-list-logo app-list-logo-empty"
+              aria-hidden="true"
+            />
+          )}
+          <span className="app-list-name">
             {a.name}
             <small>
               {a.id} · {a.disabled ? "Kapalı" : "Açık"}
             </small>
           </span>
+          <details className="app-branding-editor">
+            <summary>Markayı düzenle</summary>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                run(async () => {
+                  await request(
+                    "/admin/apps/" + a.id,
+                    {
+                      name: form.get("name"),
+                      logoUrl: form.get("logoUrl"),
+                    },
+                    "PUT",
+                  );
+                  setApps(await request("/admin/apps"));
+                });
+              }}
+            >
+              <TextField
+                name="name"
+                label="Uygulama adı"
+                defaultValue={a.name}
+                maxLength={80}
+                required
+              />
+              <TextField
+                name="logoUrl"
+                label="Logo adresi (HTTPS)"
+                hint="Logo, kayıtlı uygulama adresinde barınmalı. Boşsa Starbase simgesi görünür."
+                defaultValue={a.logo_url ?? ""}
+                maxLength={2048}
+              />
+              <Button type="submit">Markayı kaydet</Button>
+            </form>
+          </details>
           <Button
             onClick={() =>
               run(async () => {

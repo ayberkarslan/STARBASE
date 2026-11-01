@@ -13,6 +13,8 @@ Her web ve masaüstü uygulaması için ayrı `clientId` oluştur. Kaydın değe
 | Origin       | `http://127.0.0.1:5180`          | Protokol + host + port; path yok                     |
 | Kapsamlar    | `profile`, `organization`        | Yalnız gereken alanları seç                          |
 
+`apps.manage` izni olan geliştirici uygulamayı yönetim ekranından kaydedebilir. Görünen uygulama adı ve isteğe bağlı logo adresi merkezi STARBASE tarafından saklanır. Logo HTTPS olmalı ve kayıtlı uygulama origin’lerinden birinde barınmalıdır; üçüncü taraf logo host’u kabul edilmez. Logo boşsa merkezi Starbase markası kullanılır. Login öncesi marka endpoint’i yalnız kayıtlı tam callback adresi için uygulama adını/logo URL’sini döndürür; son kullanıcı metin, stil veya sayfa yapısını uygulama üzerinden değiştiremez.
+
 Üretim dönüş adresleri HTTPS olmalıdır; localhost/127.0.0.1 native ve geliştirme için kullanılabilir. localhost ile 127.0.0.1 aynı origin değildir. Frontend'e client secret veya Firebase özel anahtarı konmaz.
 
 ## 2. Tek dosyayla SDK kurulumu

@@ -101,6 +101,11 @@ function App() {
     [rows, setRows] = useState<any[]>([]),
     [org, setOrg] = useState<any>({ departments: [], teams: [] }),
     [apps, setApps] = useState<any[]>([]),
+    [applicationBrand, setApplicationBrand] = useState<{
+      id: string;
+      name: string;
+      logoUrl: string;
+    } | null>(null),
     [consent, setConsent] = useState<any>(null),
     [selected, setSelected] = useState<any>(null);
   const [memberVerificationUrl, setMemberVerificationUrl] = useState<
@@ -127,6 +132,16 @@ function App() {
     if (path === "/action") {
       setMode(params.get("mode") === "resetPassword" ? "reset" : "verify");
     }
+  }, []);
+  useEffect(() => {
+    if (path !== "/authorize") return;
+    const clientId = params.get("client_id");
+    const redirectUri = params.get("redirect_uri");
+    if (!clientId || !redirectUri) return;
+    const query = new URLSearchParams({ redirectUri });
+    api(`/apps/${encodeURIComponent(clientId)}/branding?${query}`)
+      .then(setApplicationBrand)
+      .catch(() => setApplicationBrand(null));
   }, []);
   useEffect(() => {
     if (user) {
@@ -329,6 +344,26 @@ function App() {
               <OrbitalIdentity />
             </section>
             <section className="auth">
+              {applicationBrand && (
+                <div className="application-login-brand">
+                  {applicationBrand.logoUrl ? (
+                    <img
+                      src={applicationBrand.logoUrl}
+                      alt=""
+                      referrerPolicy="no-referrer"
+                      onError={(event) => {
+                        event.currentTarget.hidden = true;
+                      }}
+                    />
+                  ) : (
+                    <AppWindow size={18} aria-hidden="true" />
+                  )}
+                  <span>
+                    <small>GİRİŞ YAPILAN UYGULAMA</small>
+                    <strong>{applicationBrand.name}</strong>
+                  </span>
+                </div>
+              )}
               <div className="auth-heading">
                 <span className="eyebrow">STARBASE HESABINA</span>
                 <h2>
@@ -1011,7 +1046,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
   const specs: Record<string, { title: string; fields: string[] }> = {
     app: {
       title: "Uygulama kaydet",
-      fields: ["id", "name", "redirectUri", "origin"],
+      fields: ["id", "name", "logoUrl", "redirectUri", "origin"],
     },
     role: {
       title: "Rol oluştur",
@@ -1038,6 +1073,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
               await api("/admin/apps", {
                 id: b.id,
                 name: b.name,
+                logoUrl: b.logoUrl,
                 redirects: [b.redirectUri],
                 origins: [b.origin],
                 scopes: ["profile", "email", "organization"],
@@ -1063,6 +1099,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
               {
                 id: "Kimlik",
                 name: "Ad",
+                logoUrl: "Logo adresi (HTTPS)",
                 redirectUri: "Dönüş adresi",
                 origin: "Uygulama adresi",
                 permissions: "İzin anahtarları (virgülle)",
@@ -1073,7 +1110,12 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
               }[f]
             }
             type={f === "currentPassword" ? "password" : "text"}
-            required
+            hint={
+              f === "logoUrl"
+                ? "İsteğe bağlı HTTPS logo görseli; uygulama adresinde barınmalı."
+                : undefined
+            }
+            required={f !== "logoUrl"}
           />
         ))}
         <Button type="submit">

@@ -243,7 +243,7 @@
   transition: filter 400ms ease, transform 400ms ease;
 }
 .blank-board img:hover { transform: scale(1.02); filter: none; }
-.launch-engine { position: absolute; top: calc(100% - 25px); width: 82px; height: 120px; overflow: visible; transform-origin: 50% 0; }
+.launch-engine { position: absolute; top: calc(100% - 34px); width: 82px; height: 120px; overflow: visible; transform-origin: 50% 0; }
 .engine-plume.outer { fill: url(#exhaust-core); opacity: .38; }
 .engine-plume.core { fill: url(#exhaust-core); opacity: .92; }
 .engine-wave { fill: none; stroke: #fff; stroke-width: .55; opacity: .42; }

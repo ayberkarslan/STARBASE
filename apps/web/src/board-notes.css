@@ -244,13 +244,13 @@
 }
 .blank-board img:hover { transform: scale(1.02); filter: none; }
 .launch-thrust { position: absolute; top: calc(100% - 18px); display: flex; align-items: start; justify-content: center; gap: 6px; width: 80px; height: 74px; overflow: hidden; opacity: .82; }
-.launch-thrust i { display: block; width: 3px; height: 0; background: linear-gradient(#fff, #ffffff38 72%, transparent); transform-origin: top; }
-.launch-thrust i:nth-child(2) { width: 5px; }
+.launch-thrust i { display: block; width: 11px; height: 0; background: linear-gradient(#fff 0%, #ffffff80 48%, transparent 100%); clip-path: polygon(50% 0, 100% 48%, 50% 100%, 0 48%); transform-origin: top; }
+.launch-thrust i:nth-child(2) { width: 17px; }
 .star-burst .launch-mark img { animation: launch-float 4.6s ease-in-out infinite; }
 .star-burst .launch-thrust i { animation: thrust-flow .55s ease-in-out infinite alternate; }
 .star-burst .launch-thrust i:nth-child(2) { animation-delay: -.22s; }
 .burst-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0; }
-.burst-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: #fff; will-change: transform, opacity; }
+.burst-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); background: #fff; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); will-change: transform, opacity; }
 .star-burst .burst-stars { opacity: 1; }
 .star-burst .burst-stars i { animation: star-drift var(--t) linear var(--d) infinite; }
 @keyframes star-drift { 0% { transform: translateY(-130px) scale(.55); opacity: 0; } 12% { opacity: .78; } 82% { opacity: .58; } 100% { transform: translateY(150px) scale(1.15); opacity: 0; } }

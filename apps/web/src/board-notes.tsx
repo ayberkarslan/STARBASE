@@ -121,7 +121,7 @@ export function BoardNotes(props: {
           <div className="burst-stars" aria-hidden="true">{Array.from({ length: 700 }, (_, index) => {
             const random = (seed: number) => (Math.sin(seed * 12.9898) * 43758.5453) % 1;
             const value = (seed: number) => Math.abs(random(seed));
-            return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `-${value(index + 311) * 10}s`, "--s": `${1 + value(index + 97) * 3.5}px`, "--t": `${7 + value(index + 509) * 5}s` } as CSSProperties} />;
+            return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `-${value(index + 311) * 10}s`, "--s": `${0.55 + value(index + 97) * 1.05}px`, "--t": `${7 + value(index + 509) * 5}s` } as CSSProperties} />;
           })}</div>
           <div className="launch-mark">
             <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" />

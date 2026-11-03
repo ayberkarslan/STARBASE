@@ -245,10 +245,10 @@
 .burst-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, #07101b66 0, transparent 62%); }
 .burst-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: #eef7ff; box-shadow: 0 0 calc(var(--s) * 3) calc(var(--s) / 2) #b9dfff88; }
 .star-burst .burst-stars { opacity: 1; }
-.star-burst .burst-stars i { animation: star-birth 3.8s cubic-bezier(.12,.68,.25,1) var(--d) both; }
-.star-burst::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at center, #c9e8ff22 0, transparent 54%); animation: star-flash 3.8s ease-out both; pointer-events: none; }
-@keyframes star-birth { 0% { transform: scale(.15); opacity: 0; filter: blur(3px); } 42% { transform: scale(1); opacity: .95; filter: blur(0); } 70% { opacity: .72; } 100% { transform: scale(1.8); opacity: 0; filter: blur(1px); } }
-@keyframes star-flash { 0% { opacity: 0; } 45% { opacity: 1; } 100% { opacity: 0; } }
+.star-burst .burst-stars i { animation: star-birth var(--t) cubic-bezier(.12,.68,.25,1) var(--d) both; }
+.star-burst::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at center, #c9e8ff22 0, transparent 60%); animation: star-flash 10s ease-out both; pointer-events: none; }
+@keyframes star-birth { 0% { transform: scale(.12); opacity: 0; filter: blur(4px); } 46% { transform: scale(1); opacity: .95; filter: blur(0); } 74% { opacity: .7; } 100% { transform: scale(1.9); opacity: 0; filter: blur(1px); } }
+@keyframes star-flash { 0% { opacity: 0; } 48% { opacity: 1; } 100% { opacity: 0; } }
 .board-notes {
   display: flex;
   flex-direction: column;

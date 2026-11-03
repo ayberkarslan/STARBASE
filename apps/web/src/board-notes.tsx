@@ -119,8 +119,12 @@ export function BoardNotes(props: {
       </nav>
       {scope === "home" ? (
         <div className={burst ? "blank-board star-burst" : "blank-board"} aria-label="Yıldız Roket Takımı">
-          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 180 }, (_, index) => <i key={index} style={{ "--x": `${(index * 37) % 100}%`, "--y": `${(index * 61) % 100}%`, "--d": `${(index % 29) * 52}ms`, "--s": `${1 + (index % 4)}px` } as CSSProperties} />)}</div>
-          <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" onPointerEnter={() => { setBurst(true); window.setTimeout(() => setBurst(false), 1800); }} />
+          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 420 }, (_, index) => {
+            const random = (seed: number) => (Math.sin(seed * 12.9898) * 43758.5453) % 1;
+            const value = (seed: number) => Math.abs(random(seed));
+            return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `${value(index + 311) * 2200}ms`, "--s": `${1 + value(index + 97) * 3.5}px`, "--t": `${6 + value(index + 509) * 4}s` } as CSSProperties} />;
+          })}</div>
+          <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" onPointerEnter={() => { setBurst(true); window.setTimeout(() => setBurst(false), 11000); }} />
         </div>
       ) : (
         <BoardCanvas key={scope} {...props} scope={scope} />

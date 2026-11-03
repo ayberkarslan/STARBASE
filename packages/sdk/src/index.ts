@@ -25,6 +25,7 @@ export class Starbase {
   private tokens: TokenSet | null = null;
   private refreshing: Promise<void> | null = null;
   private callbackPromise: Promise<Profile> | null = null;
+  private redirectingToLogin = false;
   constructor(
     private options: {
       baseUrl: string;
@@ -51,8 +52,14 @@ export class Starbase {
       body: body ? JSON.stringify(body) : undefined,
     });
     const result: any = await r.json();
-    if (!r.ok)
-      throw new StarbaseError(result.error?.code ?? "starbase_error", r.status);
+    if (!r.ok) {
+      const error = new StarbaseError(
+        result.error?.code ?? "starbase_error",
+        r.status,
+      );
+      if (authenticated && this.requiresLogin(error)) this.redirectToLogin();
+      throw error;
+    }
     return result;
   }
   async login(scopes: ProfileScope[] = ["profile"]) {
@@ -125,6 +132,22 @@ export class Starbase {
         this.tokens.refreshToken,
       );
   }
+  private requiresLogin(error: unknown) {
+    return error instanceof StarbaseError &&
+      ["session_expired", "refresh_reused", "session_revoked"].includes(error.code);
+  }
+  private clearSession() {
+    this.tokens = null;
+    this.options.storage?.removeItem(`starbase.${this.options.clientId}`);
+  }
+  private redirectToLogin() {
+    if (this.redirectingToLogin) return;
+    this.redirectingToLogin = true;
+    this.clearSession();
+    void this.login().catch(() => {
+      this.redirectingToLogin = false;
+    });
+  }
   private pendingStorage(): Storage {
     if (this.options.pendingStorage) return this.options.pendingStorage;
     if (typeof sessionStorage === "undefined")
@@ -152,7 +175,11 @@ export class Starbase {
             };
             this.save();
           })
-          .finally(() => {
+        .catch((error) => {
+          if (this.requiresLogin(error)) this.redirectToLogin();
+          throw error;
+        })
+        .finally(() => {
             this.refreshing = null;
           });
       await this.refreshing;
@@ -178,8 +205,7 @@ export class Starbase {
     try {
       await this.request("/auth/logout", {}, true);
     } finally {
-      this.tokens = null;
-      this.options.storage?.removeItem(`starbase.${this.options.clientId}`);
+      this.redirectToLogin();
     }
   }
   async logoutAll() {

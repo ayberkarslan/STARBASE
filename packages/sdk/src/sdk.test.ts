@@ -59,6 +59,20 @@ describe("SDK contracts", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(storage.setItem).toHaveBeenCalledWith("starbase.starlab", "next");
   });
+  it("returns an expired application session to Starbase login", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { assign });
+    const storage = { getItem: () => "refresh", setItem: vi.fn(), removeItem: vi.fn() };
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: { code: "session_expired" } }, { status: 401 })));
+    const client = new Starbase({
+      baseUrl: "https://base.test", clientId: "starlab", redirectUri: "https://lab.test/callback",
+      storage, pendingStorage: { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() },
+    });
+    await expect(client.getProfile()).rejects.toMatchObject({ code: "session_expired" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(assign).toHaveBeenCalledOnce();
+    expect(storage.removeItem).toHaveBeenCalledWith("starbase.starlab");
+  });
   it("rejects callback state mismatches before exchange", async () => {
     vi.stubGlobal("sessionStorage", {
       getItem: () =>

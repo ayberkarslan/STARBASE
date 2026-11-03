@@ -18,6 +18,7 @@ import {
 } from "@stardrop/ui";
 import {
   LockKeyhole,
+  LockKeyholeOpen,
   Users,
   SlidersHorizontal,
   GripHorizontal,
@@ -112,7 +113,7 @@ export function BoardNotes(props: {
               aria-label={`${label} varsayılan sayfa yap`}
               title={defaultScope === value ? "Varsayılan görünüm" : "Varsayılan yap"}
               onClick={() => makeDefault(value)}
-            ><LockKeyhole size={12} /></button>
+            >{defaultScope === value ? <LockKeyhole size={12} /> : <LockKeyholeOpen size={12} />}</button>
           </div>
         ))}
       </nav>

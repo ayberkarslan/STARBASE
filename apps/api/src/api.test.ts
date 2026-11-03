@@ -70,7 +70,7 @@ beforeEach(async () => {
         const stored = logoObjects.get(key);
         if (!stored) return null;
         return {
-          body: new Response(stored.bytes).body,
+          body: new Response(new Uint8Array(stored.bytes).buffer).body,
           httpMetadata: { contentType: stored.contentType },
           httpEtag: '"logo-etag"',
         };
@@ -154,7 +154,7 @@ function uploadLogo(
             ? { Authorization: `Bearer ${authorization}` }
             : {}),
       },
-      body: new Blob([bytes], { type: contentType }),
+      body: new Blob([new Uint8Array(bytes).buffer], { type: contentType }),
     },
     env,
   );

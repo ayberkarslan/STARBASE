@@ -92,8 +92,8 @@ function App() {
           ? "account"
           : "board",
     ),
-    [boardScope, setBoardScope] = useState<"empty" | "private" | "shared">(
-      "private",
+    [boardScope, setBoardScope] = useState<"home" | "private" | "shared">(
+      () => (localStorage.getItem("starbase.board.default") as "home" | "private" | "shared") || "home",
     ),
     [mode, setMode] = useState("login"),
     [error, setError] = useState(""),
@@ -268,7 +268,7 @@ function App() {
       aria-label="STARBASE panoya dön"
       onClick={() => {
         setTab("board");
-        setBoardScope("private");
+        setBoardScope((localStorage.getItem("starbase.board.default") as "home" | "private" | "shared") || "home");
       }}
     >
       <img src="/brand/yrt.png" alt="" />

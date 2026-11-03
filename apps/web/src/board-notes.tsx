@@ -4,9 +4,9 @@ import {
   useState,
   type FormEvent,
   type ReactNode,
+  type CSSProperties,
 } from "react";
 import {
-  TabBar,
   Button,
   IconButton,
   Panel,
@@ -19,7 +19,6 @@ import {
 import {
   LockKeyhole,
   Users,
-  PanelsTopLeft,
   SlidersHorizontal,
   GripHorizontal,
   Plus,
@@ -84,36 +83,43 @@ const time = (n: number) =>
 export function BoardNotes(props: {
   currentUserId: string;
   teams: { id: string; name: string; departmentId: string }[];
-  scope: "empty" | "private" | "shared";
-  onScopeChange: (scope: "empty" | "private" | "shared") => void;
+  scope: "home" | "private" | "shared";
+  onScopeChange: (scope: "home" | "private" | "shared") => void;
 }) {
   const { scope, onScopeChange } = props;
+  const [defaultScope, setDefaultScope] = useState<"home" | "private" | "shared">(
+    () => (localStorage.getItem("starbase.board.default") as "home" | "private" | "shared") || "home",
+  );
+  const [burst, setBurst] = useState(false);
+  function makeDefault(next: "home" | "private" | "shared") {
+    localStorage.setItem("starbase.board.default", next);
+    setDefaultScope(next);
+  }
   return (
     <div className="board-desktop">
-      <TabBar
-        className="board-scope"
-        label="Pano seçimi"
-        value={scope}
-        onChange={(v) =>
-          onScopeChange(v as "empty" | "private" | "shared")
-        }
-        items={[
-          {
-            value: "empty",
-            label: "Boş ekran",
-            icon: <PanelsTopLeft size={14} />,
-          },
-          {
-            value: "private",
-            label: "Kendi panom",
-            icon: <LockKeyhole size={14} />,
-          },
-          { value: "shared", label: "Ortak pano", icon: <Users size={14} /> },
-        ]}
-      />
-      {scope === "empty" ? (
-        <div className="blank-board" aria-label="Boş pano görünümü">
-          <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" />
+      <nav className="board-switcher" aria-label="Pano seçimi">
+        {([
+          ["private", "Kendi panom", LockKeyhole],
+          ["home", "Yıldız Roket Takımı", Users],
+          ["shared", "Ortak pano", Users],
+        ] as const).map(([value, label, Icon]) => (
+          <div className="board-switcher__item" key={value}>
+            <button className={scope === value ? "active" : ""} onClick={() => onScopeChange(value)}>
+              {value === "home" ? <img src="/brand/yrt.png" alt="" /> : <Icon size={14} />}<span>{label}</span>
+            </button>
+            <button
+              className={defaultScope === value ? "board-default locked" : "board-default"}
+              aria-label={`${label} varsayılan sayfa yap`}
+              title={defaultScope === value ? "Varsayılan görünüm" : "Varsayılan yap"}
+              onClick={() => makeDefault(value)}
+            ><LockKeyhole size={12} /></button>
+          </div>
+        ))}
+      </nav>
+      {scope === "home" ? (
+        <div className={burst ? "blank-board star-burst" : "blank-board"} aria-label="Yıldız Roket Takımı">
+          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 140 }, (_, index) => <i key={index} style={{ "--x": `${(index * 37) % 100}%`, "--y": `${(index * 61) % 100}%`, "--d": `${(index % 17) * 28}ms` } as CSSProperties} />)}</div>
+          <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" onPointerEnter={() => { setBurst(true); window.setTimeout(() => setBurst(false), 1800); }} />
         </div>
       ) : (
         <BoardCanvas key={scope} {...props} scope={scope} />

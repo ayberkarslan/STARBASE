@@ -48,7 +48,12 @@ app.onError((e, c) =>
 app.use("/api/*", async (c, next) => {
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
-  if (Number(c.req.header("content-length") ?? 0) > 16384)
+  const maxBodySize = /^\/api\/v1\/admin\/apps\/[a-z0-9-]{3,40}\/logo$/.test(
+    c.req.path,
+  )
+    ? 1048576
+    : 16384;
+  if (Number(c.req.header("content-length") ?? 0) > maxBodySize)
     return fail(400, "input_too_large");
   const origin = c.req.header("origin");
   if (origin && origin !== c.env.PUBLIC_ORIGIN) {
@@ -92,7 +97,7 @@ app.use("/api/v1/*", async (c, next) => {
       "/api/v1/auth/reset",
       "/api/v1/auth/verify",
     ].includes(c.req.path) ||
-    /^\/api\/v1\/apps\/[a-z0-9-]{3,40}\/branding$/.test(c.req.path)
+    /^\/api\/v1\/apps\/[a-z0-9-]{3,40}\/(branding|logo)$/.test(c.req.path)
   )
     return next();
   const bearer = c.req.header("authorization")?.replace(/^Bearer /, "");

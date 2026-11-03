@@ -1,5 +1,16 @@
 /** Team identity at the center of the shared application ecosystem. */
-export function OrbitalIdentity() {
+export function OrbitalIdentity({
+  activeApp,
+}: {
+  activeApp?: { id?: string; name?: string } | null;
+} = {}) {
+  const normalized = (activeApp?.name || activeApp?.id || "").toUpperCase();
+  const isStardrop = normalized.includes("STARDROP");
+  const isStarlab = normalized.includes("STARLAB");
+  const isTakvim = normalized.includes("TAKVİM") || normalized.includes("TAKVIM") || normalized.includes("CALENDAR");
+  const isCustomApp = !!activeApp && !isStardrop && !isStarlab && !isTakvim;
+  const customAppName = activeApp?.name || activeApp?.id || "UYGULAMA";
+
   return (
     <figure
       className="orbital-identity"
@@ -50,7 +61,8 @@ export function OrbitalIdentity() {
         </g>
         <circle cx="280" cy="202" r="82" fill="#000" stroke="#ffffff26" />
         <image href="/brand/yrt.png" x="216" y="138" width="128" height="128" />
-        <g className="orbital-satellite" transform="translate(111 89)">
+
+        <g className={`orbital-satellite ${isStardrop ? "is-target-active" : ""}`} transform="translate(111 89)">
           <path className="satellite-leader" d="M0 0l-19-19h-38" />
           <g transform="rotate(-26)">
             <path d="M-19-5h11v10h-11zm27 0h11v10H8z" />
@@ -61,8 +73,15 @@ export function OrbitalIdentity() {
             STARDROP
           </text>
           <circle className="satellite-beacon" r="25" />
+          {isStardrop && (
+            <g className="satellite-reticle">
+              <circle className="reticle-ring" r="32" />
+              <path d="M-38 0h6m64 0h6M0 -38v6m0 64v6" className="reticle-cross" />
+            </g>
+          )}
         </g>
-        <g className="orbital-satellite" transform="translate(465 168)">
+
+        <g className={`orbital-satellite ${isStarlab ? "is-target-active" : ""}`} transform="translate(465 168)">
           <path className="satellite-leader" d="M0 0l18-21h30" />
           <g transform="rotate(26)">
             <path d="M-19-5h11v10h-11zm27 0h11v10H8z" />
@@ -73,8 +92,15 @@ export function OrbitalIdentity() {
             STARLAB
           </text>
           <circle className="satellite-beacon" r="25" />
+          {isStarlab && (
+            <g className="satellite-reticle">
+              <circle className="reticle-ring" r="32" />
+              <path d="M-38 0h6m64 0h6M0 -38v6m0 64v6" className="reticle-cross" />
+            </g>
+          )}
         </g>
-        <g className="orbital-satellite" transform="translate(273 369)">
+
+        <g className={`orbital-satellite ${isTakvim ? "is-target-active" : ""}`} transform="translate(273 369)">
           <path className="satellite-leader" d="M0 0l-28-20h-58" />
           <g transform="rotate(-8)">
             <path d="M-19-5h11v10h-11zm27 0h11v10H8z" />
@@ -85,7 +111,32 @@ export function OrbitalIdentity() {
             YRT TAKVİM
           </text>
           <circle className="satellite-beacon" r="25" />
+          {isTakvim && (
+            <g className="satellite-reticle">
+              <circle className="reticle-ring" r="32" />
+              <path d="M-38 0h6m64 0h6M0 -38v6m0 64v6" className="reticle-cross" />
+            </g>
+          )}
         </g>
+
+        {isCustomApp && (
+          <g className="orbital-satellite is-target-active is-custom-target" transform="translate(132 290)">
+            <path className="satellite-leader" d="M0 0l-20 18h-48" />
+            <g transform="rotate(-16)">
+              <path d="M-19-5h11v10h-11zm27 0h11v10H8z" />
+              <rect x="-5" y="-8" width="10" height="16" rx="1" />
+              <path d="M-8 0h3m10 0h3M0-8v-5m0 0 4-3" />
+            </g>
+            <text x="-72" y="24">
+              {customAppName.toUpperCase()}
+            </text>
+            <circle className="satellite-beacon" r="25" />
+            <g className="satellite-reticle">
+              <circle className="reticle-ring" r="32" />
+              <path d="M-38 0h6m64 0h6M0 -38v6m0 64v6" className="reticle-cross" />
+            </g>
+          </g>
+        )}
       </svg>
     </figure>
   );

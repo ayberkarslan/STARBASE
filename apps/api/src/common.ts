@@ -14,6 +14,7 @@ import {
 export type Env = AdminEnv & {
   DB: D1Database;
   BOARD_HUB: DurableObjectNamespace;
+  APP_LOGOS: R2Bucket;
   PUBLIC_ORIGIN: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;

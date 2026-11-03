@@ -28,7 +28,7 @@ export function register(app: App) {
     c.json(
       (
         await c.env.DB.prepare(
-          "SELECT id,name FROM apps WHERE disabled=0",
+          "SELECT id,name,logo_url logoUrl FROM apps WHERE disabled=0",
         ).all()
       ).results,
     ),
@@ -49,8 +49,31 @@ export function register(app: App) {
       throw new HTTPException(404, { message: "application_not_found" });
     if (!JSON.parse(application.redirects).includes(redirect))
       throw new HTTPException(404, { message: "application_not_found" });
-    const { id, name, logoUrl } = application;
+    const { id, name } = application;
+    const logoUrl = application.logoUrl
+      ? `/api/v1/apps/${encodeURIComponent(id)}/logo`
+      : "";
     return c.json({ id, name, logoUrl });
+  });
+  app.get("/api/v1/apps/:id/logo", async (c) => {
+    const application = await c.env.DB.prepare(
+      "SELECT id,logo_url FROM apps WHERE id=? AND disabled=0",
+    )
+      .bind(c.req.param("id"))
+      .first<{ id: string; logo_url: string }>();
+    if (!application?.logo_url)
+      throw new HTTPException(404, { message: "application_logo_not_found" });
+    const object = await c.env.APP_LOGOS.get(`apps/${application.id}/logo`);
+    if (!object)
+      throw new HTTPException(404, { message: "application_logo_not_found" });
+    return new Response(object.body, {
+      headers: {
+        "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
+        "Cache-Control": "public, max-age=3600",
+        "ETag": object.httpEtag,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   });
   app.get("/api/v1/authorize", async (c) => {
     const id = c.req.query("client_id");
@@ -136,7 +159,7 @@ export function register(app: App) {
     return c.json(
       (
         await c.env.DB.prepare(
-          "SELECT a.id,a.name,c.scopes FROM consents c JOIN apps a ON a.id=c.app_id WHERE c.user_id=?",
+          "SELECT a.id,a.name,a.logo_url logoUrl,c.scopes FROM consents c JOIN apps a ON a.id=c.app_id WHERE c.user_id=?",
         )
           .bind(c.get("user").id)
           .all()

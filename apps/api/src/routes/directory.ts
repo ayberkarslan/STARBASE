@@ -12,6 +12,17 @@ type C = Context<{ Bindings: Env; Variables: { session: Session; user: any } }>;
 const member = (alias: string) =>
   `(${alias}.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=${alias}.id))`;
 const requireDirectory = requireTeamMember;
+async function usedApplications(env: Env, userId: string) {
+  const rows = await env.DB.prepare(
+    "SELECT a.id applicationId,a.name applicationName,a.logo_url logoUrl FROM application_usage u JOIN apps a ON a.id=u.app_id WHERE u.user_id=? ORDER BY u.last_sign_in_at DESC",
+  )
+    .bind(userId)
+    .all<{ applicationId: string; applicationName: string; logoUrl: string }>();
+  return rows.results.map((row) => ({
+    ...row,
+    logoUrl: row.logoUrl ? `/api/v1/apps/${encodeURIComponent(row.applicationId)}/logo` : "",
+  }));
+}
 async function target(c: C) {
   const u = await c.env.DB.prepare(
     `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
@@ -113,10 +124,39 @@ export function register(app: App) {
     ).results;
     const teams = (
       await c.env.DB.prepare(
-        `SELECT t.id,t.name,t.department_id departmentId,COUNT(DISTINCT CASE WHEN u.disabled=0 AND ${member("u")} THEN u.id END) memberCount FROM teams t JOIN departments d ON d.id=t.department_id LEFT JOIN memberships m ON m.team_id=t.id LEFT JOIN users u ON u.id=m.user_id WHERE t.archived=0 AND d.archived=0 GROUP BY t.id ORDER BY d.name,t.name`,
+        `SELECT t.id,t.name,t.logo_url logoUrl,t.department_id departmentId,COUNT(DISTINCT CASE WHEN u.disabled=0 AND ${member("u")} THEN u.id END) memberCount FROM teams t JOIN departments d ON d.id=t.department_id LEFT JOIN memberships m ON m.team_id=t.id LEFT JOIN users u ON u.id=m.user_id WHERE t.archived=0 AND d.archived=0 GROUP BY t.id ORDER BY d.name,t.name`,
       ).all()
     ).results;
-    return c.json({ departments, teams });
+    return c.json({
+      departments,
+      teams: teams.map((team: any) => ({
+        ...team,
+        logoUrl: team.logoUrl
+          ? `/api/v1/directory/teams/${encodeURIComponent(team.id)}/logo`
+          : "",
+      })),
+    });
+  });
+  app.get("/api/v1/directory/teams/:id/logo", async (c) => {
+    await requireDirectory(c);
+    const team = await c.env.DB.prepare(
+      "SELECT id,logo_url FROM teams WHERE id=? AND archived=0",
+    )
+      .bind(c.req.param("id"))
+      .first<{ id: string; logo_url: string }>();
+    if (!team?.logo_url) fail(404, "team_logo_not_found");
+    const storedTeam = team as { id: string; logo_url: string };
+    const object = await c.env.APP_LOGOS.get(`teams/${storedTeam.id}/logo`);
+    if (!object) fail(404, "team_logo_not_found");
+    const storedObject = object as R2ObjectBody;
+    return new Response(storedObject.body, {
+      headers: {
+        "Content-Type": storedObject.httpMetadata?.contentType ?? "application/octet-stream",
+        "Cache-Control": "private, max-age=3600",
+        ETag: storedObject.httpEtag,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   });
   app.get("/api/v1/directory/users/:id", async (c) => {
     await requireDirectory(c);
@@ -131,12 +171,13 @@ export function register(app: App) {
     return c.json({
       ...user,
       memberships,
-      ...(await applicationHistory(c.env, c.req.param("id"))),
+      applications: await usedApplications(c.env, c.req.param("id")),
     });
   });
   app.get("/api/v1/directory/users/:id/activity", async (c) => {
     await requireDirectory(c);
     await target(c);
+    if (c.get("user").id !== c.req.param("id")) fail(403, "permission_denied");
     const page = z.coerce
       .number()
       .int()

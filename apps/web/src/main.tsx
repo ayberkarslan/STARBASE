@@ -88,7 +88,7 @@ function App() {
       location.pathname === "/docs"
         ? "docs"
         : new URLSearchParams(location.search).get("view") === "sessions"
-          ? "sessions"
+          ? "account"
           : "board",
     ),
     [boardScope, setBoardScope] = useState<"empty" | "private" | "shared">(
@@ -169,11 +169,7 @@ function App() {
     const p =
       tab === "members"
         ? "/admin/users"
-        : tab === "connections"
-          ? "/connections"
-          : tab === "audit"
-            ? "/admin/audit"
-            : null;
+        : null;
     if (p)
       api(p)
         .then(setRows)
@@ -341,26 +337,34 @@ function App() {
                 Yıldız Roket Takımının tüm yazılım platformları için ortak bir
                 erişim alanı.
               </p>
-              <OrbitalIdentity />
+              <OrbitalIdentity activeApp={applicationBrand} />
             </section>
             <section className="auth">
               {applicationBrand && (
                 <div className="application-login-brand">
-                  {applicationBrand.logoUrl ? (
-                    <img
-                      src={applicationBrand.logoUrl}
-                      alt=""
-                      referrerPolicy="no-referrer"
-                      onError={(event) => {
-                        event.currentTarget.hidden = true;
-                      }}
-                    />
-                  ) : (
-                    <AppWindow size={18} aria-hidden="true" />
-                  )}
+                  <div className="app-brand-badge">
+                    {applicationBrand.logoUrl ? (
+                      <img
+                        src={applicationBrand.logoUrl}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        onError={(event) => {
+                          event.currentTarget.hidden = true;
+                        }}
+                      />
+                    ) : (
+                      <AppWindow size={24} aria-hidden="true" />
+                    )}
+                  </div>
                   <span>
-                    <small>GİRİŞ YAPILAN UYGULAMA</small>
+                    <span className="app-brand-status">
+
+                      <small>GİRİŞ YAPILAN UYGULAMA</small>
+                    </span>
                     <strong>{applicationBrand.name}</strong>
+                    <span className="app-brand-caption">
+                      Starbase merkezi oturumu ile bağlanılıyor
+                    </span>
                   </span>
                 </div>
               )}
@@ -580,19 +584,11 @@ function App() {
               { id: "directory", name: "Takım dizini", icon: Users },
               { id: "account", name: "Hesabım", icon: Orbit },
               { id: "teams", name: "Ekipler", icon: Layers },
-              { id: "connections", name: "Bağlı uygulamalar", icon: AppWindow },
-              { id: "organization", name: "Departmanlar", icon: Layers },
-              { id: "sessions", name: "Oturumlar", icon: KeyRound },
+              { id: "applications", name: "Uygulamalar", icon: AppWindow },
               ...(user.owner || permissions.some((p) => p.endsWith(".manage"))
                 ? [
                     { id: "members", name: "Üyeler", icon: Users },
                     { id: "roles", name: "Roller ve izinler", icon: Shield },
-                    {
-                      id: "applications",
-                      name: "Uygulamalar",
-                      icon: AppWindow,
-                    },
-                    { id: "audit", name: "İşlem geçmişi", icon: KeyRound },
                   ]
                 : []),
               { id: "docs", name: "Geliştiriciler", icon: BookOpen },
@@ -605,7 +601,6 @@ function App() {
                       members: "users.manage",
                       roles: "roles.manage",
                       applications: "apps.manage",
-                      audit: "users.manage",
                     } as Record<string, string>
                   )[n.id] ||
                   permissions.includes(
@@ -669,15 +664,17 @@ function App() {
               key={tab}
               currentUserId={user.id}
               teamsOnly={tab === "teams"}
+              canManageOrganization={user.owner || permissions.includes("organization.manage")}
             />
           )}
           {tab === "account" && (
-            <>
-              <span className="eyebrow">SENİN YÖRÜNGEN</span>
-              <h1>Merhaba, {user.firstName}.</h1>
-              <p>Hesabın, ekibin ve tüm platformların tek bir yerde.</p>
-              <div className="cards">
-                <Panel title="Profil">
+            <section className="profile-page">
+              <div className="profile-hero">
+                <span className="member-initials" aria-hidden="true">{user.firstName?.[0]}{user.lastName?.[0]}</span>
+                <div><span className="eyebrow">STARBASE PROFİLİ</span><h1>{user.firstName} {user.lastName}</h1><p>@{user.username} · {user.owner ? "Takım sahibi" : "Yıldız Roket Takımı"}</p></div>
+              </div>
+              <div className="profile-grid">
+                <Panel title="Hesap bilgileri">
                   <dl>
                     <dt>Kullanıcı adı</dt>
                     <dd>@{user.username}</dd>
@@ -687,11 +684,9 @@ function App() {
                     </dd>
                     <dt>E-posta</dt>
                     <dd>{user.email}</dd>
-                    <dt>Hesap</dt>
-                    <dd>{user.owner ? "Takım sahibi" : "Üye"}</dd>
                   </dl>
                 </Panel>
-                <Panel title="Departman ve ekiplerin">
+                <Panel title="Departman ve ekipler">
                   {user.memberships?.length ? (
                     user.memberships.map((m: any, i: number) => (
                       <p key={i}>
@@ -704,21 +699,7 @@ function App() {
                 </Panel>
               </div>
               <MyApplicationHistory />
-              <h2>Platformların</h2>
-              <div className="cards">
-                {apps.length ? (
-                  apps.map((a) => (
-                    <Panel key={a.id} title={a.name}>
-                      <span>Kayıtlı STARBASE uygulaması</span>
-                    </Panel>
-                  ))
-                ) : (
-                  <EmptyState
-                    title="Yeni yörüngeler yakında"
-                    description="Yönetimin eklediği uygulamalar burada görünecek."
-                  />
-                )}
-              </div>
+              <Sessions run={act} compact />
               <Button
                 onClick={() => {
                   setUser(null);
@@ -727,83 +708,8 @@ function App() {
               >
                 <KeyRound size={16} /> Şifre değiştir
               </Button>
-            </>
+            </section>
           )}
-          {tab === "organization" && (
-            <>
-              <h1>Departmanlar</h1>
-              <p>Birbirine bağlı ekipler. Ortak hedefler.</p>
-              <div className="cards">
-                {org.departments.map((d: any) => (
-                  <Panel key={d.id} title={d.name}>
-                    {user.owner && (
-                      <EditOrganization kind="departments" item={d} run={act} />
-                    )}
-                    {org.teams
-                      .filter((t: any) => t.department_id === d.id)
-                      .map((t: any) => (
-                        <div className="org-row" key={t.id}>
-                          {t.name}
-                          <ArrowUpRight size={14} />
-                        </div>
-                      ))}
-                  </Panel>
-                ))}
-              </div>
-              {(user.owner || permissions.includes("organization.manage")) && (
-                <form
-                  className="inline-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const f = new FormData(e.currentTarget);
-                    act(async () => {
-                      await api("/admin/departments", {
-                        name: field(f, "name"),
-                      });
-                      setOrg(await api("/organization"));
-                    });
-                  }}
-                >
-                  <TextField name="name" label="Yeni departman" required />
-                  <Button type="submit">
-                    <Plus size={16} /> Ekle
-                  </Button>
-                </form>
-              )}
-              {(user.owner || permissions.includes("organization.manage")) && (
-                <form
-                  className="inline-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const f = new FormData(e.currentTarget);
-                    act(async () => {
-                      await api("/admin/teams", {
-                        departmentId: field(f, "departmentId"),
-                        name: field(f, "name"),
-                      });
-                      setOrg(await api("/organization"));
-                    });
-                  }}
-                >
-                  <label>
-                    Departman
-                    <FormSelect name="departmentId">
-                      {org.departments.map((d: any) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </FormSelect>
-                  </label>
-                  <TextField name="name" label="Yeni ekip" required />
-                  <Button type="submit">
-                    <Plus size={16} /> Ekle
-                  </Button>
-                </form>
-              )}
-            </>
-          )}
-          {tab === "sessions" && <Sessions run={act} />}
           {path === "/invite" && (
             <Panel title="Takım daveti">
               <Button
@@ -877,42 +783,12 @@ function App() {
               )}
             </>
           )}
-          {tab === "connections" && (
-            <>
-              <h1>Bağlı uygulamalar</h1>
-              {rows.length ? (
-                rows.map((r) => (
-                  <Panel key={r.id} title={r.name}>
-                    <p>{JSON.parse(r.scopes).join(" · ")}</p>
-                    <Button
-                      onClick={() =>
-                        act(async () => {
-                          await api(
-                            "/connections/" + r.id,
-                            undefined,
-                            "DELETE",
-                          );
-                          setRows(await api("/connections"));
-                        })
-                      }
-                    >
-                      Bağlantıyı kaldır
-                    </Button>
-                  </Panel>
-                ))
-              ) : (
-                <EmptyState
-                  title="Henüz bağlantı yok"
-                  description="STARBASE ile giriş yaptığın uygulamalar burada görünür."
-                />
-              )}
-            </>
-          )}
           {tab === "applications" && (
             <>
-              <h1>Uygulamalar</h1>
-              <AppsList run={act} />
-              <AdminForm kind="app" run={act} />
+              <span className="eyebrow">STARBASE SHOWROOM</span><h1>Uygulamalar</h1>
+              <p>Yıldız Roket Takımının ortak hesabıyla çalışan platformlar.</p>
+              <div className="application-showroom">{apps.map((app) => <Panel key={app.id} title={app.name}><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><span>STARBASE ile giriş</span></Panel>)}</div>
+              {(user.owner || permissions.includes("apps.manage")) && <AppsList run={act} />}
             </>
           )}
           {tab === "roles" && (
@@ -925,26 +801,10 @@ function App() {
               <AdminForm kind="assignment" run={act} />
             </>
           )}
-          {tab === "audit" && (
-            <>
-              <h1>İşlem geçmişi</h1>
-              {rows.map((r) => (
-                <div className="org-row" key={r.id}>
-                  <span>
-                    {r.action}
-                    <small>{r.target}</small>
-                  </span>
-                  <time>
-                    {new Date(r.created_at * 1000).toLocaleString("tr")}
-                  </time>
-                </div>
-              ))}
-            </>
-          )}
           {tab === "docs" && <Docs />}
         </main>
       </div>
-      <ApplicationOrbit onApplications={() => setTab("connections")} />
+      <ApplicationOrbit onApplications={() => setTab("applications")} />
     </div>
   );
 }
@@ -1046,7 +906,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
   const specs: Record<string, { title: string; fields: string[] }> = {
     app: {
       title: "Uygulama kaydet",
-      fields: ["id", "name", "logoUrl", "redirectUri", "origin"],
+         fields: ["id", "name", "redirectUri", "origin"],
     },
     role: {
       title: "Rol oluştur",
@@ -1073,7 +933,6 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
               await api("/admin/apps", {
                 id: b.id,
                 name: b.name,
-                logoUrl: b.logoUrl,
                 redirects: [b.redirectUri],
                 origins: [b.origin],
                 scopes: ["profile", "email", "organization"],
@@ -1099,7 +958,6 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
               {
                 id: "Kimlik",
                 name: "Ad",
-                logoUrl: "Logo adresi (HTTPS)",
                 redirectUri: "Dönüş adresi",
                 origin: "Uygulama adresi",
                 permissions: "İzin anahtarları (virgülle)",

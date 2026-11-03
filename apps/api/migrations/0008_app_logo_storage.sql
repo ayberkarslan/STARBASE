@@ -1,0 +1,1 @@
+UPDATE apps SET logo_url='';

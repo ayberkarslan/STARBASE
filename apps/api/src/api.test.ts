@@ -5,6 +5,7 @@ import { app } from "./index";
 import { hash, challenge, now } from "./security";
 let db: DatabaseSync;
 let env: any;
+const logoObjects = new Map<string, { bytes: Uint8Array; contentType: string }>();
 class Statement {
   values: any[] = [];
   constructor(private sql: string) {}
@@ -23,6 +24,7 @@ class Statement {
   }
 }
 beforeEach(async () => {
+  logoObjects.clear();
   db = new DatabaseSync(":memory:");
   db.exec(readFileSync("apps/api/migrations/0001_core.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0002_invites.sql", "utf8"));
@@ -33,6 +35,8 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0005_board_notes.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0006_board_canvas.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0007_app_branding.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0008_app_logo_storage.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0009_team_branding.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -52,6 +56,27 @@ beforeEach(async () => {
           db.exec("ROLLBACK");
           throw e;
         }
+      },
+    },
+    APP_LOGOS: {
+      put: async (key: string, value: Uint8Array, options: any) => {
+        logoObjects.set(key, {
+          bytes: new Uint8Array(value),
+          contentType: options.httpMetadata.contentType,
+        });
+        return { key };
+      },
+      get: async (key: string) => {
+        const stored = logoObjects.get(key);
+        if (!stored) return null;
+        return {
+          body: new Response(stored.bytes).body,
+          httpMetadata: { contentType: stored.contentType },
+          httpEtag: '"logo-etag"',
+        };
+      },
+      delete: async (key: string) => {
+        logoObjects.delete(key);
       },
     },
     ASSETS: { fetch: () => new Response("asset") },
@@ -106,6 +131,30 @@ function call(
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
+    },
+    env,
+  );
+}
+function uploadLogo(
+  appId: string,
+  bytes: Uint8Array,
+  contentType: string,
+  authorization = "central",
+) {
+  return app.request(
+    `https://base.test/api/v1/admin/apps/${appId}/logo`,
+    {
+      method: "POST",
+      headers: {
+        Origin: "https://base.test",
+        "Content-Type": contentType,
+        ...(authorization === "central"
+          ? { Cookie: "starbase=central" }
+          : authorization
+            ? { Authorization: `Bearer ${authorization}` }
+            : {}),
+      },
+      body: new Blob([bytes], { type: contentType }),
     },
     env,
   );
@@ -247,10 +296,7 @@ describe("identity boundaries", () => {
 
 describe("application branding", () => {
   it("returns branding only for a registered callback URI", async () => {
-    db.prepare("UPDATE apps SET logo_url=? WHERE id=?").run(
-      "https://lab.test/assets/starlab-mark.png",
-      "starlab",
-    );
+    db.prepare("UPDATE apps SET logo_url=? WHERE id=?").run("uploaded", "starlab");
 
     const response = await call(
       "/apps/starlab/branding?redirectUri=" +
@@ -262,7 +308,7 @@ describe("application branding", () => {
     expect(await response.json()).toEqual({
       id: "starlab",
       name: "STARLAB",
-      logoUrl: "https://lab.test/assets/starlab-mark.png",
+      logoUrl: "/api/v1/apps/starlab/logo",
     });
 
     const unregistered = await call(
@@ -274,11 +320,49 @@ describe("application branding", () => {
     expect(unregistered.status).toBe(404);
   });
 
-  it("lets app managers save an HTTPS logo and rejects unsafe logo schemes", async () => {
+  it("uploads a supported raster logo and serves it from the Starbase origin", async () => {
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+    const uploaded = await uploadLogo("starlab", png, "image/png");
+    expect(uploaded.status).toBe(200);
+    expect(await uploaded.json()).toEqual({
+      logoUrl: "/api/v1/apps/starlab/logo",
+    });
+
+    const logo = await call("/apps/starlab/logo", undefined, "");
+    expect(logo.status).toBe(200);
+    expect(logo.headers.get("content-type")).toBe("image/png");
+    expect(new Uint8Array(await logo.arrayBuffer())).toEqual(png);
+    expect(logo.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("rejects unsupported, mismatched and oversized logo files", async () => {
+    const svg = new TextEncoder().encode("<svg></svg>");
+    expect((await uploadLogo("starlab", svg, "image/svg+xml")).status).toBe(
+      400,
+    );
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect((await uploadLogo("starlab", png, "image/jpeg")).status).toBe(400);
+    expect(
+      (await uploadLogo("starlab", new Uint8Array(1048577), "image/png"))
+        .status,
+    ).toBe(400);
+  });
+
+  it("requires app management permission and allows removing the logo", async () => {
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(
+      (await uploadLogo("starlab", png, "image/png", "")).status,
+    ).toBe(401);
+    await uploadLogo("starlab", png, "image/png");
+    const removed = await call("/admin/apps/starlab/logo", undefined, "central", "DELETE");
+    expect(removed.status).toBe(200);
+    expect((await call("/apps/starlab/logo", undefined, "")).status).toBe(404);
+  });
+
+  it("creates apps without an uploaded logo and updates branding without revoking sessions", async () => {
     const response = await call("/admin/apps", {
       id: "orbit-notes",
       name: "Orbit Notes",
-      logoUrl: "https://orbit.test/orbit-notes.png",
       redirects: ["https://orbit.test/callback"],
       origins: ["https://orbit.test"],
       scopes: ["profile"],
@@ -287,62 +371,14 @@ describe("application branding", () => {
     expect(
       db.prepare("SELECT logo_url FROM apps WHERE id=?").get("orbit-notes")!
         .logo_url,
-    ).toBe("https://orbit.test/orbit-notes.png");
-
-    const unsafe = await call("/admin/apps", {
-      id: "unsafe-brand",
-      name: "Unsafe Brand",
-      logoUrl: "javascript:alert(1)",
-      redirects: ["https://unsafe.test/callback"],
-      origins: ["https://unsafe.test"],
-      scopes: ["profile"],
-    });
-    expect(unsafe.status).toBe(400);
-  });
-
-  it("rejects logos hosted outside the registered application origins", async () => {
-    const response = await call("/admin/apps", {
-      id: "offsite-logo",
-      name: "Offsite Logo",
-      logoUrl: "https://cdn.test/logo.png",
-      redirects: ["https://orbit.test/callback"],
-      origins: ["https://orbit.test"],
-      scopes: ["profile"],
-    });
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      error: { code: "logo_origin_rejected" },
-    });
-  });
-
-  it("allows an app to use the default STARBASE mark", async () => {
-    const response = await call("/admin/apps", {
-      id: "plain-brand",
-      name: "Plain Brand",
-      redirects: ["https://plain.test/callback"],
-      origins: ["https://plain.test"],
-      scopes: ["profile"],
-    });
-
-    expect(response.status).toBe(201);
-    expect(
-      db.prepare("SELECT logo_url FROM apps WHERE id=?").get("plain-brand")!
-        .logo_url,
     ).toBe("");
-  });
-
-  it("updates app name and logo without revoking application sessions", async () => {
     db.prepare(
       "INSERT INTO families(id,user_id,app_id,expires) VALUES(?,?,?,?)",
     ).run("app-family", "u1", "starlab", now() + 1000);
 
     const updated = await call(
       "/admin/apps/starlab",
-      {
-        name: "Starlab Portal",
-        logoUrl: "https://lab.test/assets/starlab-new.png",
-      },
+      { name: "Starlab Portal" },
       "central",
       "PUT",
     );
@@ -351,7 +387,7 @@ describe("application branding", () => {
       db.prepare("SELECT name,logo_url FROM apps WHERE id=?").get("starlab"),
     ).toEqual({
       name: "Starlab Portal",
-      logo_url: "https://lab.test/assets/starlab-new.png",
+      logo_url: "",
     });
     expect(
       db.prepare("SELECT revoked FROM families WHERE id=?").get("app-family")!

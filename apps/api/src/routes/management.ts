@@ -24,31 +24,19 @@ import {
   type App,
 } from "../common";
 
-function validateLogoUrl(value: string) {
-  if (!value) return;
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new HTTPException(400, { message: "invalid_logo_url" });
-  }
+function sniffImage(bytes: Uint8Array): "image/png" | "image/jpeg" | "image/webp" | null {
+  const png = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (png.every((byte, index) => bytes[index] === byte))
+    return "image/png";
+  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255)
+    return "image/jpeg";
   if (
-    url.username ||
-    url.password ||
-    (url.protocol !== "https:" &&
-      !(
-        url.protocol === "http:" &&
-        ["localhost", "127.0.0.1"].includes(url.hostname)
-      ))
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
   )
-    throw new HTTPException(400, { message: "invalid_logo_url" });
-}
-
-function validateLogoOrigin(value: string, origins: string[]) {
-  if (!value) return;
-  const logoOrigin = new URL(value).origin;
-  if (!origins.some((origin) => new URL(origin).origin === logoOrigin))
-    throw new HTTPException(400, { message: "logo_origin_rejected" });
+    return "image/webp";
+  return null;
 }
 
 export function register(app: App) {
@@ -150,17 +138,11 @@ export function register(app: App) {
       z.object({
         id: z.string().regex(/^[a-z0-9-]{3,40}$/),
         name: z.string().trim().min(1).max(80),
-        logoUrl: z
-          .union([z.literal(""), z.string().url().max(2048)])
-          .optional()
-          .default(""),
         redirects: z.array(z.string().url()).min(1),
         origins: z.array(z.string().url()),
         scopes: z.array(z.enum(["profile", "email", "organization"])),
       }),
     );
-    validateLogoUrl(b.logoUrl);
-    validateLogoOrigin(b.logoUrl, b.origins);
     for (const r of b.redirects) {
       const u = new URL(r);
       if (
@@ -170,7 +152,7 @@ export function register(app: App) {
         fail(400, "https_required");
     }
     await c.env.DB.prepare(
-      "INSERT INTO apps(id,name,redirects,origins,scopes,logo_url) VALUES(?,?,?,?,?,?)",
+      "INSERT INTO apps(id,name,redirects,origins,scopes) VALUES(?,?,?,?,?)",
     )
       .bind(
         b.id,
@@ -178,11 +160,87 @@ export function register(app: App) {
         JSON.stringify(b.redirects),
         JSON.stringify(b.origins),
         JSON.stringify(b.scopes),
-        b.logoUrl,
       )
       .run();
     await audit(c, "app.create", b.id);
     return c.json({ id: b.id }, 201);
+  });
+  app.post("/api/v1/admin/apps/:id/logo", async (c) => {
+    await permit(c, "apps.manage");
+    const id = c.req.param("id");
+    const application = await c.env.DB.prepare(
+      "SELECT id FROM apps WHERE id=?",
+    )
+      .bind(id)
+      .first<{ id: string }>();
+    if (!application)
+      throw new HTTPException(404, { message: "app_not_found" });
+    const declaredType = c.req.header("content-type")?.split(";")[0] ?? "";
+    const bytes = new Uint8Array(await c.req.arrayBuffer());
+    if (!bytes.length || bytes.length > 1048576)
+      throw new HTTPException(400, { message: "invalid_logo_size" });
+    const detectedType = sniffImage(bytes);
+    if (
+      !detectedType ||
+      !["image/png", "image/jpeg", "image/webp"].includes(declaredType) ||
+      detectedType !== declaredType
+    )
+      throw new HTTPException(400, { message: "invalid_logo_file" });
+    await c.env.APP_LOGOS.put(`apps/${id}/logo`, bytes, {
+      httpMetadata: {
+        contentType: detectedType,
+        cacheControl: "public, max-age=3600",
+      },
+    });
+    await c.env.DB.prepare("UPDATE apps SET logo_url=? WHERE id=?")
+      .bind("uploaded", id)
+      .run();
+    await audit(c, "app.logo.upload", id);
+    return c.json({ logoUrl: `/api/v1/apps/${id}/logo` });
+  });
+  app.delete("/api/v1/admin/apps/:id/logo", async (c) => {
+    await permit(c, "apps.manage");
+    const id = c.req.param("id");
+    const application = await c.env.DB.prepare("SELECT id FROM apps WHERE id=?")
+      .bind(id)
+      .first();
+    if (!application)
+      throw new HTTPException(404, { message: "app_not_found" });
+    await c.env.APP_LOGOS.delete(`apps/${id}/logo`);
+    await c.env.DB.prepare("UPDATE apps SET logo_url='' WHERE id=?")
+      .bind(id)
+      .run();
+    await audit(c, "app.logo.remove", id);
+    return c.json({ ok: true });
+  });
+  app.post("/api/v1/admin/teams/:id/logo", async (c) => {
+    await permit(c, "organization.manage");
+    const id = c.req.param("id");
+    if (!(await c.env.DB.prepare("SELECT id FROM teams WHERE id=? AND archived=0").bind(id).first()))
+      throw new HTTPException(404, { message: "team_not_found" });
+    const declaredType = c.req.header("content-type")?.split(";")[0] ?? "";
+    const bytes = new Uint8Array(await c.req.arrayBuffer());
+    if (!bytes.length || bytes.length > 1048576)
+      throw new HTTPException(400, { message: "invalid_logo_size" });
+    const detectedType = sniffImage(bytes);
+    if (!detectedType || detectedType !== declaredType)
+      throw new HTTPException(400, { message: "invalid_logo_file" });
+    await c.env.APP_LOGOS.put(`teams/${id}/logo`, bytes, {
+      httpMetadata: { contentType: detectedType, cacheControl: "private, max-age=3600" },
+    });
+    await c.env.DB.prepare("UPDATE teams SET logo_url=? WHERE id=?").bind("uploaded", id).run();
+    await audit(c, "team.logo.upload", id);
+    return c.json({ logoUrl: `/api/v1/directory/teams/${id}/logo` });
+  });
+  app.delete("/api/v1/admin/teams/:id/logo", async (c) => {
+    await permit(c, "organization.manage");
+    const id = c.req.param("id");
+    if (!(await c.env.DB.prepare("SELECT id FROM teams WHERE id=?").bind(id).first()))
+      throw new HTTPException(404, { message: "team_not_found" });
+    await c.env.APP_LOGOS.delete(`teams/${id}/logo`);
+    await c.env.DB.prepare("UPDATE teams SET logo_url='' WHERE id=?").bind(id).run();
+    await audit(c, "team.logo.remove", id);
+    return c.json({ ok: true });
   });
   app.post("/api/v1/admin/users/:id/password", async (c) => {
     await permit(c, "users.manage");
@@ -533,9 +591,6 @@ export function register(app: App) {
         .object({
           disabled: z.boolean().optional(),
           name: z.string().trim().min(1).max(80).optional(),
-          logoUrl: z
-            .union([z.literal(""), z.string().url().max(2048)])
-            .optional(),
         })
         .refine((value) => Object.keys(value).length > 0),
     );
@@ -546,17 +601,12 @@ export function register(app: App) {
       .first<{ id: string; origins: string }>();
     if (!application)
       throw new HTTPException(404, { message: "app_not_found" });
-    if (b.logoUrl !== undefined) {
-      validateLogoUrl(b.logoUrl);
-      validateLogoOrigin(b.logoUrl, JSON.parse(application.origins));
-    }
     await c.env.DB.prepare(
-      "UPDATE apps SET disabled=COALESCE(?,disabled),name=COALESCE(?,name),logo_url=COALESCE(?,logo_url) WHERE id=?",
+      "UPDATE apps SET disabled=COALESCE(?,disabled),name=COALESCE(?,name) WHERE id=?",
     )
       .bind(
         b.disabled === undefined ? null : Number(b.disabled),
         b.name ?? null,
-        b.logoUrl ?? null,
         c.req.param("id"),
       )
       .run();

@@ -1,6 +1,7 @@
 import { FormSelect } from "./form-select";
 import { useEffect, useState, type FormEvent } from "react";
-import { Button, TextField, Panel } from "@stardrop/ui";
+import { Button, IconButton, TextField, Panel } from "@stardrop/ui";
+import { X } from "lucide-react";
 export async function request(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -10,6 +11,17 @@ export async function request(path: string, body?: unknown, method?: string) {
   const b: any = await r.json();
   if (!r.ok) throw new Error(b.error?.code ?? "service_unavailable");
   return b;
+}
+async function uploadApplicationLogo(appId: string, file: File) {
+  const response = await fetch(`/api/v1/admin/apps/${appId}/logo`, {
+    method: "POST",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  const result: any = await response.json();
+  if (!response.ok)
+    throw new Error(result.error?.code ?? "logo_upload_failed");
+  return result;
 }
 type Run = (fn: () => Promise<void>) => Promise<void>;
 export function Invitations({ run }: { run: Run }) {
@@ -197,7 +209,7 @@ export function Fields({ run, userId }: { run: Run; userId?: string }) {
     </Panel>
   );
 }
-export function Sessions({ run }: { run: Run }) {
+export function Sessions({ run, compact = false }: { run: Run; compact?: boolean }) {
   const [sessions, setSessions] = useState<any[]>([]);
   useEffect(() => {
     request("/sessions")
@@ -205,8 +217,8 @@ export function Sessions({ run }: { run: Run }) {
       .catch(() => {});
   }, []);
   return (
-    <>
-      <h1>Oturumlar</h1>
+    <section className={compact ? "account-sessions" : ""}>
+      {!compact && <h1>Oturumlar</h1>}
       {sessions.map((s) => (
         <Panel key={s.family} title={s.app_id ?? "STARBASE hesap merkezi"}>
           <p>
@@ -234,7 +246,7 @@ export function Sessions({ run }: { run: Run }) {
       >
         Tüm oturumları kapat
       </Button>
-    </>
+    </section>
   );
 }
 export function RolesList({ run }: { run: Run }) {
@@ -305,6 +317,7 @@ export function RolesList({ run }: { run: Run }) {
 
 export function AppsList({ run }: { run: Run }) {
   const [apps, setApps] = useState<any[]>([]);
+  const [uploadingApp, setUploadingApp] = useState<string | null>(null);
   useEffect(() => {
     request("/admin/apps")
       .then(setApps)
@@ -317,9 +330,8 @@ export function AppsList({ run }: { run: Run }) {
           {a.logo_url ? (
             <img
               className="app-list-logo"
-              src={a.logo_url}
+              src={`/api/v1/apps/${a.id}/logo`}
               alt=""
-              referrerPolicy="no-referrer"
               onError={(event) => {
                 event.currentTarget.hidden = true;
               }}
@@ -336,42 +348,46 @@ export function AppsList({ run }: { run: Run }) {
               {a.id} · {a.disabled ? "Kapalı" : "Açık"}
             </small>
           </span>
-          <details className="app-branding-editor">
-            <summary>Markayı düzenle</summary>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
+          <label className="app-logo-picker">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label={`${a.name} logosu seç`}
+              disabled={uploadingApp === a.id}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (!file) return;
+                if (file.size > 1048576) {
+                  run(async () => {
+                    throw new Error("Logo dosyası 1 MB sınırını aşamaz.");
+                  });
+                  return;
+                }
+                setUploadingApp(a.id);
                 run(async () => {
-                  await request(
-                    "/admin/apps/" + a.id,
-                    {
-                      name: form.get("name"),
-                      logoUrl: form.get("logoUrl"),
-                    },
-                    "PUT",
-                  );
+                  await uploadApplicationLogo(a.id, file);
                   setApps(await request("/admin/apps"));
-                });
+                }).finally(() => setUploadingApp(null));
               }}
+            />
+            <span>{uploadingApp === a.id ? "Yükleniyor" : "Logo seç"}</span>
+          </label>
+          {a.logo_url && (
+            <IconButton
+              label={`${a.name} logosunu kaldır`}
+              variant="bare"
+              disabled={uploadingApp === a.id}
+              onClick={() =>
+                run(async () => {
+                  await request(`/admin/apps/${a.id}/logo`, undefined, "DELETE");
+                  setApps(await request("/admin/apps"));
+                })
+              }
             >
-              <TextField
-                name="name"
-                label="Uygulama adı"
-                defaultValue={a.name}
-                maxLength={80}
-                required
-              />
-              <TextField
-                name="logoUrl"
-                label="Logo adresi (HTTPS)"
-                hint="Logo, kayıtlı uygulama adresinde barınmalı. Boşsa Starbase simgesi görünür."
-                defaultValue={a.logo_url ?? ""}
-                maxLength={2048}
-              />
-              <Button type="submit">Markayı kaydet</Button>
-            </form>
-          </details>
+              <X size={15} />
+            </IconButton>
+          )}
           <Button
             onClick={() =>
               run(async () => {

@@ -99,6 +99,30 @@
         ]
       }
     },
+    "/api/v1/apps/{id}/logo": {
+      "get": {
+        "operationId": "get__api_v1_apps__id__logo",
+        "tags": ["applications"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful operation" },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Invalid or expired session" },
+          "403": { "description": "Permission denied" },
+          "404": { "description": "Logo not found" },
+          "429": { "description": "Rate limited" },
+          "503": { "description": "Dependency or quota unavailable" }
+        }
+      }
+    },
     "/api/v1/authorize": {
       "get": {
         "operationId": "get__api_v1_authorize",

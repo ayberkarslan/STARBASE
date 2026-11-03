@@ -48,7 +48,7 @@ app.onError((e, c) =>
 app.use("/api/*", async (c, next) => {
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
-  const maxBodySize = /^\/api\/v1\/admin\/apps\/[a-z0-9-]{3,40}\/logo$/.test(
+  const maxBodySize = /^\/api\/v1\/admin\/(apps|teams)\/[a-z0-9-]{3,40}\/logo$/.test(
     c.req.path,
   )
     ? 1048576

@@ -152,10 +152,12 @@ export function TeamDirectory({
       .then((data) => {
         if (live) setOrg(data);
       })
-      .catch(() => {
+      .catch((cause) => {
         if (live)
           setError(
-            "Takım dizinine erişilemiyor. Takım üyeliğini ve bağlantını kontrol et.",
+            (cause as Error).message === "team_membership_required"
+              ? "Takım dizini yalnız ekip üyelerine açık. Yönetici hesabına bir ekip üyeliği ata."
+              : "Takım dizini yüklenemedi. Sunucu migration'larını güncelle ve yeniden dene.",
           );
       });
     return () => {
@@ -175,11 +177,13 @@ export function TeamDirectory({
         .then((data) => {
           if (live) setResult(data);
         })
-        .catch(() => {
+        .catch((cause) => {
           if (live) {
             setResult(null);
             setError(
-              "Üyeler yüklenemedi. Takıma katılmamış hesaplar dizine erişemez.",
+              (cause as Error).message === "team_membership_required"
+                ? "Üyeler yalnız ekip üyelerine açık. Hesabına ekip üyeliği ata."
+                : "Üyeler yüklenemedi. Sunucu migration'larını güncelle ve yeniden dene.",
             );
           }
         })

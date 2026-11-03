@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
@@ -118,6 +118,14 @@ async function main() {
     throw new Error(failures.map((r) => r.reason.message).join("\n"));
   if (stopping) return;
   const webRequire = createRequire(join(root, "apps/web/package.json"));
+  const apiRequire = createRequire(join(root, "apps/api/package.json"));
+  const wrangler = join(
+    dirname(apiRequire.resolve("wrangler/package.json")),
+    "wrangler-dist/cli.js",
+  );
+  execFileSync(process.execPath, [wrangler, "d1", "migrations", "apply", "starbase", "--local"], {
+    cwd: join(root, "apps/api"), stdio: "inherit",
+  });
   const vite = join(
     dirname(webRequire.resolve("vite/package.json")),
     "bin/vite.js",
@@ -125,7 +133,7 @@ async function main() {
   start("Firebase", join(root, "scripts/emulators.mjs"), [], root);
   start(
     "API",
-    join(root, "node_modules/wrangler/wrangler-dist/cli.js"),
+    wrangler,
     ["dev", "--ip", "127.0.0.1", "--port", "8787"],
     join(root, "apps/api"),
   );

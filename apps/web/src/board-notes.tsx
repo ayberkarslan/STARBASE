@@ -124,7 +124,10 @@ export function BoardNotes(props: {
             const value = (seed: number) => Math.abs(random(seed));
             return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `${value(index + 311) * 2200}ms`, "--s": `${1 + value(index + 97) * 3.5}px`, "--t": `${6 + value(index + 509) * 4}s` } as CSSProperties} />;
           })}</div>
-          <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" onPointerEnter={() => { setBurst(true); window.setTimeout(() => setBurst(false), 11000); }} />
+          <div className="launch-mark">
+            <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" onPointerEnter={() => { setBurst(true); window.setTimeout(() => setBurst(false), 11000); }} />
+            <span className="launch-thrust" aria-hidden="true"><i /><i /><i /></span>
+          </div>
         </div>
       ) : (
         <BoardCanvas key={scope} {...props} scope={scope} />

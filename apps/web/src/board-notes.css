@@ -243,14 +243,14 @@
   transition: filter 400ms ease, transform 400ms ease;
 }
 .blank-board img:hover { transform: scale(1.02); filter: none; }
-.launch-engine { position: absolute; top: calc(100% - 34px); width: 82px; height: 120px; overflow: visible; transform-origin: 50% 0; }
+.launch-engine { position: absolute; top: calc(100% - 55px); width: 82px; height: 120px; overflow: visible; transform-origin: 50% 0; }
 .engine-plume.outer { fill: url(#exhaust-core); opacity: .38; }
 .engine-plume.core { fill: url(#exhaust-core); opacity: .92; }
-.engine-wave { fill: none; stroke: #fff; stroke-width: .55; opacity: .42; }
+.engine-wave { fill: none; stroke: #e1a12b17; stroke-width: .1; opacity: .92; }
 .star-burst .launch-mark img { animation: launch-float 4.6s ease-in-out infinite; }
 .star-burst .launch-engine { animation: engine-breathe 5.7s ease-in-out infinite; }
 .burst-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0; }
-.burst-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); background: #fff; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); will-change: transform, opacity; }
+.burst-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); background: #ffffff; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); will-change: transform, opacity; }
 .star-burst .burst-stars { opacity: 1; }
 .star-burst .burst-stars i { animation: star-drift var(--t) linear var(--d) infinite; }
 @keyframes star-drift { 0% { transform: translateY(-130px) scale(.55); opacity: 0; } 12% { opacity: .78; } 82% { opacity: .58; } 100% { transform: translateY(150px) scale(1.15); opacity: 0; } }

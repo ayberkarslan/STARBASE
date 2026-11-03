@@ -104,15 +104,23 @@ function MemberProfile({
       )}
       {!profile && !error && <p role="status">Profil yükleniyor…</p>}
       {profile && (
-        <>
-          <section>
-            <h3>Departman ve ekipler</h3>
+        <div className="directory-profile">
+          <section className="directory-profile__hero">
+            <span className="directory-profile__avatar" aria-hidden="true">
+              {profile.firstName[0]}{profile.lastName[0]}
+            </span>
+            <div>
+              <h3>{profile.firstName} {profile.lastName}</h3>
+              <p>@{profile.username}</p>
+            </div>
+          </section>
+          <section className="directory-profile__section">
+            <span className="eyebrow">EKİPLER</span>
             {profile.memberships.length ? (
               <div className="profile-memberships">
                 {profile.memberships.map((m, i) => (
                   <div key={i}>
-                    <span>{m.department}</span>
-                    <strong>{m.team ?? "Departman üyesi"}</strong>
+                    <span>{m.department}</span><strong>{m.team ?? "Departman üyesi"}</strong>
                   </div>
                 ))}
               </div>
@@ -121,7 +129,7 @@ function MemberProfile({
             )}
           </section>
           <ApplicationHistoryView data={profile as unknown as ApplicationHistory} onPage={() => {}} busy={busy} />
-        </>
+        </div>
       )}
     </Drawer>
   );

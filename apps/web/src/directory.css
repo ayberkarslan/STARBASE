@@ -120,6 +120,11 @@
   font-size: 20px;
   overflow-wrap: anywhere;
 }
+.directory-profile__hero { display: flex; align-items: center; gap: 16px; padding: 4px 0 28px; border-bottom: 1px solid #ffffff26; }
+.directory-profile__avatar { display: grid; place-items: center; width: 76px; height: 76px; border: 1px solid #fff; border-radius: 50%; font-size: 17px; }
+.directory-profile__hero h3 { margin: 0; font-size: 17px; }
+.directory-profile__hero p { margin: 5px 0 0; font-size: 10px; }
+.directory-profile__section { padding-top: 28px; }
 .member-profile h3,
 .profile-activity h3 {
   display: flex;
@@ -138,6 +143,8 @@
   display: flex;
   justify-content: space-between;
   gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid #ffffff1a;
   font-size: 11px;
   line-height: 1.8;
 }

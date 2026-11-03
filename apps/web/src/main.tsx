@@ -28,6 +28,7 @@ import {
   DesktopHeader,
   TabBar,
   EmptyState,
+  Drawer,
   SelectMenu,
   StartupScreen,
 } from "@stardrop/ui";
@@ -774,13 +775,25 @@ function App() {
                   </button>
                 ))}
               </div>
+              <Drawer
+                open={!!selected}
+                onClose={() => setSelected(null)}
+                title={selected ? selected.first_name + " " + selected.last_name : "Üye"}
+                eyebrow={selected ? "@" + selected.username + " · ÜYE YÖNETİMİ" : "ÜYE YÖNETİMİ"}
+                className="admin-member-drawer"
+              >
               {selected && (
-                <Panel title={selected.first_name + " " + selected.last_name}>
+                <div className="admin-member-sheet">
+                  <div className="admin-member-sheet__identity">
+                    <span>{selected.first_name?.[0]}{selected.last_name?.[0]}</span>
+                    <div><strong>{selected.first_name} {selected.last_name}</strong><small>{selected.email}</small></div>
+                  </div>
                   <AdminUser user={selected} org={org} run={act} />
                   <EditUser user={selected} run={act} />
                   <Fields userId={selected.id} run={act} />
-                </Panel>
+                </div>
               )}
+              </Drawer>
             </>
           )}
           {tab === "applications" && (

@@ -118,7 +118,7 @@ export function BoardNotes(props: {
       </nav>
       {scope === "home" ? (
         <div className={burst ? "blank-board star-burst" : "blank-board"} aria-label="Yıldız Roket Takımı">
-          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 140 }, (_, index) => <i key={index} style={{ "--x": `${(index * 37) % 100}%`, "--y": `${(index * 61) % 100}%`, "--d": `${(index % 17) * 28}ms` } as CSSProperties} />)}</div>
+          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 180 }, (_, index) => <i key={index} style={{ "--x": `${(index * 37) % 100}%`, "--y": `${(index * 61) % 100}%`, "--d": `${(index % 29) * 52}ms`, "--s": `${1 + (index % 4)}px` } as CSSProperties} />)}</div>
           <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" onPointerEnter={() => { setBurst(true); window.setTimeout(() => setBurst(false), 1800); }} />
         </div>
       ) : (

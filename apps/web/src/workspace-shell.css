@@ -179,7 +179,7 @@
   height: 180px;
   z-index: 12;
   pointer-events: none;
-  background: linear-gradient(transparent 0%, #0008 62%, #000 100%);
+  background: linear-gradient(transparent 0%, #0008 40%, #000d 68%, #000 100%);
 }
 .application-orbit > svg {
   position: absolute;
@@ -202,33 +202,33 @@
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px 8px 8px;
+  gap: 9px;
+  padding: 4px 7px;
   color: #fff;
-  background: #050505;
-  border: 1px solid #ffffff3b;
-  border-radius: 6px;
+  background: transparent;
+  border: 0;
   cursor: pointer;
   font: inherit;
   font-size: 10px;
   letter-spacing: 1px;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
+  transition: color 0.2s, transform 0.2s;
 }
 .orbit-application:hover,
 .orbit-application:focus-visible {
-  border-color: #ffffffa0;
-  background: #080808;
+  color: #fff;
+  transform: translate(-50%, -50%) scale(1.08);
 }
 .orbit-node {
   display: grid;
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid #ffffff26;
+  border: 1px solid #ffffff45;
   border-radius: 50%;
+  background: #000b;
+  overflow: hidden;
 }
+.orbit-node img { width: 75%; height: 75%; object-fit: contain; }
 .orbit-caption {
   position: absolute;
   bottom: 24px;
@@ -249,9 +249,7 @@
     gap: 5px;
     letter-spacing: 0;
     flex-direction: column;
-    border: 1px solid #ffffff30;
-    border-radius: 6px;
-    background: #000;
+    background: transparent;
   }
   .orbit-node {
     width: 28px;

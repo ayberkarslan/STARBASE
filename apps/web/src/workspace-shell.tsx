@@ -8,10 +8,8 @@ import {
 import { IconButton } from "@stardrop/ui";
 import {
   Menu,
-  Satellite,
-  Rocket,
-  CalendarDays,
   ArrowUpRight,
+  AppWindow,
 } from "lucide-react";
 
 const workspaceStars = Array.from({ length: 14 }, () => ({
@@ -120,14 +118,12 @@ export function WorkspaceMenu({ children }: { children: ReactNode }) {
 
 export function ApplicationOrbit({
   onApplications,
+  apps,
 }: {
   onApplications: () => void;
+  apps: { id: string; name: string; logoUrl?: string }[];
 }) {
-  const apps = [
-    { name: "STARDROP", icon: Satellite, t: 0.19 },
-    { name: "STARLAB", icon: Rocket, t: 0.5 },
-    { name: "YRT TAKVİM", icon: CalendarDays, t: 0.81 },
-  ];
+  const orbitApps = apps.slice(0, 5);
   return (
     <div className="application-orbit" aria-label="Yıldız platformları">
       <svg viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true">
@@ -135,24 +131,26 @@ export function ApplicationOrbit({
         <path className="orbit-echo" d="M0 200 Q500 -78 1000 200" />
       </svg>
       <span className="orbit-caption">YILDIZDAN YILDIZLARA</span>
-      {apps.map((a) => (
+      {orbitApps.map((a, index) => {
+        const t = orbitApps.length === 1 ? 0.5 : 0.12 + (index / (orbitApps.length - 1)) * 0.76;
+        return (
         <button
-          key={a.name}
+          key={a.id}
           className="orbit-application"
           style={{
-            left: `${a.t * 100}%`,
-            top: `${(200 - 600 * a.t * (1 - a.t)) / 2}%`,
+            left: `${t * 100}%`,
+            top: `${(200 - 600 * t * (1 - t)) / 2}%`,
           }}
           onClick={onApplications}
           title={`${a.name} · Bağlı uygulamaları görüntüle`}
         >
           <span className="orbit-node">
-            <a.icon size={19} />
+            {a.logoUrl ? <img src={a.logoUrl} alt="" /> : <AppWindow size={18} />}
           </span>
           <span>{a.name}</span>
           <ArrowUpRight className="orbit-arrow" size={12} />
         </button>
-      ))}
+      )})}
     </div>
   );
 }

@@ -817,7 +817,7 @@ function App() {
           {tab === "docs" && <Docs />}
         </main>
       </div>
-      <ApplicationOrbit onApplications={() => setTab("applications")} />
+      <ApplicationOrbit apps={apps} onApplications={() => setTab("applications")} />
     </div>
   );
 }

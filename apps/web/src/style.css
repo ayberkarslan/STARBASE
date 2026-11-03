@@ -99,6 +99,12 @@ header,
   display: flex;
   flex-direction: column;
 }
+@media (min-width: 651px) {
+  .login-page { height: 100dvh; overflow: hidden; }
+  .login-main { min-height: 0; overflow: hidden; }
+  .intro, .auth { overflow: auto; scrollbar-width: none; }
+  .intro::-webkit-scrollbar, .auth::-webkit-scrollbar { display: none; }
+}
 .login-main {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -817,7 +823,7 @@ footer {
     line-height: 1.5;
   }
 }
-@media (min-width: 651px) and (max-height: 850px) {
+@media (min-width: 651px) and (max-height: 950px) {
   .intro {
     padding-top: 36px;
     min-height: 0;
@@ -831,8 +837,8 @@ footer {
     margin-top: 0;
   }
   .auth {
-    padding-top: 50px;
-    padding-bottom: 50px;
+    padding-top: 34px;
+    padding-bottom: 30px;
   }
 }
 @media (max-width: 800px) {

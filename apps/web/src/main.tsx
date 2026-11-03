@@ -584,7 +584,7 @@ function App() {
               { id: "board", name: "Pano", icon: Users },
               { id: "directory", name: "Takım dizini", icon: Users },
               { id: "account", name: "Hesabım", icon: Orbit },
-              { id: "teams", name: "Ekipler", icon: Layers },
+              { id: "teams", name: "Departmanlar", icon: Layers },
               { id: "applications", name: "Uygulamalar", icon: AppWindow },
               ...(user.owner || permissions.some((p) => p.endsWith(".manage"))
                 ? [

@@ -244,8 +244,8 @@
 }
 .blank-board img:hover { transform: scale(1.02); filter: none; }
 .launch-thrust { position: absolute; top: calc(100% - 18px); display: flex; align-items: start; justify-content: center; gap: 6px; width: 80px; height: 74px; overflow: hidden; opacity: .82; }
-.launch-thrust i { display: block; width: 11px; height: 0; background: linear-gradient(#fff 0%, #ffffff80 48%, transparent 100%); clip-path: polygon(50% 0, 100% 48%, 50% 100%, 0 48%); transform-origin: top; }
-.launch-thrust i:nth-child(2) { width: 17px; }
+.launch-thrust i { display: block; width: 10px; height: 0; background: linear-gradient(to bottom, #fff 0%, #ffffffc0 24%, #ffffff50 70%, transparent 100%); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); filter: blur(.35px); transform-origin: top; }
+.launch-thrust i:nth-child(2) { width: 20px; background: linear-gradient(to bottom, #fff 0%, #ffffffd9 20%, #ffffff70 64%, transparent 100%); }
 .star-burst .launch-mark img { animation: launch-float 4.6s ease-in-out infinite; }
 .star-burst .launch-thrust i { animation: thrust-flow .55s ease-in-out infinite alternate; }
 .star-burst .launch-thrust i:nth-child(2) { animation-delay: -.22s; }

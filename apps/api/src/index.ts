@@ -48,10 +48,9 @@ app.onError((e, c) =>
 app.use("/api/*", async (c, next) => {
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
-  const maxBodySize = /^\/api\/v1\/admin\/(apps|teams|departments)\/[a-z0-9-]{3,40}\/logo$/.test(
-    c.req.path,
-  )
-    ? 1048576
+  const logoRoute = /^\/api\/v1\/admin\/(apps|teams|departments)\/[a-z0-9-]{3,40}\/logo$/.exec(c.req.path);
+  const maxBodySize = logoRoute
+    ? logoRoute[1] === "apps" ? 1048576 : 6291456
     : 16384;
   if (Number(c.req.header("content-length") ?? 0) > maxBodySize)
     return fail(400, "input_too_large");

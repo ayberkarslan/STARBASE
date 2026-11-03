@@ -86,7 +86,7 @@ export function register(app: App) {
       throw new HTTPException(404, { message: "department_not_found" });
     const declaredType = c.req.header("content-type")?.split(";")[0] ?? "";
     const bytes = new Uint8Array(await c.req.arrayBuffer());
-    if (!bytes.length || bytes.length > 1048576)
+    if (!bytes.length || bytes.length > 6291456)
       throw new HTTPException(400, { message: "invalid_logo_size" });
     const detectedType = sniffImage(bytes);
     if (!detectedType || detectedType !== declaredType)
@@ -237,7 +237,7 @@ export function register(app: App) {
       throw new HTTPException(404, { message: "team_not_found" });
     const declaredType = c.req.header("content-type")?.split(";")[0] ?? "";
     const bytes = new Uint8Array(await c.req.arrayBuffer());
-    if (!bytes.length || bytes.length > 1048576)
+    if (!bytes.length || bytes.length > 6291456)
       throw new HTTPException(400, { message: "invalid_logo_size" });
     const detectedType = sniffImage(bytes);
     if (!detectedType || detectedType !== declaredType)

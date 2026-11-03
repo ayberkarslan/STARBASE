@@ -218,8 +218,8 @@ export function TeamDirectory({
     setSelectedTeam(teamId || null);
   }
   async function uploadDepartmentLogo(id: string, file: File) {
-    if (!file.type.match(/^image\/(png|jpeg|webp)$/) || file.size > 1048576) {
-      setError("Logo PNG, JPEG veya WebP olmalı ve 1 MB'ı geçmemeli.");
+    if (!file.type.match(/^image\/(png|jpeg|webp)$/) || file.size > 6291456) {
+      setError("Patch PNG, JPEG veya WebP olmalı ve 6 MB'ı geçmemeli.");
       return;
     }
     try {
@@ -373,11 +373,13 @@ export function TeamDirectory({
             <Panel
               key={d.id}
               title={<span className="department-title">{d.logoUrl ? <img src={d.logoUrl} alt="" /> : <Layers size={22} />}{d.name}</span>}
-              action={
-                <Button variant="bare" onClick={() => browse(d.id)}>
-                  {d.memberCount} üye <ArrowUpRight size={14} />
-                </Button>
-              }
+              action={<div className="department-actions">
+                <Button variant="bare" onClick={() => browse(d.id)}>{d.memberCount} üye <ArrowUpRight size={14} /></Button>
+                {canManageOrganization && <label className="department-logo-upload">
+                  Patch seç
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadDepartmentLogo(d.id, file); }} />
+                </label>}
+              </div>}
             >
               <div className="directory-team-list">
                 {org.teams
@@ -394,10 +396,6 @@ export function TeamDirectory({
                       </span>
                     </Button>
                   ))}
-                {canManageOrganization && <label className="department-logo-upload">
-                  Departman patch'i
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadDepartmentLogo(d.id, file); }} />
-                </label>}
               </div>
               {!org.teams.some((t) => t.departmentId === d.id) && (
                 <p>Henüz ekip eklenmemiş.</p>

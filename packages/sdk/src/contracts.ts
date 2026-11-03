@@ -45,6 +45,7 @@ export type SessionEndReason = "logout" | "revoked" | "expired";
 export interface ApplicationUsage {
   applicationId: string;
   applicationName: string;
+  logoUrl: string;
   applicationDisabled: number;
   lastSignInAt: number;
   lastSignOutAt: number | null;

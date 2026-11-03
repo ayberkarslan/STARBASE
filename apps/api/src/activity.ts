@@ -24,11 +24,16 @@ export async function applicationHistory(
   const params = appId ? [userId, appId] : [userId];
   const applications = (
     await env.DB.prepare(
-      `SELECT v.app_id applicationId,a.name applicationName,a.disabled applicationDisabled,v.last_sign_in_at lastSignInAt,v.last_sign_out_at lastSignOutAt,v.last_end_at lastEndAt,v.last_end_reason lastEndReason FROM application_usage v JOIN apps a ON a.id=v.app_id WHERE v.user_id=?${scope} ORDER BY v.last_sign_in_at DESC,v.app_id`,
+      `SELECT v.app_id applicationId,a.name applicationName,a.logo_url logoUrl,a.disabled applicationDisabled,v.last_sign_in_at lastSignInAt,v.last_sign_out_at lastSignOutAt,v.last_end_at lastEndAt,v.last_end_reason lastEndReason FROM application_usage v JOIN apps a ON a.id=v.app_id WHERE v.user_id=?${scope} ORDER BY v.last_sign_in_at DESC,v.app_id`,
     )
       .bind(...params)
       .all()
-  ).results;
+  ).results.map((application: any) => ({
+    ...application,
+    logoUrl: application.logoUrl
+      ? `/api/v1/apps/${encodeURIComponent(application.applicationId)}/logo`
+      : "",
+  }));
   const total = await env.DB.prepare(
     `SELECT COUNT(*) total FROM application_visits v WHERE v.user_id=?${scope}`,
   )

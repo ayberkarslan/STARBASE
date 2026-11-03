@@ -57,7 +57,7 @@
 .workspace .content {
   height: 100%;
   box-sizing: border-box;
-  padding-bottom: 200px;
+  padding-bottom: 230px;
 }
 .workspace .content.canvas-content {
   padding: 0;
@@ -176,10 +176,10 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 180px;
+  height: 220px;
   z-index: 12;
   pointer-events: none;
-  background: linear-gradient(transparent 0%, #0008 40%, #000d 68%, #000 100%);
+  background: linear-gradient(to bottom, #0003 0%, #000b 24%, #000e 50%, #000 82%);
 }
 .application-orbit > svg {
   position: absolute;

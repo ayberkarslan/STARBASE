@@ -243,19 +243,21 @@
   transition: filter 400ms ease, transform 400ms ease;
 }
 .blank-board img:hover { transform: scale(1.02); filter: none; }
-.launch-thrust { position: absolute; top: calc(100% - 18px); display: flex; align-items: start; justify-content: center; gap: 6px; width: 80px; height: 74px; overflow: hidden; opacity: .82; }
-.launch-thrust i { display: block; width: 10px; height: 0; background: linear-gradient(to bottom, #fff 0%, #ffffffc0 24%, #ffffff50 70%, transparent 100%); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); filter: blur(.35px); transform-origin: top; }
-.launch-thrust i:nth-child(2) { width: 20px; background: linear-gradient(to bottom, #fff 0%, #ffffffd9 20%, #ffffff70 64%, transparent 100%); }
+.launch-engine { position: absolute; top: calc(100% - 14px); width: 82px; height: 138px; overflow: visible; transform-origin: 50% 0; }
+.engine-bell { fill: #000; stroke: #fff; stroke-width: 1.15; }
+.engine-throat { fill: #fff; opacity: .85; }
+.engine-plume.outer { fill: url(#exhaust-core); opacity: .38; }
+.engine-plume.core { fill: url(#exhaust-core); opacity: .92; }
+.engine-wave { fill: none; stroke: #fff; stroke-width: .55; opacity: .42; }
 .star-burst .launch-mark img { animation: launch-float 4.6s ease-in-out infinite; }
-.star-burst .launch-thrust i { animation: thrust-flow .55s ease-in-out infinite alternate; }
-.star-burst .launch-thrust i:nth-child(2) { animation-delay: -.22s; }
+.star-burst .launch-engine { animation: engine-breathe 1.15s ease-in-out infinite alternate; }
 .burst-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0; }
 .burst-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); background: #fff; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); will-change: transform, opacity; }
 .star-burst .burst-stars { opacity: 1; }
 .star-burst .burst-stars i { animation: star-drift var(--t) linear var(--d) infinite; }
 @keyframes star-drift { 0% { transform: translateY(-130px) scale(.55); opacity: 0; } 12% { opacity: .78; } 82% { opacity: .58; } 100% { transform: translateY(150px) scale(1.15); opacity: 0; } }
 @keyframes launch-float { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(-7px); } }
-@keyframes thrust-flow { from { height: 46px; opacity: .42; } to { height: 86px; opacity: 1; } }
+@keyframes engine-breathe { from { transform: scaleY(.9); opacity: .72; } to { transform: scaleY(1.08); opacity: 1; } }
 .board-notes {
   display: flex;
   flex-direction: column;

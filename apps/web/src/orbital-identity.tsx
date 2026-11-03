@@ -1,8 +1,10 @@
 /** Team identity at the center of the shared application ecosystem. */
 export function OrbitalIdentity({
   activeApp,
+  apps = [],
 }: {
-  activeApp?: { id?: string; name?: string } | null;
+  activeApp?: { id?: string; name?: string; logoUrl?: string } | null;
+  apps?: { id: string; name: string; logoUrl?: string }[];
 } = {}) {
   const normalized = (activeApp?.name || activeApp?.id || "").toUpperCase();
   const isStardrop = normalized.includes("STARDROP");
@@ -10,6 +12,11 @@ export function OrbitalIdentity({
   const isTakvim = normalized.includes("TAKVİM") || normalized.includes("TAKVIM") || normalized.includes("CALENDAR");
   const isCustomApp = !!activeApp && !isStardrop && !isStarlab && !isTakvim;
   const customAppName = activeApp?.name || activeApp?.id || "UYGULAMA";
+  const logoFor = (name: string) =>
+    apps.find((app) => app.name.toUpperCase().includes(name))?.logoUrl ||
+    (activeApp?.name?.toUpperCase().includes(name) ? activeApp.logoUrl ?? "" : "");
+  const SatelliteMark = ({ logo, rotate }: { logo: string; rotate: number }) =>
+    logo ? <image className="satellite-logo" href={logo} x="-15" y="-15" width="30" height="30" preserveAspectRatio="xMidYMid meet" /> : <g transform={`rotate(${rotate})`}><path d="M-19-5h11v10h-11zm27 0h11v10H8z" /><rect x="-5" y="-8" width="10" height="16" rx="1" /><path d="M-8 0h3m10 0h3M0-8v-5m0 0 4-3" /></g>;
 
   return (
     <figure
@@ -64,11 +71,7 @@ export function OrbitalIdentity({
 
         <g className={`orbital-satellite ${isStardrop ? "is-target-active" : ""}`} transform="translate(111 89)">
           <path className="satellite-leader" d="M0 0l-19-19h-38" />
-          <g transform="rotate(-26)">
-            <path d="M-19-5h11v10h-11zm27 0h11v10H8z" />
-            <rect x="-5" y="-8" width="10" height="16" rx="1" />
-            <path d="M-8 0h3m10 0h3M0-8v-5m0 0 4-3" />
-          </g>
+          <SatelliteMark logo={logoFor("STARDROP")} rotate={-26} />
           <text x="-58" y="-29">
             STARDROP
           </text>
@@ -83,11 +86,7 @@ export function OrbitalIdentity({
 
         <g className={`orbital-satellite ${isStarlab ? "is-target-active" : ""}`} transform="translate(465 168)">
           <path className="satellite-leader" d="M0 0l18-21h30" />
-          <g transform="rotate(26)">
-            <path d="M-19-5h11v10h-11zm27 0h11v10H8z" />
-            <rect x="-5" y="-8" width="10" height="16" rx="1" />
-            <path d="M-8 0h3m10 0h3M0-8v-5m0 0 4-3" />
-          </g>
+          <SatelliteMark logo={logoFor("STARLAB")} rotate={26} />
           <text x="48" y="-32" textAnchor="end">
             STARLAB
           </text>
@@ -102,11 +101,7 @@ export function OrbitalIdentity({
 
         <g className={`orbital-satellite ${isTakvim ? "is-target-active" : ""}`} transform="translate(273 369)">
           <path className="satellite-leader" d="M0 0l-28-20h-58" />
-          <g transform="rotate(-8)">
-            <path d="M-19-5h11v10h-11zm27 0h11v10H8z" />
-            <rect x="-5" y="-8" width="10" height="16" rx="1" />
-            <path d="M-8 0h3m10 0h3M0-8v-5m0 0 4-3" />
-          </g>
+          <SatelliteMark logo={logoFor("TAKVİM") || logoFor("TAKVIM")} rotate={-8} />
           <text x="-137" y="-29">
             YRT TAKVİM
           </text>

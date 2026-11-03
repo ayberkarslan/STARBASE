@@ -135,6 +135,9 @@ function App() {
     }
   }, []);
   useEffect(() => {
+    api("/apps").then(setApps).catch(() => {});
+  }, []);
+  useEffect(() => {
     if (path !== "/authorize") return;
     const clientId = params.get("client_id");
     const redirectUri = params.get("redirect_uri");
@@ -338,7 +341,7 @@ function App() {
                 Yıldız Roket Takımının tüm yazılım platformları için ortak bir
                 erişim alanı.
               </p>
-              <OrbitalIdentity activeApp={applicationBrand} />
+              <OrbitalIdentity apps={apps} activeApp={applicationBrand} />
             </section>
             <section className="auth">
               {applicationBrand && (

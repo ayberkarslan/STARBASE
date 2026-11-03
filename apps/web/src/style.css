@@ -330,6 +330,7 @@ header,
   stroke: #ffffff16;
   stroke-width: 0.8;
 }
+.orbital-satellite .satellite-logo { clip-path: circle(50%); }
 .orbital-satellite.is-target-active text {
   fill: #ffffff;
   font-weight: 600;

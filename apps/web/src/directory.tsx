@@ -226,17 +226,16 @@ export function TeamDirectory({
       const response = await fetch(`/api/v1/admin/departments/${encodeURIComponent(id)}/logo`, {
         method: "POST", headers: { "Content-Type": file.type }, body: file,
       });
-      const result = (await response.json()) as { logoUrl: string };
+      await response.json();
       if (!response.ok) throw new Error();
       setOrg((current) => ({
         ...current,
         departments: current.departments.map((department) =>
           department.id === id
-            ? { ...department, logoUrl: `${result.logoUrl}?v=${Date.now()}` }
+            ? { ...department, logoUrl: URL.createObjectURL(file) }
             : department,
         ),
       }));
-      setRetry((n) => n + 1);
     } catch { setError("Departman patch'i yüklenemedi."); }
   }
   const filteredTeams = org.teams.filter(

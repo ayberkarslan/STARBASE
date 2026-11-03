@@ -83,15 +83,17 @@
 .directory-departments {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  width: min(860px, 100%);
-  margin: clamp(24px, 7vh, 82px) auto 0;
-  align-items: start;
+  grid-template-rows: repeat(2, 294px);
+  gap: 16px;
+  width: min(820px, 100%);
+  margin: clamp(18px, 4vh, 48px) auto 0;
+  align-items: stretch;
 }
 .directory-departments > .sd-panel {
   margin: 0;
-  min-height: 274px;
-  padding: 30px;
+  min-height: 0;
+  height: 294px;
+  padding: 24px;
   border-radius: 18px;
   text-align: center;
   background: radial-gradient(circle at 50% 22%, #ffffff0d 0, transparent 42%), #000;
@@ -101,24 +103,28 @@
 .directory-departments > .sd-panel .sd-panel__header { display: block; margin-bottom: 14px; }
 .directory-departments > .sd-panel .sd-panel__header > .sd-button { position: absolute; right: 20px; top: 18px; font-size: 8px; }
 .department-title { display: grid; justify-items: center; gap: 13px; font-weight: 400; letter-spacing: .13em; }
-.department-title img, .department-title svg { width: 82px; height: 82px; padding: 16px; object-fit: contain; border: 1px solid #ffffff70; border-radius: 50%; background: #000; box-shadow: 0 0 0 7px #ffffff08, 0 0 34px #ffffff12; }
+.department-title img, .department-title svg { width: 76px; height: 76px; padding: 15px; object-fit: contain; border: 1px solid #ffffff70; border-radius: 50%; background: #000; box-shadow: 0 0 0 7px #ffffff08, 0 0 34px #ffffff12; }
 .department-title img { padding: 8px; }
-.directory-team-list { margin: 10px auto 0; width: min(100%, 280px); text-align: left; }
+.directory-team-list { margin: 8px auto 0; width: min(100%, 300px); text-align: left; }
 .directory-team-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
 }
 .directory-team-list > .sd-button {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  min-height: 52px;
-  border-bottom: 1px solid #ffffff26;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 1px solid #ffffff1c;
+  font-size: 8px;
 }
 .directory-team-list > .sd-button span:last-child {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 10px;
+  font-size: 7px;
 }
 .member-profile.sd-drawer {
   width: min(660px, 100vw);

@@ -160,6 +160,17 @@ function uploadLogo(
     env,
   );
 }
+function uploadDepartmentLogo(id: string, bytes: Uint8Array) {
+  return app.request(
+    `https://base.test/api/v1/admin/departments/${id}/logo`,
+    {
+      method: "POST",
+      headers: { Origin: "https://base.test", "Content-Type": "image/png", Cookie: "starbase=central" },
+      body: new Blob([new Uint8Array(bytes).buffer], { type: "image/png" }),
+    },
+    env,
+  );
+}
 async function loginCode(scopes = ["profile"]) {
   const verifier = "a".repeat(64);
   const r = await call("/authorize", {
@@ -405,6 +416,20 @@ describe("application branding", () => {
       "",
     );
     expect(response.status).toBe(404);
+  });
+});
+
+describe("department branding", () => {
+  it("uploads and serves a department patch to team members", async () => {
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]);
+    expect((await uploadDepartmentLogo("avionics", png)).status).toBe(200);
+    const directory: any = await (await call("/directory/teams")).json();
+    expect(directory.departments.find((d: any) => d.id === "avionics").logoUrl).toBe(
+      "/api/v1/directory/departments/avionics/logo",
+    );
+    const logo = await call("/directory/departments/avionics/logo");
+    expect(logo.status).toBe(200);
+    expect(new Uint8Array(await logo.arrayBuffer())).toEqual(png);
   });
 });
 

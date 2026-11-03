@@ -882,6 +882,8 @@ input:is(:autofill, :-webkit-autofill) {
 .account-sessions > button { margin-top: 12px; }
 .admin-member-drawer.sd-drawer { width: min(720px, 100vw); position: relative; z-index: 101; }
 .sd-drawer-backdrop { z-index: 1000 !important; }
+.member-profile .sd-drawer__header,
+.admin-member-drawer .sd-drawer__header { border-bottom: 0 !important; }
 .admin-member-sheet { display: grid; gap: 20px; }
 .admin-member-sheet__identity { display: flex; align-items: center; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid #ffffff26; }
 .admin-member-sheet__identity > span { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #fff; border-radius: 50%; }

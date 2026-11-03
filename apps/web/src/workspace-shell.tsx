@@ -132,7 +132,8 @@ export function ApplicationOrbit({
       </svg>
       <span className="orbit-caption">YILDIZDAN YILDIZLARA</span>
       {orbitApps.map((a, index) => {
-        const t = orbitApps.length === 1 ? 0.5 : 0.12 + (index / (orbitApps.length - 1)) * 0.76;
+        const spread = Math.min(0.62, 0.18 * (orbitApps.length - 1));
+        const t = orbitApps.length === 1 ? 0.5 : 0.5 - spread / 2 + (index / (orbitApps.length - 1)) * spread;
         return (
         <button
           key={a.id}

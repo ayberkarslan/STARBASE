@@ -119,7 +119,7 @@ export function BoardNotes(props: {
       </nav>
       {scope === "home" ? (
         <div className={burst ? "blank-board star-burst" : "blank-board"} aria-label="Yıldız Roket Takımı">
-          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 420 }, (_, index) => {
+          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 700 }, (_, index) => {
             const random = (seed: number) => (Math.sin(seed * 12.9898) * 43758.5453) % 1;
             const value = (seed: number) => Math.abs(random(seed));
             return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `${value(index + 311) * 2200}ms`, "--s": `${1 + value(index + 97) * 3.5}px`, "--t": `${6 + value(index + 509) * 4}s` } as CSSProperties} />;

@@ -5,7 +5,6 @@ import {
   EmptyState,
   SearchField,
   SelectMenu,
-  TabBar,
   Drawer,
 } from "@stardrop/ui";
 import {
@@ -25,22 +24,10 @@ import type {
 } from "../../../packages/contracts/src";
 import { request } from "./management";
 import "./directory.css";
-const displayTime = (value: number | null) =>
-  value
-    ? new Date(value * 1000).toLocaleString("tr-TR", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : "—";
-const endLabels = {
-  logout: "Çıkış yapıldı",
-  revoked: "Oturum sonlandırıldı",
-  expired: "Süresi doldu",
-};
 export function ApplicationHistoryView({
   data,
-  onPage,
-  busy = false,
+  onPage: _onPage,
+  busy: _busy = false,
 }: {
   data: ApplicationHistory;
   onPage: (page: number) => void;
@@ -48,80 +35,20 @@ export function ApplicationHistoryView({
 }) {
   return (
     <section className="profile-activity">
-      <h3>
-        <AppWindow size={17} /> Uygulama geçmişi
-      </h3>
+      <h3><AppWindow size={17} /> Kullandığı uygulamalar</h3>
       {data.applications.length ? (
-        <>
-          <div className="usage-list">
-            {data.applications.map((a) => (
-              <Panel key={a.applicationId} title={a.applicationName}>
-                <dl>
-                  <dt>Son giriş</dt>
-                  <dd>{displayTime(a.lastSignInAt)}</dd>
-                  <dt>Son çıkış</dt>
-                  <dd>
-                    {a.lastSignOutAt
-                      ? displayTime(a.lastSignOutAt)
-                      : "Çıkış kaydı yok"}
-                  </dd>
-                  {a.lastEndReason && a.lastEndReason !== "logout" && (
-                    <>
-                      <dt>Son oturum bitişi</dt>
-                      <dd>
-                        {displayTime(a.lastEndAt)} ·{" "}
-                        {endLabels[a.lastEndReason]}
-                      </dd>
-                    </>
-                  )}
-                </dl>
-              </Panel>
-            ))}
-          </div>
-          <h4>Son oturumlar</h4>
-          {!data.visits.length && (
-            <p>Son 90 günde ayrıntılı oturum kaydı bulunmuyor.</p>
-          )}
-          <div className="visit-list">
-            {data.visits.map((v) => (
-              <div key={v.id} className="visit-row">
-                <div>
-                  <span>{v.applicationName}</span>
-                  <small>
-                    {v.endReason
-                      ? endLabels[v.endReason]
-                      : "Çıkış bildirilmedi"}
-                  </small>
-                </div>
-                <div>
-                  <time>{displayTime(v.signedInAt)}</time>
-                  <small>{v.endedAt ? displayTime(v.endedAt) : "—"}</small>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="directory-pagination">
-            <Button
-              size="sm"
-              disabled={busy || data.page === 1}
-              onClick={() => onPage(data.page - 1)}
-            >
-              <ArrowLeft size={14} /> Önceki
-            </Button>
-            <span>Sayfa {data.page}</span>
-            <Button
-              size="sm"
-              disabled={busy || !data.hasMore}
-              onClick={() => onPage(data.page + 1)}
-            >
-              Sonraki <ChevronRight size={14} />
-            </Button>
-          </div>
-        </>
+        <div className="usage-list">
+          {data.applications.map((a) => (
+            <div className="usage-app" key={a.applicationId}>
+              {"logoUrl" in a && typeof a.logoUrl === "string" && a.logoUrl ? <img src={a.logoUrl} alt="" /> : <AppWindow size={18} />}
+              <span>{a.applicationName}</span>
+            </div>
+          ))}
+        </div>
       ) : (
         <EmptyState
           title="Henüz uygulama girişi yok"
-          description="STARBASE ile bağlanan uygulamaların giriş ve çıkış kayıtları burada görünecek."
+          description="STARBASE ile kullandığın uygulamalar burada görünecek."
         />
       )}
     </section>
@@ -159,22 +86,6 @@ function MemberProfile({
       live = false;
     };
   }, [id, attempt]);
-  async function page(page: number) {
-    setBusy(true);
-    try {
-      const data = await request(
-        "/directory/users/" +
-          encodeURIComponent(id!) +
-          "/activity?page=" +
-          page,
-      );
-      setProfile((p) => (p && p.id === id ? { ...p, ...data } : p));
-    } catch {
-      setError("Uygulama geçmişi yüklenemedi.");
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <Drawer
       open={!!id}
@@ -209,7 +120,7 @@ function MemberProfile({
               <p>Henüz bir ekip atanmamış.</p>
             )}
           </section>
-          <ApplicationHistoryView data={profile} onPage={page} busy={busy} />
+          <ApplicationHistoryView data={profile as unknown as ApplicationHistory} onPage={() => {}} busy={busy} />
         </>
       )}
     </Drawer>
@@ -218,18 +129,20 @@ function MemberProfile({
 export function TeamDirectory({
   currentUserId,
   teamsOnly = false,
+  canManageOrganization = false,
 }: {
   currentUserId: string;
   teamsOnly?: boolean;
+  canManageOrganization?: boolean;
 }) {
-  const [view, setView] = useState(teamsOnly ? "teams" : "people"),
-    [query, setQuery] = useState(""),
+  const [query, setQuery] = useState(""),
     [department, setDepartment] = useState(""),
     [team, setTeam] = useState(""),
     [page, setPage] = useState(1),
     [result, setResult] = useState<DirectoryPage | null>(null),
     [org, setOrg] = useState<DirectoryTeams>({ departments: [], teams: [] }),
     [selected, setSelected] = useState<string | null>(null),
+    [selectedTeam, setSelectedTeam] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0);
@@ -290,7 +203,20 @@ export function TeamDirectory({
     setTeam(teamId);
     setQuery("");
     setPage(1);
-    setView("people");
+    setSelectedTeam(teamId || null);
+  }
+  async function uploadTeamLogo(id: string, file: File) {
+    if (!file.type.match(/^image\/(png|jpeg|webp)$/) || file.size > 1048576) {
+      setError("Logo PNG, JPEG veya WebP olmalı ve 1 MB'ı geçmemeli.");
+      return;
+    }
+    try {
+      const response = await fetch(`/api/v1/admin/teams/${encodeURIComponent(id)}/logo`, {
+        method: "POST", headers: { "Content-Type": file.type }, body: file,
+      });
+      if (!response.ok) throw new Error();
+      setRetry((n) => n + 1);
+    } catch { setError("Ekip logosu yüklenemedi."); }
   }
   const filteredTeams = org.teams.filter(
     (t) => !department || t.departmentId === department,
@@ -300,23 +226,15 @@ export function TeamDirectory({
       <div className="directory-heading">
         <div>
           <span className="eyebrow">YILDIZ ROKET TAKIMI</span>
-          <h1>{teamsOnly ? "Ekipler" : "Takım dizini"}</h1>
+          <h1>{selectedTeam ? org.teams.find((t) => t.id === selectedTeam)?.name ?? "Ekip" : teamsOnly ? "Ekipler" : "Takım dizini"}</h1>
         </div>
         <Button variant="bare" onClick={() => setSelected(currentUserId)}>
           Profilimi görüntüle <ArrowUpRight size={15} />
         </Button>
       </div>
-      <TabBar
-        label="Takım dizini görünümü"
-        value={view}
-        onChange={setView}
-        items={[
-          { value: "people", label: "Üyeler", icon: <Users size={16} /> },
-          { value: "teams", label: "Ekipler", icon: <Layers size={16} /> },
-        ]}
-      />
-      {view === "people" ? (
+      {(!teamsOnly || selectedTeam) ? (
         <>
+          {selectedTeam && <Button variant="bare" onClick={() => { setSelectedTeam(null); reset(); }}><ArrowLeft size={15} /> Ekip listesine dön</Button>}
           <div className="directory-filters">
             <SearchField
               label="Üye ara"
@@ -450,12 +368,18 @@ export function TeamDirectory({
                       variant="bare"
                       onClick={() => browse(d.id, t.id)}
                     >
-                      <span>{t.name}</span>
+                      <span className="team-patch">{t.logoUrl ? <img src={t.logoUrl} alt="" /> : <Layers size={16} />} </span><strong>{t.name}</strong>
                       <span>
                         {t.memberCount} üye <ChevronRight size={14} />
                       </span>
                     </Button>
                   ))}
+                {canManageOrganization && org.teams.filter((t) => t.departmentId === d.id).map((t) => (
+                  <label className="team-logo-upload" key={`${t.id}-logo`}>
+                    {t.name} için patch
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadTeamLogo(t.id, file); }} />
+                  </label>
+                ))}
               </div>
               {!org.teams.some((t) => t.departmentId === d.id) && (
                 <p>Henüz ekip eklenmemiş.</p>

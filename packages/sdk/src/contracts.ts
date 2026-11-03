@@ -67,7 +67,14 @@ export interface ApplicationHistory {
   total: number;
   hasMore: boolean;
 }
-export interface DirectoryProfile extends DirectoryUser, ApplicationHistory {}
+export interface ProfileApplication {
+  applicationId: string;
+  applicationName: string;
+  logoUrl: string;
+}
+export interface DirectoryProfile extends DirectoryUser {
+  applications: ProfileApplication[];
+}
 export interface DirectoryTeams {
   departments: { id: string; name: string; memberCount: number }[];
   teams: {
@@ -75,5 +82,6 @@ export interface DirectoryTeams {
     name: string;
     departmentId: string;
     memberCount: number;
+    logoUrl: string;
   }[];
 }

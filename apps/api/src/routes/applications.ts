@@ -23,16 +23,15 @@ import {
   credentials,
   type App,
 } from "../common";
+const logoUrl = (id: string, stored: string) =>
+  stored ? `/api/v1/apps/${encodeURIComponent(id)}/logo` : "";
 export function register(app: App) {
-  app.get("/api/v1/apps", async (c) =>
-    c.json(
-      (
-        await c.env.DB.prepare(
-          "SELECT id,name,logo_url logoUrl FROM apps WHERE disabled=0",
-        ).all()
-      ).results,
-    ),
-  );
+  app.get("/api/v1/apps", async (c) => {
+    const apps = await c.env.DB.prepare(
+      "SELECT id,name,logo_url logoUrl FROM apps WHERE disabled=0",
+    ).all<{ id: string; name: string; logoUrl: string }>();
+    return c.json(apps.results.map((item) => ({ ...item, logoUrl: logoUrl(item.id, item.logoUrl) })));
+  });
   app.get("/api/v1/apps/:id/branding", async (c) => {
     const redirect = c.req.query("redirectUri") ?? "";
     const application = await c.env.DB.prepare(
@@ -50,10 +49,7 @@ export function register(app: App) {
     if (!JSON.parse(application.redirects).includes(redirect))
       throw new HTTPException(404, { message: "application_not_found" });
     const { id, name } = application;
-    const logoUrl = application.logoUrl
-      ? `/api/v1/apps/${encodeURIComponent(id)}/logo`
-      : "";
-    return c.json({ id, name, logoUrl });
+    return c.json({ id, name, logoUrl: logoUrl(id, application.logoUrl) });
   });
   app.get("/api/v1/apps/:id/logo", async (c) => {
     const application = await c.env.DB.prepare(
@@ -156,15 +152,12 @@ export function register(app: App) {
   app.get("/api/v1/connections", async (c) => {
     if (c.get("session").kind !== "central")
       fail(403, "central_session_required");
-    return c.json(
-      (
-        await c.env.DB.prepare(
-          "SELECT a.id,a.name,a.logo_url logoUrl,c.scopes FROM consents c JOIN apps a ON a.id=c.app_id WHERE c.user_id=?",
-        )
-          .bind(c.get("user").id)
-          .all()
-      ).results,
-    );
+    const apps = await c.env.DB.prepare(
+      "SELECT a.id,a.name,a.logo_url logoUrl,c.scopes FROM consents c JOIN apps a ON a.id=c.app_id WHERE c.user_id=?",
+    )
+      .bind(c.get("user").id)
+      .all<{ id: string; name: string; logoUrl: string; scopes: string }>();
+    return c.json(apps.results.map((item) => ({ ...item, logoUrl: logoUrl(item.id, item.logoUrl) })));
   });
   app.delete("/api/v1/connections/:id", async (c) => {
     if (c.get("session").kind !== "central")

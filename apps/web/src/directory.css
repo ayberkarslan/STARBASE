@@ -107,7 +107,7 @@
 .department-actions .sd-button { font-size: 8px; }
 .department-title { display: flex; align-items: center; gap: 14px; font-weight: 400; letter-spacing: .13em; font-size: 13px; }
 .department-title img, .department-title svg { width: 56px; height: 56px; padding: 11px; object-fit: contain; border: 1px solid #ffffff70; border-radius: 50%; background: #000; box-shadow: none; }
-.department-title img { padding: 8px; }
+.department-title img { padding: 0; object-fit: cover; object-position: center; }
 .directory-team-list { margin: 10px 0 0; width: 100%; text-align: left; }
 .directory-team-list {
   display: grid;

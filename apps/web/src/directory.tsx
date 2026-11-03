@@ -217,18 +217,18 @@ export function TeamDirectory({
     setPage(1);
     setSelectedTeam(teamId || null);
   }
-  async function uploadTeamLogo(id: string, file: File) {
+  async function uploadDepartmentLogo(id: string, file: File) {
     if (!file.type.match(/^image\/(png|jpeg|webp)$/) || file.size > 1048576) {
       setError("Logo PNG, JPEG veya WebP olmalı ve 1 MB'ı geçmemeli.");
       return;
     }
     try {
-      const response = await fetch(`/api/v1/admin/teams/${encodeURIComponent(id)}/logo`, {
+      const response = await fetch(`/api/v1/admin/departments/${encodeURIComponent(id)}/logo`, {
         method: "POST", headers: { "Content-Type": file.type }, body: file,
       });
       if (!response.ok) throw new Error();
       setRetry((n) => n + 1);
-    } catch { setError("Ekip logosu yüklenemedi."); }
+    } catch { setError("Departman patch'i yüklenemedi."); }
   }
   const filteredTeams = org.teams.filter(
     (t) => !department || t.departmentId === department,
@@ -364,7 +364,7 @@ export function TeamDirectory({
           {org.departments.map((d) => (
             <Panel
               key={d.id}
-              title={d.name}
+              title={<span className="department-title">{d.logoUrl ? <img src={d.logoUrl} alt="" /> : <Layers size={22} />}{d.name}</span>}
               action={
                 <Button variant="bare" onClick={() => browse(d.id)}>
                   {d.memberCount} üye <ArrowUpRight size={14} />
@@ -386,12 +386,10 @@ export function TeamDirectory({
                       </span>
                     </Button>
                   ))}
-                {canManageOrganization && org.teams.filter((t) => t.departmentId === d.id).map((t) => (
-                  <label className="team-logo-upload" key={`${t.id}-logo`}>
-                    {t.name} için patch
-                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadTeamLogo(t.id, file); }} />
-                  </label>
-                ))}
+                {canManageOrganization && <label className="department-logo-upload">
+                  Departman patch'i
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadDepartmentLogo(d.id, file); }} />
+                </label>}
               </div>
               {!org.teams.some((t) => t.departmentId === d.id) && (
                 <p>Henüz ekip eklenmemiş.</p>

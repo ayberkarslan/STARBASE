@@ -79,6 +79,23 @@ export function register(app: App) {
     await audit(c, "department.create", id);
     return c.json({ id }, 201);
   });
+  app.post("/api/v1/admin/departments/:id/logo", async (c) => {
+    await permit(c, "organization.manage");
+    const id = c.req.param("id");
+    if (!(await c.env.DB.prepare("SELECT id FROM departments WHERE id=? AND archived=0").bind(id).first()))
+      throw new HTTPException(404, { message: "department_not_found" });
+    const declaredType = c.req.header("content-type")?.split(";")[0] ?? "";
+    const bytes = new Uint8Array(await c.req.arrayBuffer());
+    if (!bytes.length || bytes.length > 1048576)
+      throw new HTTPException(400, { message: "invalid_logo_size" });
+    const detectedType = sniffImage(bytes);
+    if (!detectedType || detectedType !== declaredType)
+      throw new HTTPException(400, { message: "invalid_logo_file" });
+    await c.env.APP_LOGOS.put(`departments/${id}/logo`, bytes, { httpMetadata: { contentType: detectedType, cacheControl: "private, max-age=3600" } });
+    await c.env.DB.prepare("UPDATE departments SET logo_url=? WHERE id=?").bind("uploaded", id).run();
+    await audit(c, "department.logo.upload", id);
+    return c.json({ logoUrl: `/api/v1/directory/departments/${id}/logo` });
+  });
   app.post("/api/v1/admin/teams", async (c) => {
     await permit(c, "organization.manage");
     const b = await body(

@@ -119,7 +119,7 @@ export function register(app: App) {
     await requireDirectory(c);
     const departments = (
       await c.env.DB.prepare(
-        `SELECT d.id,d.name,COUNT(DISTINCT CASE WHEN u.disabled=0 AND (m.team_id IS NULL OR t.archived=0) AND ${member("u")} THEN u.id END) memberCount FROM departments d LEFT JOIN memberships m ON m.department_id=d.id LEFT JOIN teams t ON t.id=m.team_id LEFT JOIN users u ON u.id=m.user_id WHERE d.archived=0 GROUP BY d.id ORDER BY d.name`,
+        `SELECT d.id,d.name,d.logo_url logoUrl,COUNT(DISTINCT CASE WHEN u.disabled=0 AND (m.team_id IS NULL OR t.archived=0) AND ${member("u")} THEN u.id END) memberCount FROM departments d LEFT JOIN memberships m ON m.department_id=d.id LEFT JOIN teams t ON t.id=m.team_id LEFT JOIN users u ON u.id=m.user_id WHERE d.archived=0 GROUP BY d.id ORDER BY d.name`,
       ).all()
     ).results;
     const teams = (
@@ -128,7 +128,12 @@ export function register(app: App) {
       ).all()
     ).results;
     return c.json({
-      departments,
+      departments: departments.map((department: any) => ({
+        ...department,
+        logoUrl: department.logoUrl
+          ? `/api/v1/directory/departments/${encodeURIComponent(department.id)}/logo`
+          : "",
+      })),
       teams: teams.map((team: any) => ({
         ...team,
         logoUrl: team.logoUrl
@@ -136,6 +141,21 @@ export function register(app: App) {
           : "",
       })),
     });
+  });
+  app.get("/api/v1/directory/departments/:id/logo", async (c) => {
+    await requireDirectory(c);
+    const department = await c.env.DB.prepare(
+      "SELECT id,logo_url FROM departments WHERE id=? AND archived=0",
+    ).bind(c.req.param("id")).first<{ id: string; logo_url: string }>();
+    if (!department?.logo_url) fail(404, "department_logo_not_found");
+    const item = await c.env.APP_LOGOS.get(`departments/${(department as { id: string }).id}/logo`);
+    if (!item) fail(404, "department_logo_not_found");
+    const object = item as R2ObjectBody;
+    return new Response(object.body, { headers: {
+      "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
+      "Cache-Control": "private, max-age=3600", ETag: object.httpEtag,
+      "X-Content-Type-Options": "nosniff",
+    }});
   });
   app.get("/api/v1/directory/teams/:id/logo", async (c) => {
     await requireDirectory(c);

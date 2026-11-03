@@ -76,7 +76,7 @@ export interface DirectoryProfile extends DirectoryUser {
   applications: ProfileApplication[];
 }
 export interface DirectoryTeams {
-  departments: { id: string; name: string; memberCount: number }[];
+  departments: { id: string; name: string; memberCount: number; logoUrl: string }[];
   teams: {
     id: string;
     name: string;

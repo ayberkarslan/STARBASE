@@ -37,6 +37,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0007_app_branding.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0008_app_logo_storage.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0009_team_branding.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0010_department_branding.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {

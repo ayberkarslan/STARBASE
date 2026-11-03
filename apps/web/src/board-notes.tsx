@@ -91,7 +91,6 @@ export function BoardNotes(props: {
   const [defaultScope, setDefaultScope] = useState<"home" | "private" | "shared">(
     () => (localStorage.getItem("starbase.board.default") as "home" | "private" | "shared") || "home",
   );
-  const [burst, setBurst] = useState(false);
   function makeDefault(next: "home" | "private" | "shared") {
     localStorage.setItem("starbase.board.default", next);
     setDefaultScope(next);
@@ -118,14 +117,14 @@ export function BoardNotes(props: {
         ))}
       </nav>
       {scope === "home" ? (
-        <div className={burst ? "blank-board star-burst" : "blank-board"} aria-label="Yıldız Roket Takımı">
+        <div className="blank-board star-burst" aria-label="Yıldız Roket Takımı">
           <div className="burst-stars" aria-hidden="true">{Array.from({ length: 700 }, (_, index) => {
             const random = (seed: number) => (Math.sin(seed * 12.9898) * 43758.5453) % 1;
             const value = (seed: number) => Math.abs(random(seed));
-            return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `${value(index + 311) * 2200}ms`, "--s": `${1 + value(index + 97) * 3.5}px`, "--t": `${6 + value(index + 509) * 4}s` } as CSSProperties} />;
+            return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `-${value(index + 311) * 10}s`, "--s": `${1 + value(index + 97) * 3.5}px`, "--t": `${7 + value(index + 509) * 5}s` } as CSSProperties} />;
           })}</div>
           <div className="launch-mark">
-            <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" onPointerEnter={() => { setBurst(true); window.setTimeout(() => setBurst(false), 11000); }} />
+            <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" />
             <span className="launch-thrust" aria-hidden="true"><i /><i /><i /></span>
           </div>
         </div>

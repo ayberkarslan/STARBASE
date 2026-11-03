@@ -246,7 +246,7 @@ export function TeamDirectory({
       <div className="directory-heading">
         <div>
           <span className="eyebrow">YILDIZ ROKET TAKIMI</span>
-          <h1>{selectedTeam ? org.teams.find((t) => t.id === selectedTeam)?.name ?? "Ekip" : teamsOnly ? "Ekipler" : "Takım dizini"}</h1>
+          <h1>{selectedTeam ? org.teams.find((t) => t.id === selectedTeam)?.name ?? "Ekip" : teamsOnly ? "Departmanlar" : "Takım dizini"}</h1>
         </div>
         <Button variant="bare" onClick={() => setSelected(currentUserId)}>
           Profilimi görüntüle <ArrowUpRight size={15} />

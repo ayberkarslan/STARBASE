@@ -125,7 +125,7 @@ export function BoardNotes(props: {
           })}</div>
           <div className="launch-mark">
             <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" />
-            <svg className="launch-engine" viewBox="0 0 80 138" aria-hidden="true">
+            <svg className="launch-engine" viewBox="0 0 80 120" aria-hidden="true">
               <defs>
                 <linearGradient id="exhaust-core" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stopColor="#fff" stopOpacity=".96" />
@@ -133,11 +133,9 @@ export function BoardNotes(props: {
                   <stop offset="1" stopColor="#fff" stopOpacity="0" />
                 </linearGradient>
               </defs>
-              <path className="engine-bell" d="M31 1h18l-2 18c-1 8 2 14 8 23H25c6-9 9-15 8-23z" />
-              <path className="engine-throat" d="M35 4h10l-1 16H36z" />
-              <path className="engine-plume outer" d="M26 42h28c-1 25-13 47-14 82C39 89 27 67 26 42z" />
-              <path className="engine-plume core" d="M34 42h12c-1 20-5 39-6 66-1-27-5-46-6-66z" />
-              <path className="engine-wave" d="M30 63c6 4 14 4 20 0M27 84c8 5 18 5 26 0" />
+              <path className="engine-plume outer" d="M26 4h28c-1 25-13 47-14 82C39 51 27 29 26 4z" />
+              <path className="engine-plume core" d="M34 4h12c-1 20-5 39-6 66-1-27-5-46-6-66z" />
+              <path className="engine-wave" d="M30 25c6 4 14 4 20 0M27 46c8 5 18 5 26 0" />
             </svg>
           </div>
         </div>

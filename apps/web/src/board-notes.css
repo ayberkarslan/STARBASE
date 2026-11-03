@@ -243,21 +243,19 @@
   transition: filter 400ms ease, transform 400ms ease;
 }
 .blank-board img:hover { transform: scale(1.02); filter: none; }
-.launch-engine { position: absolute; top: calc(100% - 14px); width: 82px; height: 138px; overflow: visible; transform-origin: 50% 0; }
-.engine-bell { fill: #000; stroke: #fff; stroke-width: 1.15; }
-.engine-throat { fill: #fff; opacity: .85; }
+.launch-engine { position: absolute; top: calc(100% - 25px); width: 82px; height: 120px; overflow: visible; transform-origin: 50% 0; }
 .engine-plume.outer { fill: url(#exhaust-core); opacity: .38; }
 .engine-plume.core { fill: url(#exhaust-core); opacity: .92; }
 .engine-wave { fill: none; stroke: #fff; stroke-width: .55; opacity: .42; }
 .star-burst .launch-mark img { animation: launch-float 4.6s ease-in-out infinite; }
-.star-burst .launch-engine { animation: engine-breathe 1.15s ease-in-out infinite alternate; }
+.star-burst .launch-engine { animation: engine-breathe 5.7s ease-in-out infinite; }
 .burst-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0; }
 .burst-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); background: #fff; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); will-change: transform, opacity; }
 .star-burst .burst-stars { opacity: 1; }
 .star-burst .burst-stars i { animation: star-drift var(--t) linear var(--d) infinite; }
 @keyframes star-drift { 0% { transform: translateY(-130px) scale(.55); opacity: 0; } 12% { opacity: .78; } 82% { opacity: .58; } 100% { transform: translateY(150px) scale(1.15); opacity: 0; } }
 @keyframes launch-float { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(-7px); } }
-@keyframes engine-breathe { from { transform: scaleY(.9); opacity: .72; } to { transform: scaleY(1.08); opacity: 1; } }
+@keyframes engine-breathe { 0%, 100% { transform: scaleY(.985); opacity: .88; } 31% { transform: scaleY(1.012); opacity: .96; } 67% { transform: scaleY(.996); opacity: .91; } }
 .board-notes {
   display: flex;
   flex-direction: column;

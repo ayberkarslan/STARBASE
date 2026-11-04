@@ -35,7 +35,7 @@ beforeEach(() => {
     children.push(child);
     return child;
   });
-  vi.doMock("node:child_process", () => ({ spawn }));
+  vi.doMock("node:child_process", () => ({ spawn, execFileSync: vi.fn() }));
   vi.doMock("node:fs", () => ({
     readFileSync: (path: string) =>
       path.endsWith(".dev.vars")

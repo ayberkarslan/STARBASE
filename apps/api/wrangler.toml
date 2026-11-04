@@ -14,6 +14,7 @@ migrations_dir = "migrations"
 PUBLIC_ORIGIN = "https://starbase.ayberkarslann0.workers.dev"
 FIREBASE_PROJECT_ID = "starbase-3ce1f"
 FIREBASE_API_KEY = "AIzaSyBs6-4Ffur8Z5oWJcT9WF_jU7mBf65dE_s"
+TURNSTILE_SITE_KEY = "0x4AAAAAAFz1CdINYgcD0Umi"
 
 [triggers]
 crons = ["0 3 * * *"]

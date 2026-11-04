@@ -8,6 +8,7 @@ import {
   requireTeamMember,
 } from "../common";
 import { applicationHistory } from "../activity";
+import { imageResponse } from "../image-assets";
 type C = Context<{ Bindings: Env; Variables: { session: Session; user: any } }>;
 const member = (alias: string) =>
   `(${alias}.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=${alias}.id))`;
@@ -147,15 +148,10 @@ export function register(app: App) {
     const department = await c.env.DB.prepare(
       "SELECT id,logo_url FROM departments WHERE id=? AND archived=0",
     ).bind(c.req.param("id")).first<{ id: string; logo_url: string }>();
-    if (!department?.logo_url) fail(404, "department_logo_not_found");
-    const item = await c.env.APP_LOGOS.get(`departments/${(department as { id: string }).id}/logo`);
-    if (!item) fail(404, "department_logo_not_found");
-    const object = item as R2ObjectBody;
-    return new Response(object.body, { headers: {
-      "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
-      "Cache-Control": "private, max-age=3600", ETag: object.httpEtag,
-      "X-Content-Type-Options": "nosniff",
-    }});
+    if (!department?.logo_url) return fail(404, "department_logo_not_found");
+    const image = await imageResponse(c.env.DB, "departments", department.id);
+    if (!image) return fail(404, "department_logo_not_found");
+    return image;
   });
   app.get("/api/v1/directory/teams/:id/logo", async (c) => {
     await requireDirectory(c);
@@ -164,19 +160,10 @@ export function register(app: App) {
     )
       .bind(c.req.param("id"))
       .first<{ id: string; logo_url: string }>();
-    if (!team?.logo_url) fail(404, "team_logo_not_found");
-    const storedTeam = team as { id: string; logo_url: string };
-    const object = await c.env.APP_LOGOS.get(`teams/${storedTeam.id}/logo`);
-    if (!object) fail(404, "team_logo_not_found");
-    const storedObject = object as R2ObjectBody;
-    return new Response(storedObject.body, {
-      headers: {
-        "Content-Type": storedObject.httpMetadata?.contentType ?? "application/octet-stream",
-        "Cache-Control": "private, max-age=3600",
-        ETag: storedObject.httpEtag,
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    if (!team?.logo_url) return fail(404, "team_logo_not_found");
+    const image = await imageResponse(c.env.DB, "teams", team.id);
+    if (!image) return fail(404, "team_logo_not_found");
+    return image;
   });
   app.get("/api/v1/directory/users/:id", async (c) => {
     await requireDirectory(c);

@@ -23,6 +23,7 @@ import {
   credentials,
   type App,
 } from "../common";
+import { imageResponse } from "../image-assets";
 const logoUrl = (id: string, stored: string) =>
   stored ? `/api/v1/apps/${encodeURIComponent(id)}/logo` : "";
 export function register(app: App) {
@@ -59,17 +60,10 @@ export function register(app: App) {
       .first<{ id: string; logo_url: string }>();
     if (!application?.logo_url)
       throw new HTTPException(404, { message: "application_logo_not_found" });
-    const object = await c.env.APP_LOGOS.get(`apps/${application.id}/logo`);
-    if (!object)
+    const image = await imageResponse(c.env.DB, "apps", application.id);
+    if (!image)
       throw new HTTPException(404, { message: "application_logo_not_found" });
-    return new Response(object.body, {
-      headers: {
-        "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
-        "Cache-Control": "public, max-age=3600",
-        "ETag": object.httpEtag,
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return image;
   });
   app.get("/api/v1/authorize", async (c) => {
     const id = c.req.query("client_id");

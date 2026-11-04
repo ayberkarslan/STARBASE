@@ -34,6 +34,7 @@ import { register as identity } from "./routes/identity";
 import { register as organization } from "./routes/organization";
 import { register as management } from "./routes/management";
 import { register as applications } from "./routes/applications";
+import { MAX_IMAGE_BYTES } from "./image-assets";
 const app: App = new Hono();
 app.onError((e, c) =>
   c.json(
@@ -49,9 +50,7 @@ app.use("/api/*", async (c, next) => {
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
   const logoRoute = /^\/api\/v1\/admin\/(apps|teams|departments)\/[a-z0-9-]{3,40}\/logo$/.exec(c.req.path);
-  const maxBodySize = logoRoute
-    ? logoRoute[1] === "apps" ? 1048576 : 6291456
-    : 16384;
+  const maxBodySize = logoRoute ? MAX_IMAGE_BYTES : 16384;
   if (Number(c.req.header("content-length") ?? 0) > maxBodySize)
     return fail(400, "input_too_large");
   const origin = c.req.header("origin");

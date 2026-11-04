@@ -5,7 +5,6 @@ import { app } from "./index";
 import { hash, challenge, now } from "./security";
 let db: DatabaseSync;
 let env: any;
-const logoObjects = new Map<string, { bytes: Uint8Array; contentType: string }>();
 class Statement {
   values: any[] = [];
   constructor(private sql: string) {}
@@ -24,7 +23,6 @@ class Statement {
   }
 }
 beforeEach(async () => {
-  logoObjects.clear();
   db = new DatabaseSync(":memory:");
   db.exec(readFileSync("apps/api/migrations/0001_core.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0002_invites.sql", "utf8"));
@@ -38,6 +36,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0008_app_logo_storage.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0009_team_branding.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0010_department_branding.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0011_image_assets.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -57,27 +56,6 @@ beforeEach(async () => {
           db.exec("ROLLBACK");
           throw e;
         }
-      },
-    },
-    APP_LOGOS: {
-      put: async (key: string, value: Uint8Array, options: any) => {
-        logoObjects.set(key, {
-          bytes: new Uint8Array(value),
-          contentType: options.httpMetadata.contentType,
-        });
-        return { key };
-      },
-      get: async (key: string) => {
-        const stored = logoObjects.get(key);
-        if (!stored) return null;
-        return {
-          body: new Response(new Uint8Array(stored.bytes).buffer).body,
-          httpMetadata: { contentType: stored.contentType },
-          httpEtag: '"logo-etag"',
-        };
-      },
-      delete: async (key: string) => {
-        logoObjects.delete(key);
       },
     },
     ASSETS: { fetch: () => new Response("asset") },
@@ -351,6 +329,9 @@ describe("application branding", () => {
     expect(logo.headers.get("content-type")).toBe("image/png");
     expect(new Uint8Array(await logo.arrayBuffer())).toEqual(png);
     expect(logo.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(logo.headers.get("cache-control")).toBe("no-store");
+    expect(db.prepare("SELECT content_type,length(content) size FROM image_assets WHERE key=?")
+      .get("apps/starlab/logo")).toEqual({ content_type: "image/png", size: png.length });
   });
 
   it("rejects unsupported, mismatched and oversized logo files", async () => {
@@ -375,6 +356,7 @@ describe("application branding", () => {
     const removed = await call("/admin/apps/starlab/logo", undefined, "central", "DELETE");
     expect(removed.status).toBe(200);
     expect((await call("/apps/starlab/logo", undefined, "")).status).toBe(404);
+    expect(db.prepare("SELECT COUNT(*) count FROM image_assets").get()).toEqual({ count: 0 });
   });
 
   it("creates apps without an uploaded logo and updates branding without revoking sessions", async () => {

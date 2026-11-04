@@ -23,6 +23,7 @@ import type {
   ApplicationHistory,
 } from "../../../packages/contracts/src";
 import { request } from "./management";
+import { compactPatch } from "./image-upload";
 import "./directory.css";
 export function ApplicationHistoryView({
   data,
@@ -218,25 +219,22 @@ export function TeamDirectory({
     setSelectedTeam(teamId || null);
   }
   async function uploadDepartmentLogo(id: string, file: File) {
-    if (!file.type.match(/^image\/(png|jpeg|webp)$/) || file.size > 6291456) {
-      setError("Patch PNG, JPEG veya WebP olmalı ve 6 MB'ı geçmemeli.");
-      return;
-    }
     try {
+      const image = await compactPatch(file);
       const response = await fetch(`/api/v1/admin/departments/${encodeURIComponent(id)}/logo`, {
-        method: "POST", headers: { "Content-Type": file.type }, body: file,
+        method: "POST", headers: { "Content-Type": image.type }, body: image,
       });
-      await response.json();
+      const result = await response.json() as { logoUrl: string };
       if (!response.ok) throw new Error();
       setOrg((current) => ({
         ...current,
         departments: current.departments.map((department) =>
           department.id === id
-            ? { ...department, logoUrl: URL.createObjectURL(file) }
+            ? { ...department, logoUrl: `${result.logoUrl}?v=${Date.now()}` }
             : department,
         ),
       }));
-    } catch { setError("Departman patch'i yüklenemedi."); }
+    } catch (error) { setError(error instanceof Error ? error.message : "Departman patch'i yüklenemedi."); }
   }
   const filteredTeams = org.teams.filter(
     (t) => !department || t.departmentId === department,

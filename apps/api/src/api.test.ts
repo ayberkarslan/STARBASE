@@ -307,6 +307,12 @@ describe("identity boundaries", () => {
 });
 
 describe("application branding", () => {
+  it("lists enabled application branding before login", async () => {
+    db.prepare("UPDATE apps SET logo_url='uploaded' WHERE id='starlab'").run();
+    const response = await call("/apps", undefined, "");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([{ id: "starlab", name: "STARLAB", logoUrl: "/api/v1/apps/starlab/logo" }]);
+  });
   it("returns branding only for a registered callback URI", async () => {
     db.prepare("UPDATE apps SET logo_url=? WHERE id=?").run("uploaded", "starlab");
 

@@ -86,6 +86,7 @@ app.use("/api/v1/*", async (c, next) => {
   if (
     [
       "/api/v1/config",
+      "/api/v1/apps",
       "/api/v1/auth/resend",
       "/api/v1/health",
       "/api/v1/auth/register",

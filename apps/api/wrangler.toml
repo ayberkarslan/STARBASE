@@ -10,9 +10,6 @@ binding = "DB"
 database_name = "starbase"
 database_id = "replace-with-d1-id"
 migrations_dir = "migrations"
-[[r2_buckets]]
-binding = "APP_LOGOS"
-bucket_name = "starbase-app-logos"
 [vars]
 PUBLIC_ORIGIN = "http://localhost:8787"
 FIREBASE_PROJECT_ID = "demo-starbase"

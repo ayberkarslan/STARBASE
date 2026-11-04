@@ -73,6 +73,21 @@ describe("SDK contracts", () => {
     expect(assign).toHaveBeenCalledOnce();
     expect(storage.removeItem).toHaveBeenCalledWith("starbase.starlab");
   });
+  it("logs out only this app without restarting login", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { assign });
+    const values = new Map([["starbase.starlab", "refresh"]]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ accessToken: "access", refreshToken: "refresh", expiresIn: 600 })));
+    const client = new Starbase({ baseUrl: "https://base.test", clientId: "starlab", redirectUri: "https://lab.test/callback", storage });
+    await client.logout();
+    expect(values.has("starbase.starlab")).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
+  });
   it("rejects callback state mismatches before exchange", async () => {
     vi.stubGlobal("sessionStorage", {
       getItem: () =>

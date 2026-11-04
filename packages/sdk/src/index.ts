@@ -205,7 +205,7 @@ export class Starbase {
     try {
       await this.request("/auth/logout", {}, true);
     } finally {
-      this.redirectToLogin();
+      this.clearSession();
     }
   }
   async logoutAll() {

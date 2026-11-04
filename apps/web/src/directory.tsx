@@ -225,7 +225,7 @@ export function TeamDirectory({
         method: "POST", headers: { "Content-Type": image.type }, body: image,
       });
       const result = await response.json() as { logoUrl: string };
-      if (!response.ok) throw new Error();
+      if (!response.ok) throw new Error("Departman patch'i yüklenemedi.");
       setOrg((current) => ({
         ...current,
         departments: current.departments.map((department) =>

@@ -29,8 +29,8 @@ const logoUrl = (id: string, stored: string) =>
 export function register(app: App) {
   app.get("/api/v1/apps", async (c) => {
     const apps = await c.env.DB.prepare(
-      "SELECT id,name,logo_url logoUrl FROM apps WHERE disabled=0",
-    ).all<{ id: string; name: string; logoUrl: string }>();
+      "SELECT id,name,logo_url logoUrl,launch_url launchUrl FROM apps WHERE disabled=0",
+    ).all<{ id: string; name: string; logoUrl: string; launchUrl: string }>();
     return c.json(apps.results.map((item) => ({ ...item, logoUrl: logoUrl(item.id, item.logoUrl) })));
   });
   app.get("/api/v1/apps/:id/branding", async (c) => {

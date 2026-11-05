@@ -25,6 +25,19 @@ import {
 } from "../common";
 import { uploadedImage, saveImage, removeImage } from "../image-assets";
 
+function validLaunchUrl(value: string) {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return !!url.hostname && !url.username && !url.password &&
+      (url.protocol === "https:" ||
+        (/^[a-z][a-z0-9+.-]*:$/.test(url.protocol) &&
+          !["http:", "javascript:", "data:", "file:", "blob:"].includes(url.protocol)));
+  } catch {
+    return false;
+  }
+}
+
 export function register(app: App) {
   app.get("/api/v1/admin/users/:id", async (c) => {
     await permit(c, "users.manage");
@@ -137,6 +150,7 @@ export function register(app: App) {
         redirects: z.array(z.string().url()).min(1),
         origins: z.array(z.string().url()),
         scopes: z.array(z.enum(["profile", "email", "organization"])),
+        launchUrl: z.string().trim().max(400).refine(validLaunchUrl).optional(),
       }),
     );
     for (const r of b.redirects) {
@@ -148,7 +162,7 @@ export function register(app: App) {
         fail(400, "https_required");
     }
     await c.env.DB.prepare(
-      "INSERT INTO apps(id,name,redirects,origins,scopes) VALUES(?,?,?,?,?)",
+      "INSERT INTO apps(id,name,redirects,origins,scopes,launch_url) VALUES(?,?,?,?,?,?)",
     )
       .bind(
         b.id,
@@ -156,6 +170,7 @@ export function register(app: App) {
         JSON.stringify(b.redirects),
         JSON.stringify(b.origins),
         JSON.stringify(b.scopes),
+        b.launchUrl ?? "",
       )
       .run();
     await audit(c, "app.create", b.id);
@@ -556,6 +571,7 @@ export function register(app: App) {
         .object({
           disabled: z.boolean().optional(),
           name: z.string().trim().min(1).max(80).optional(),
+          launchUrl: z.string().trim().max(400).refine(validLaunchUrl).optional(),
         })
         .refine((value) => Object.keys(value).length > 0),
     );
@@ -567,11 +583,12 @@ export function register(app: App) {
     if (!application)
       throw new HTTPException(404, { message: "app_not_found" });
     await c.env.DB.prepare(
-      "UPDATE apps SET disabled=COALESCE(?,disabled),name=COALESCE(?,name) WHERE id=?",
+      "UPDATE apps SET disabled=COALESCE(?,disabled),name=COALESCE(?,name),launch_url=COALESCE(?,launch_url) WHERE id=?",
     )
       .bind(
         b.disabled === undefined ? null : Number(b.disabled),
         b.name ?? null,
+        b.launchUrl ?? null,
         c.req.param("id"),
       )
       .run();

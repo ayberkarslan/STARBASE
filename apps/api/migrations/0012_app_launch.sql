@@ -1,0 +1,1 @@
+ALTER TABLE apps ADD COLUMN launch_url TEXT NOT NULL DEFAULT '';

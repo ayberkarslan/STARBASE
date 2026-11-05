@@ -21,6 +21,7 @@ import {
   captcha,
   reauthenticate,
   credentials,
+  requireTeamMember,
   type App,
 } from "../common";
 import { imageResponse } from "../image-assets";
@@ -32,6 +33,22 @@ export function register(app: App) {
       "SELECT id,name,logo_url logoUrl,launch_url launchUrl FROM apps WHERE disabled=0",
     ).all<{ id: string; name: string; logoUrl: string; launchUrl: string }>();
     return c.json(apps.results.map((item) => ({ ...item, logoUrl: logoUrl(item.id, item.logoUrl) })));
+  });
+  app.get("/api/v1/apps/:id/overview", async (c) => {
+    if (c.get("session").kind !== "central") fail(403, "central_session_required");
+    await requireTeamMember(c);
+    const id = c.req.param("id");
+    const application = await c.env.DB.prepare(
+      "SELECT id,name,logo_url logoUrl,launch_url launchUrl FROM apps WHERE id=? AND disabled=0",
+    ).bind(id).first<{ id: string; name: string; logoUrl: string; launchUrl: string }>();
+    if (!application) return fail(404, "application_not_found");
+    const userId = c.get("user").id;
+    const [summary, visits, resources] = await Promise.all([
+      c.env.DB.prepare("SELECT COUNT(*) totalVisits,MAX(signed_in_at) lastSignInAt FROM application_visits WHERE app_id=? AND user_id=?").bind(id, userId).first(),
+      c.env.DB.prepare("SELECT signed_in_at signedInAt,ended_at endedAt,end_reason endReason FROM application_visits WHERE app_id=? AND user_id=? ORDER BY signed_in_at DESC LIMIT 8").bind(id, userId).all(),
+      c.env.DB.prepare("SELECT resource_id resourceId,title,date,status,created_at createdAt FROM app_resources WHERE app_id=? AND user_id=? ORDER BY created_at DESC LIMIT 30").bind(id, userId).all(),
+    ]);
+    return c.json({ application: { ...application, logoUrl: logoUrl(id, application.logoUrl) }, summary, visits: visits.results, resources: resources.results });
   });
   app.get("/api/v1/apps/:id/branding", async (c) => {
     const redirect = c.req.query("redirectUri") ?? "";

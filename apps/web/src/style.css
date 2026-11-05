@@ -569,6 +569,9 @@ footer {
   color: #ffffff70;
   text-overflow: ellipsis;
 }
+.app-name-editor { display: flex; align-items: center; gap: 6px; width: min(100%, 420px); }
+.app-name-editor .sd-field { flex: 1; min-width: 0; }
+.app-name-editor .sd-field__input { min-height: 36px; }
 .app-logo-picker {
   position: relative;
   display: inline-flex;

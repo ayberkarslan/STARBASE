@@ -1,7 +1,7 @@
 import { FormSelect } from "./form-select";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button, IconButton, TextField, Panel } from "@stardrop/ui";
-import { X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 export async function request(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -315,9 +315,15 @@ export function RolesList({ run }: { run: Run }) {
   );
 }
 
-export function AppsList({ run }: { run: Run }) {
+export function AppsList({ run, onChanged }: { run: Run; onChanged: () => Promise<void> }) {
   const [apps, setApps] = useState<any[]>([]);
   const [uploadingApp, setUploadingApp] = useState<string | null>(null);
+  const [editingApp, setEditingApp] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const refreshApps = async () => {
+    setApps(await request("/admin/apps"));
+    await onChanged();
+  };
   useEffect(() => {
     request("/admin/apps")
       .then(setApps)
@@ -342,12 +348,28 @@ export function AppsList({ run }: { run: Run }) {
               aria-hidden="true"
             />
           )}
-          <span className="app-list-name">
-            {a.name}
+          <div className="app-list-name">
+            {editingApp === a.id ? (
+              <form className="app-name-editor" onSubmit={(event) => {
+                event.preventDefault();
+                void run(async () => {
+                  const name = draftName.trim();
+                  if (!name || name === a.name) { setEditingApp(null); return; }
+                  await request(`/admin/apps/${a.id}`, { name }, "PUT");
+                  await refreshApps();
+                  setEditingApp(null);
+                });
+              }}>
+                <TextField aria-label={`${a.name} için yeni ad`} value={draftName} maxLength={80} required onChange={(event) => setDraftName(event.target.value)} autoFocus />
+                <IconButton label="Adı kaydet" type="submit" variant="bare"><Check size={15} /></IconButton>
+                <IconButton label="Vazgeç" variant="bare" onClick={() => setEditingApp(null)}><X size={15} /></IconButton>
+              </form>
+            ) : <span>{a.name}</span>}
             <small>
               {a.id} · {a.disabled ? "Kapalı" : "Açık"}
             </small>
-          </span>
+          </div>
+          {editingApp !== a.id && <IconButton label={`${a.name} adını düzenle`} variant="bare" onClick={() => { setEditingApp(a.id); setDraftName(a.name); }}><Pencil size={15} /></IconButton>}
           <label className="app-logo-picker">
             <input
               type="file"
@@ -367,7 +389,7 @@ export function AppsList({ run }: { run: Run }) {
                 setUploadingApp(a.id);
                 run(async () => {
                   await uploadApplicationLogo(a.id, file);
-                  setApps(await request("/admin/apps"));
+                  await refreshApps();
                 }).finally(() => setUploadingApp(null));
               }}
             />
@@ -381,7 +403,7 @@ export function AppsList({ run }: { run: Run }) {
               onClick={() =>
                 run(async () => {
                   await request(`/admin/apps/${a.id}/logo`, undefined, "DELETE");
-                  setApps(await request("/admin/apps"));
+                  await refreshApps();
                 })
               }
             >
@@ -396,7 +418,7 @@ export function AppsList({ run }: { run: Run }) {
                   { disabled: !a.disabled },
                   "PUT",
                 );
-                setApps(await request("/admin/apps"));
+                await refreshApps();
               })
             }
           >

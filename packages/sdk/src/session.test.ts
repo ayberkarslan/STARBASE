@@ -61,6 +61,20 @@ describe("StarbaseSession", () => {
     });
   });
 
+  it("completes desktop login without navigating the webview", async () => {
+    const starbase = client();
+    vi.spyOn(starbase, "createAuthorizationUrl").mockResolvedValue("https://starbase.test/authorize");
+    vi.spyOn(starbase, "handleCallback").mockResolvedValue(profile);
+    const session = new StarbaseSession(starbase);
+    const open = vi.fn().mockResolvedValue("http://127.0.0.1:1421/callback?code=once&state=valid");
+
+    await session.loginInBrowser(open);
+
+    expect(open).toHaveBeenCalledWith("https://starbase.test/authorize");
+    expect(starbase.handleCallback).toHaveBeenCalledWith("http://127.0.0.1:1421/callback?code=once&state=valid", false);
+    expect(session.getSnapshot()).toEqual({ status: "authenticated", profile });
+  });
+
   it("publishes signed-out state even when remote logout fails", async () => {
     const starbase = client();
     vi.spyOn(starbase, "getProfile").mockResolvedValue(profile);

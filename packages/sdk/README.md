@@ -60,6 +60,27 @@ function LoginButton() {
 
 Giriş/kayıt düğmesi kullanıcıyı merkezi STARBASE hesabına yönlendirir; uygulama şifre toplamaz. Provider `/callback` dönüşünü otomatik işler. Provider kullanmayan framework’ler aynı lifecycle için `StarbaseSession` sınıfını kullanabilir. Eski `StarbaseProvider` ve `useStarbase` API’si düşük seviyeli istemci erişimi için geriye dönük mevcuttur. Callback sayfası giriş zorunlu route guard'ının dışında olmalıdır.
 
+Tauri masaüstünde giriş için sistem tarayıcısını ve yalnızca loopback adresini dinleyen yerel bir geri dönüş köprüsünü kullan. Köprü tek kullanımlık kodu taşıyan tam callback URL'sini döndürür; SDK durum ve PKCE doğrulamasını yapar. Sabit portu ve tam callback adresini STARBASE uygulama kaydına ekle. Şifre veya kodu loglama.
+
+```tsx
+const starbase = new Starbase({
+  baseUrl: "https://YOUR-STARBASE.workers.dev",
+  clientId: "my-desktop-app",
+  redirectUri: "http://127.0.0.1:1421/callback",
+  storage: localStorage,
+  sessionExpiryMode: "stay",
+});
+
+<StarbaseAuthProvider
+  client={starbase}
+  openAuthorizationUrl={(url) => invoke<string>("starbase_browser_login", { url })}
+>
+  <App />
+</StarbaseAuthProvider>
+```
+
+`sessionExpiryMode: "stay"` WebView'in giriş sayfasına yönlenmesini önler ve provider oturumu anonim duruma geçirir. Masaüstü köprüsü yalnız kayıtlı STARBASE adresini açmalı, localhost üzerinde bekleyen bağlantıyı doğrulamalı ve süre aşımı uygulamalıdır. `createAuthorizationUrl()` ve `handleCallback(url, false)` aynı akışı React olmadan kurar. STARBASE'ten masaüstünü açmak istersen uygulama kaydında `launchUrl` tanımla ve Tauri deep-link protokolünü ayrı yapılandır.
+
 Hatalar `StarbaseError` üzerinde `code` ve `status` taşır; ağ hataları platform hatası olarak gelebilir. Token, şifre ve callback kodunu loglama. `logout()` ağ hatasında da yerel depoyu temizler ve hatayı çağırana iletir; bu durumda gerçek sunucu çıkış tarihi oluşmamış olabilir.
 
 `logoutAll()` merkezi hesap ekranındaki Oturumlar sayfasını açar; kullanıcı oradan tüm oturumlarını sonlandırır. Uygulama tokenları merkezi hesap yönetim yetkisi vermez.

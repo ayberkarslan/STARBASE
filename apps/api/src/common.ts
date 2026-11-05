@@ -17,6 +17,7 @@ export type Env = AdminEnv & {
   PUBLIC_ORIGIN: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
+  TEST_FORMU_SYNC_SECRET?: string;
   ASSETS: Fetcher;
 };
 export type Session = {

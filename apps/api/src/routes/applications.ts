@@ -28,6 +28,32 @@ import { imageResponse } from "../image-assets";
 const logoUrl = (id: string, stored: string) =>
   stored ? `/api/v1/apps/${encodeURIComponent(id)}/logo` : "";
 export function register(app: App) {
+  app.post("/api/v1/internal/test-formu-resources", async (c) => {
+    const expected = c.env.TEST_FORMU_SYNC_SECRET;
+    const supplied = c.req.header("x-app-sync-key") ?? "";
+    if (!expected || supplied.length !== expected.length) return fail(403, "permission_denied");
+    let difference = 0;
+    for (let i = 0; i < expected.length; i++) difference |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
+    if (difference) return fail(403, "permission_denied");
+    const item = await body(c, z.object({
+      resourceId: z.string().min(1).max(150),
+      starbaseUserId: z.string().regex(/^[a-zA-Z0-9-]{1,100}$/),
+      deleted: z.boolean().default(false),
+      title: z.string().trim().min(1).max(180).optional(),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      status: z.string().max(40).optional(),
+      createdAt: z.number().int().positive().optional(),
+    }));
+    if (item.deleted) {
+      await c.env.DB.prepare("DELETE FROM app_resources WHERE app_id='test-formu-web' AND resource_id=? AND user_id=?")
+        .bind(item.resourceId, item.starbaseUserId).run();
+    } else {
+      if (!item.title || !item.date || !item.status || !item.createdAt) return fail(400, "invalid_input");
+      await c.env.DB.prepare("INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,created_at,updated_at) SELECT 'test-formu-web',u.id,?,?,?,?,?,? FROM users u WHERE u.id=? AND u.disabled=0 ON CONFLICT(app_id,resource_id) DO UPDATE SET title=excluded.title,date=excluded.date,status=excluded.status,updated_at=excluded.updated_at")
+        .bind(item.resourceId, item.title, item.date, item.status, item.createdAt, now(), item.starbaseUserId).run();
+    }
+    return c.json({ ok: true });
+  });
   app.get("/api/v1/apps", async (c) => {
     const apps = await c.env.DB.prepare(
       "SELECT id,name,logo_url logoUrl,launch_url launchUrl FROM apps WHERE disabled=0",

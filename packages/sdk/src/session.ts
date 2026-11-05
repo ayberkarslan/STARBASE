@@ -72,6 +72,10 @@ export class StarbaseSession {
     }
   }
 
+  invalidate() {
+    this.publish({ status: "anonymous" });
+  }
+
   private async restore(url: string) {
     try {
       const parsed = new URL(url);

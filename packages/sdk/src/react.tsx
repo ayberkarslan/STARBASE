@@ -52,6 +52,7 @@ export function StarbaseAuthProvider({
   useEffect(() => {
     void session.start();
   }, [session]);
+  useEffect(() => client.subscribeSessionExpired(() => session.invalidate()), [client, session]);
   return (
     <Context.Provider value={client}>
       <AuthContext.Provider

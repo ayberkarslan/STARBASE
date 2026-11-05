@@ -26,6 +26,7 @@ export class Starbase {
   private refreshing: Promise<void> | null = null;
   private callbackPromise: Promise<Profile> | null = null;
   private redirectingToLogin = false;
+  private sessionExpiredListeners = new Set<() => void>();
   constructor(
     private options: {
       baseUrl: string;
@@ -34,6 +35,7 @@ export class Starbase {
       postLoginRedirect?: string;
       storage?: Storage;
       pendingStorage?: Storage;
+      sessionExpiryMode?: "redirect" | "stay";
     },
   ) {}
   private async request<T>(
@@ -57,7 +59,7 @@ export class Starbase {
         result.error?.code ?? "starbase_error",
         r.status,
       );
-      if (authenticated && this.requiresLogin(error)) this.redirectToLogin();
+      if (authenticated && this.requiresLogin(error)) this.handleExpired();
       throw error;
     }
     return result;
@@ -142,6 +144,15 @@ export class Starbase {
     this.tokens = null;
     this.options.storage?.removeItem(`starbase.${this.options.clientId}`);
   }
+  subscribeSessionExpired(listener: () => void) {
+    this.sessionExpiredListeners.add(listener);
+    return () => { this.sessionExpiredListeners.delete(listener); };
+  }
+  private handleExpired() {
+    this.clearSession();
+    for (const listener of this.sessionExpiredListeners) listener();
+    if (this.options.sessionExpiryMode !== "stay") this.redirectToLogin();
+  }
   private redirectToLogin() {
     if (this.redirectingToLogin) return;
     this.redirectingToLogin = true;
@@ -178,7 +189,7 @@ export class Starbase {
             this.save();
           })
         .catch((error) => {
-          if (this.requiresLogin(error)) this.redirectToLogin();
+          if (this.requiresLogin(error)) this.handleExpired();
           throw error;
         })
         .finally(() => {

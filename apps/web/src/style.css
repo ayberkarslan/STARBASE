@@ -896,11 +896,13 @@ input:is(:autofill, :-webkit-autofill) {
 .admin-member-sheet__identity > span { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #fff; border-radius: 50%; }
 .admin-member-sheet__identity strong { display: block; font-size: 13px; font-weight: 400; }
 .admin-member-sheet__identity small { margin-top: 3px; }
-.application-showroom { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 24px; }
-.application-showroom [class*="panel"] { position: relative; min-height: 210px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
-.application-showroom [class*="panel"] > *:not(.app-showcase-logo) { position: relative; z-index: 1; }
-.app-showcase-logo { position: absolute; right: -8px; bottom: -10px; width: 154px; height: 154px; display: grid; place-items: center; opacity: .26; filter: grayscale(1) contrast(1.18); pointer-events: none; }
-.app-showcase-logo img { width: 100%; height: 100%; object-fit: contain; }
-.app-showcase-actions { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.app-showcase-actions .sd-button { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.application-showroom { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
+.application-showroom .app-showcase-card { position: relative; min-height: clamp(250px, 27vw, 380px); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; isolation: isolate; }
+.app-showcase-card > .sd-panel__header { position: relative; z-index: 2; }
+.app-showcase-logo { position: absolute; z-index: 0; top: -20%; right: -9%; width: min(67%, 580px); height: 140%; display: grid; place-items: center; opacity: .2; filter: grayscale(1) contrast(1.12); pointer-events: none; }
+.app-showcase-logo img { width: 100%; height: 100%; object-fit: contain; transform: scale(1.22); }
+.app-showcase-logo > svg { width: 58%; height: 58%; }
+.app-showcase-actions { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; max-width: 58%; padding-bottom: 4px; }
+.app-showcase-actions .sd-button { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; white-space: nowrap; }
+@media (max-width: 700px) { .app-showcase-logo { width: 75%; right: -17%; } .app-showcase-actions { max-width: 65%; } }
 @media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }

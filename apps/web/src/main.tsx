@@ -5,6 +5,7 @@ import {
 } from "./workspace-shell";
 import { BoardNotes } from "./board-notes";
 import { DeveloperDocs } from "./developer-docs";
+import { ApplicationDetail } from "./application-detail";
 import { TeamDirectory, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
@@ -114,6 +115,7 @@ function App() {
   >(null);
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const path = location.pathname;
   const params = new URLSearchParams(location.search);
   async function load() {
@@ -800,10 +802,10 @@ function App() {
             </>
           )}
           {tab === "applications" && (
-            <>
+            selectedApplication ? <ApplicationDetail id={selectedApplication} onBack={() => setSelectedApplication(null)} /> : <>
               <span className="eyebrow">STARBASE SHOWROOM</span><h1>Uygulamalar</h1>
               <p>Yıldız Roket Takımının ortak hesabıyla çalışan platformlar.</p>
-              <div className="application-showroom">{apps.map((app) => <Panel className="app-showcase-card" key={app.id} title={app.name}><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><div className="app-showcase-actions"><span>STARBASE ile giriş</span>{app.launchUrl ? <a className="sd-button sd-button--secondary sd-button--md" href={app.launchUrl}>{app.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={15} /></a> : <small>Geliştiriliyor</small>}</div></Panel>)}</div>
+              <div className="application-showroom">{apps.map((app) => <Panel className="app-showcase-card" key={app.id} title={app.name}><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><div className="app-showcase-actions"><span>STARBASE ile giriş</span><Button variant="bare" onClick={() => setSelectedApplication(app.id)}>Uygulama sayfası <ArrowUpRight size={15} /></Button>{app.launchUrl ? <a className="sd-button sd-button--secondary sd-button--md" href={app.launchUrl}>{app.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={15} /></a> : <small>Geliştiriliyor</small>}</div></Panel>)}</div>
               {(user.owner || permissions.includes("apps.manage")) && <AppsList run={act} onChanged={() => api("/apps").then(setApps)} />}
             </>
           )}

@@ -63,6 +63,9 @@ export class Starbase {
     return result;
   }
   async login(scopes: ProfileScope[] = ["profile"]) {
+    location.assign(await this.createAuthorizationUrl(scopes));
+  }
+  async createAuthorizationUrl(scopes: ProfileScope[] = ["profile"]) {
     const bytes = crypto.getRandomValues(new Uint8Array(32));
     const verifier = Array.from(bytes, (n) =>
       n.toString(16).padStart(2, "0"),
@@ -93,17 +96,16 @@ export class Starbase {
       code_challenge: challenge,
       state,
     }).forEach(([k, v]) => url.searchParams.set(k, v));
-    location.assign(url.href);
+    return url.href;
   }
-  handleCallback(url = location.href): Promise<Profile> {
+  handleCallback(url = location.href, replaceHistory = true): Promise<Profile> {
     if (!this.callbackPromise)
-      this.callbackPromise = this.finishCallback(url).catch((error) => {
+      this.callbackPromise = this.finishCallback(url, replaceHistory).finally(() => {
         this.callbackPromise = null;
-        throw error;
       });
     return this.callbackPromise;
   }
-  private async finishCallback(url: string) {
+  private async finishCallback(url: string, replaceHistory: boolean) {
     const u = new URL(url);
     const saved = this.pendingStorage().getItem("starbase.pending");
     if (!saved) throw new Error("missing_login");
@@ -122,7 +124,7 @@ export class Starbase {
     const returnPath =
       this.options.postLoginRedirect ??
       new URL(".", this.options.redirectUri).pathname;
-    history.replaceState(null, "", returnPath);
+    if (replaceHistory) history.replaceState(null, "", returnPath);
     return this.getProfile();
   }
   private save() {

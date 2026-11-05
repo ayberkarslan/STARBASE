@@ -38,6 +38,19 @@ export class StarbaseSession {
     }
   }
 
+  async loginInBrowser(open: (url: string) => Promise<string>, scopes = this.scopes) {
+    this.publish({ status: "checking" });
+    try {
+      const callback = await open(await this.client.createAuthorizationUrl(scopes));
+      const profile = await this.client.handleCallback(callback, false);
+      this.publish({ status: "authenticated", profile });
+      return profile;
+    } catch (error) {
+      this.publish({ status: "anonymous", error: this.asError(error) });
+      throw error;
+    }
+  }
+
   async refresh() {
     try {
       const profile = await this.client.getProfile();

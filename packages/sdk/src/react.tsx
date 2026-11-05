@@ -35,10 +35,12 @@ export function useStarbase() {
 export function StarbaseAuthProvider({
   client,
   scopes = ["profile"],
+  openAuthorizationUrl,
   children,
 }: {
   client: Starbase;
   scopes?: ProfileScope[];
+  openAuthorizationUrl?: (url: string) => Promise<string>;
   children: ReactNode;
 }) {
   const [session] = useState(() => new StarbaseSession(client, scopes));
@@ -56,7 +58,7 @@ export function StarbaseAuthProvider({
         value={{
           client,
           snapshot,
-          login: () => session.login(),
+          login: () => openAuthorizationUrl ? session.loginInBrowser(openAuthorizationUrl).then(() => {}) : session.login(),
           logout: () => session.logout(),
           refresh: () => session.refresh(),
         }}

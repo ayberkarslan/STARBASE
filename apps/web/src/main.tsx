@@ -803,7 +803,7 @@ function App() {
             <>
               <span className="eyebrow">STARBASE SHOWROOM</span><h1>Uygulamalar</h1>
               <p>Yıldız Roket Takımının ortak hesabıyla çalışan platformlar.</p>
-              <div className="application-showroom">{apps.map((app) => <Panel key={app.id} title={app.name}><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><span>STARBASE ile giriş</span></Panel>)}</div>
+              <div className="application-showroom">{apps.map((app) => <Panel key={app.id} title={app.name}><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><div className="app-showcase-actions"><span>STARBASE ile giriş</span>{app.launchUrl ? <a className="sd-button sd-button--secondary sd-button--md" href={app.launchUrl}>{app.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={15} /></a> : <small>Geliştiriliyor</small>}</div></Panel>)}</div>
               {(user.owner || permissions.includes("apps.manage")) && <AppsList run={act} />}
             </>
           )}
@@ -922,7 +922,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
   const specs: Record<string, { title: string; fields: string[] }> = {
     app: {
       title: "Uygulama kaydet",
-         fields: ["id", "name", "redirectUri", "origin"],
+         fields: ["id", "name", "redirectUri", "origin", "launchUrl"],
     },
     role: {
       title: "Rol oluştur",
@@ -949,9 +949,10 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
               await api("/admin/apps", {
                 id: b.id,
                 name: b.name,
-                redirects: [b.redirectUri],
-                origins: [b.origin],
+                redirects: String(b.redirectUri).split(",").map((s) => s.trim()).filter(Boolean),
+                origins: String(b.origin).split(",").map((s) => s.trim()).filter(Boolean),
                 scopes: ["profile", "email", "organization"],
+                launchUrl: b.launchUrl,
               });
             if (kind === "role")
               await api("/admin/roles", {
@@ -976,6 +977,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
                 name: "Ad",
                 redirectUri: "Dönüş adresi",
                 origin: "Uygulama adresi",
+                launchUrl: "Açma adresi (isteğe bağlı)",
                 permissions: "İzin anahtarları (virgülle)",
                 currentPassword: "Senin şifren",
                 description: "Açıklama",
@@ -989,7 +991,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
                 ? "İsteğe bağlı HTTPS logo görseli; uygulama adresinde barınmalı."
                 : undefined
             }
-            required={f !== "logoUrl"}
+            required={f !== "logoUrl" && f !== "launchUrl"}
           />
         ))}
         <Button type="submit">

@@ -121,7 +121,7 @@ export function ApplicationOrbit({
   apps,
 }: {
   onApplications: () => void;
-  apps: { id: string; name: string; logoUrl?: string }[];
+  apps: { id: string; name: string; logoUrl?: string; launchUrl?: string }[];
 }) {
   const orbitApps = apps.slice(0, 5);
   return (
@@ -142,8 +142,8 @@ export function ApplicationOrbit({
             left: `${t * 100}%`,
             top: `${(200 - 600 * t * (1 - t)) / 2}%`,
           }}
-          onClick={onApplications}
-          title={`${a.name} · Bağlı uygulamaları görüntüle`}
+          onClick={() => a.launchUrl ? window.location.assign(a.launchUrl) : onApplications()}
+          title={`${a.name} · ${a.launchUrl ? "Yüklü uygulamayı aç" : "Bağlı uygulamaları görüntüle"}`}
         >
           <span className="orbit-node">
             {a.logoUrl ? <img src={a.logoUrl} alt="" /> : <AppWindow size={18} />}

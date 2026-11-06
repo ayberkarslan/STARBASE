@@ -724,7 +724,7 @@ function App() {
                   )}
                 </Panel>
               </div>
-              <MyApplicationHistory />
+              <MyApplicationHistory onSelectApplication={(id) => { setSelectedApplication(id); setTab("applications"); }} />
               <Sessions run={act} compact />
               <Button
                 onClick={() => {
@@ -831,7 +831,7 @@ function App() {
             selectedApplication ? <ApplicationDetail id={selectedApplication} onBack={() => setSelectedApplication(null)} /> : <>
               <span className="eyebrow">STARBASE SHOWROOM</span><h1>Uygulamalar</h1>
               <p>Yıldız Roket Takımının ortak hesabıyla çalışan platformlar.</p>
-              <div className="application-showroom">{apps.map((app) => <Panel className="app-showcase-card" key={app.id} title={app.name}><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><div className="app-showcase-actions"><span>STARBASE ile giriş</span><Button variant="bare" onClick={() => setSelectedApplication(app.id)}>Uygulama sayfası <ArrowUpRight size={15} /></Button>{app.launchUrl ? <a className="sd-button sd-button--secondary sd-button--md" href={app.launchUrl}>{app.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={15} /></a> : <small>Geliştiriliyor</small>}</div></Panel>)}</div>
+              <div className="application-showroom">{apps.map((app) => <Panel className="app-showcase-card" key={app.id} title={app.name}><button type="button" className="app-showcase-hit" onClick={() => setSelectedApplication(app.id)} aria-label={`${app.name} uygulama sayfasını aç`} /><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><div className="app-showcase-actions"><span>STARBASE ile giriş</span><span>Uygulama sayfası <ArrowUpRight size={15} /></span>{app.launchUrl ? <a className="sd-button sd-button--secondary sd-button--md" href={app.launchUrl}>{app.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={15} /></a> : <small>Geliştiriliyor</small>}</div></Panel>)}</div>
               {(user.owner || permissions.includes("apps.manage")) && <AppsList run={act} onChanged={() => api("/apps").then(setApps)} />}
             </>
           )}

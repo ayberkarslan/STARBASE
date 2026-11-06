@@ -29,22 +29,29 @@ export function ApplicationHistoryView({
   data,
   onPage: _onPage,
   busy: _busy = false,
+  onSelectApplication,
 }: {
   data: ApplicationHistory;
   onPage: (page: number) => void;
   busy?: boolean;
+  onSelectApplication?: (id: string) => void;
 }) {
   return (
     <section className="profile-activity">
       <h3><AppWindow size={17} /> Kullandığı uygulamalar</h3>
       {data.applications.length ? (
         <div className="usage-list">
-          {data.applications.map((a) => (
-            <div className="usage-app" key={a.applicationId}>
+          {data.applications.map((a) => {
+            const canOpen = Boolean(onSelectApplication && !a.applicationDisabled);
+            const content = <>
               {"logoUrl" in a && typeof a.logoUrl === "string" && a.logoUrl ? <img src={a.logoUrl} alt="" /> : <AppWindow size={18} />}
               <span>{a.applicationName}</span>
-            </div>
-          ))}
+              {canOpen && <ArrowUpRight size={14} aria-hidden="true" />}
+            </>;
+            return canOpen
+              ? <button type="button" className="usage-app usage-app--link" key={a.applicationId} onClick={() => onSelectApplication?.(a.applicationId)} aria-label={`${a.applicationName} uygulama sayfasını aç`}>{content}</button>
+              : <div className="usage-app" key={a.applicationId}>{content}</div>;
+          })}
         </div>
       ) : (
         <EmptyState
@@ -410,7 +417,7 @@ export function TeamDirectory({
     </div>
   );
 }
-export function MyApplicationHistory() {
+export function MyApplicationHistory({ onSelectApplication }: { onSelectApplication: (id: string) => void }) {
   const [data, setData] = useState<ApplicationHistory | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -439,7 +446,7 @@ export function MyApplicationHistory() {
         </p>
       )}
       {data ? (
-        <ApplicationHistoryView data={data} onPage={load} busy={busy} />
+        <ApplicationHistoryView data={data} onPage={load} busy={busy} onSelectApplication={onSelectApplication} />
       ) : (
         !error && <p role="status">Uygulama geçmişi yükleniyor…</p>
       )}

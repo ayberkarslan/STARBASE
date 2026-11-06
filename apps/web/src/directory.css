@@ -345,4 +345,7 @@
 .usage-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .usage-app { display: flex; align-items: center; gap: 9px; min-width: 150px; padding: 11px 13px; border: 1px solid var(--ui-border, #303030); border-radius: 8px; }
 .usage-app img { width: 23px; height: 23px; object-fit: contain; }
+.usage-app--link { background: #000; color: #fff; font: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease; }
+.usage-app--link:hover, .usage-app--link:focus-visible { border-color: #fff; box-shadow: inset 2px 0 #fff; }
+.usage-app--link > svg:last-child { margin-left: auto; flex: 0 0 auto; }
 @media (max-width: 700px) { .directory-departments { grid-template-columns: 1fr; grid-template-rows: none; height: auto; } .directory-departments > .sd-panel { min-height: 220px; } }

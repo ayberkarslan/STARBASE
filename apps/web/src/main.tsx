@@ -87,7 +87,9 @@ function App() {
   const [user, setUser] = useState<any>(null),
     [loading, setLoading] = useState(true),
     [tab, setTab] = useState(
-      location.pathname === "/docs"
+      location.pathname === "/account"
+        ? "account"
+        : location.pathname === "/docs"
         ? "docs"
         : new URLSearchParams(location.search).get("view") === "sessions"
           ? "account"

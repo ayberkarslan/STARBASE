@@ -884,8 +884,9 @@ input:is(:autofill, :-webkit-autofill) {
 }
 .password-field { position: relative; }
 .password-field .sd-field__input { padding-right: 46px; }
-.password-field__toggle { position: absolute; top: 26px; right: 6px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 5px; background: #000; color: #fff; }
-.password-field__toggle:hover, .password-field__toggle:focus-visible { outline: 1px solid #fff; }
+.password-field__toggle { position: absolute; top: 28px; right: 2px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; background: transparent; color: #fff; opacity: .7; }
+.auth .password-field__toggle { top: 31px; }
+.password-field__toggle:hover, .password-field__toggle:focus-visible { outline: 0; box-shadow: none; opacity: 1; }
 .profile-page { max-width: 980px; margin: 0 auto; }
 .profile-hero { display: flex; align-items: center; gap: 22px; padding: 24px 0 28px; border-bottom: 1px solid var(--ui-border, #252525); }
 .profile-hero .member-initials { width: 76px; height: 76px; font-size: 1.3rem; flex: 0 0 auto; }

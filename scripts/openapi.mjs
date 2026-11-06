@@ -75,6 +75,8 @@ for (const f of fs
         tags: [f.replace(".ts", "")],
         security: publicRoutes.has(route)
           ? []
+          : route === "/api/v1/me/live"
+            ? [{ bearer: [] }]
           : centralOnly
             ? [{ central: [] }]
             : [{ bearer: [] }, { central: [] }],

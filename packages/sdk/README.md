@@ -60,6 +60,8 @@ function LoginButton() {
 
 Giriş/kayıt düğmesi kullanıcıyı merkezi STARBASE hesabına yönlendirir; uygulama şifre toplamaz. Provider `/callback` dönüşünü otomatik işler. Provider kullanmayan framework’ler aynı lifecycle için `StarbaseSession` sınıfını kullanabilir. Eski `StarbaseProvider` ve `useStarbase` API’si düşük seviyeli istemci erişimi için geriye dönük mevcuttur. Callback sayfası giriş zorunlu route guard'ının dışında olmalıdır.
 
+`profile` izni olan uygulamalar `/me` yanıtında sürümlü `photoUrl` alır. Fotoğrafı `Authorization: Bearer <accessToken>` başlığıyla STARBASE adresinden iste; korumalı adresi doğrudan `<img src>` içine koyma. Açık uygulamalarda fotoğraf değişikliğini anında almak için `wss://STARBASE/api/v1/me/live` adresine `new WebSocket(url, ["starbase-profile", await client.getAccessToken()])` ile bağlan. `profile.photo.changed` bildirimi yalnız değişiklik işaretidir: `refresh()` ile profili ve yeni `photoUrl` adresini yeniden al. Görünür hale gelince de yenile; token veya fotoğraf içeriği WebSocket mesajında taşınmaz.
+
 Tauri masaüstünde giriş için sistem tarayıcısını ve yalnızca loopback adresini dinleyen yerel bir geri dönüş köprüsünü kullan. Köprü tek kullanımlık kodu taşıyan tam callback URL'sini döndürür; SDK durum ve PKCE doğrulamasını yapar. Sabit portu ve tam callback adresini STARBASE uygulama kaydına ekle. Şifre veya kodu loglama.
 
 ```tsx

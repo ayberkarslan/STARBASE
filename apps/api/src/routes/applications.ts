@@ -134,7 +134,7 @@ export function register(app: App) {
       .bind(c.get("user").id, a.id)
       .first<{ scopes: string }>();
     return c.json({
-      approved: !!prior && allowedScopes(scopes, JSON.parse(prior.scopes)),
+      approved: a.auto_authorize === 1 || (!!prior && allowedScopes(scopes, JSON.parse(prior.scopes))),
       id: a.id,
       name: a.name,
       scopes,

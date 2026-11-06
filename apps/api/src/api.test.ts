@@ -39,6 +39,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0011_image_assets.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0012_app_launch.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0013_app_resources.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0014_app_auto_authorize.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -177,6 +178,19 @@ async function loginCode(scopes = ["profile"]) {
   };
 }
 describe("identity boundaries", () => {
+  it("auto authorizes only an explicitly trusted application", async () => {
+    db.prepare("INSERT INTO apps(id,name,redirects,origins,scopes,auto_authorize) VALUES(?,?,?,?,?,1)").run(
+      "test-formu-web", "YRT Test Takvimi", '["https://calendar.test/callback"]', '["https://calendar.test"]', '["profile","organization"]',
+    );
+    const query = (clientId: string, redirectUri: string) => `/authorize?${new URLSearchParams({
+      client_id: clientId, redirect_uri: redirectUri, scope: "profile", code_challenge: "a".repeat(43), state: "b".repeat(32),
+    })}`;
+    const trusted = await call(query("test-formu-web", "https://calendar.test/callback"));
+    const regular = await call(query("starlab", "https://lab.test/callback"));
+    expect(trusted.status).toBe(200);
+    expect((await trusted.json() as { approved: boolean }).approved).toBe(true);
+    expect((await regular.json() as { approved: boolean }).approved).toBe(false);
+  });
   it("rejects unauthenticated profile access", async () =>
     expect((await call("/me", undefined, "")).status).toBe(401));
   it("projects only approved profile fields", async () => {

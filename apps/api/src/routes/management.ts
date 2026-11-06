@@ -151,6 +151,7 @@ export function register(app: App) {
         origins: z.array(z.string().url()),
         scopes: z.array(z.enum(["profile", "email", "organization"])),
         launchUrl: z.string().trim().max(400).refine(validLaunchUrl).optional(),
+        autoAuthorize: z.boolean().optional(),
       }),
     );
     for (const r of b.redirects) {
@@ -162,7 +163,7 @@ export function register(app: App) {
         fail(400, "https_required");
     }
     await c.env.DB.prepare(
-      "INSERT INTO apps(id,name,redirects,origins,scopes,launch_url) VALUES(?,?,?,?,?,?)",
+      "INSERT INTO apps(id,name,redirects,origins,scopes,launch_url,auto_authorize) VALUES(?,?,?,?,?,?,?)",
     )
       .bind(
         b.id,
@@ -171,6 +172,7 @@ export function register(app: App) {
         JSON.stringify(b.origins),
         JSON.stringify(b.scopes),
         b.launchUrl ?? "",
+        Number(b.autoAuthorize ?? false),
       )
       .run();
     await audit(c, "app.create", b.id);
@@ -572,6 +574,7 @@ export function register(app: App) {
           disabled: z.boolean().optional(),
           name: z.string().trim().min(1).max(80).optional(),
           launchUrl: z.string().trim().max(400).refine(validLaunchUrl).optional(),
+          autoAuthorize: z.boolean().optional(),
         })
         .refine((value) => Object.keys(value).length > 0),
     );
@@ -583,12 +586,13 @@ export function register(app: App) {
     if (!application)
       throw new HTTPException(404, { message: "app_not_found" });
     await c.env.DB.prepare(
-      "UPDATE apps SET disabled=COALESCE(?,disabled),name=COALESCE(?,name),launch_url=COALESCE(?,launch_url) WHERE id=?",
+      "UPDATE apps SET disabled=COALESCE(?,disabled),name=COALESCE(?,name),launch_url=COALESCE(?,launch_url),auto_authorize=COALESCE(?,auto_authorize) WHERE id=?",
     )
       .bind(
         b.disabled === undefined ? null : Number(b.disabled),
         b.name ?? null,
         b.launchUrl ?? null,
+        b.autoAuthorize === undefined ? null : Number(b.autoAuthorize),
         c.req.param("id"),
       )
       .run();

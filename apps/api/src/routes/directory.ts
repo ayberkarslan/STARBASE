@@ -26,7 +26,7 @@ async function usedApplications(env: Env, userId: string) {
 }
 async function target(c: C) {
   const u = await c.env.DB.prepare(
-    `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
+    `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
   )
     .bind(c.req.param("id"))
     .first();
@@ -98,7 +98,7 @@ export function register(app: App) {
       .first<{ total: number }>();
     const users = (
       await c.env.DB.prepare(
-        `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName FROM users u WHERE ${where} ORDER BY u.first_name COLLATE NOCASE,u.last_name COLLATE NOCASE,u.username LIMIT 24 OFFSET ?`,
+        `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl FROM users u WHERE ${where} ORDER BY u.first_name COLLATE NOCASE,u.last_name COLLATE NOCASE,u.username LIMIT 24 OFFSET ?`,
       )
         .bind(...bindings, (b.page - 1) * 24)
         .all()
@@ -114,8 +114,9 @@ export function register(app: App) {
         ).results
       : [];
     return c.json({
-      users: users.map((u) => ({
+      users: users.map(({ avatarUrl, ...u }) => ({
         ...u,
+        photoUrl: avatarUrl ? `/api/v1/directory/users/${encodeURIComponent(u.id as string)}/photo` : "",
         memberships: memberships
           .filter((m) => m.userId === u.id)
           .map(({ userId, ...m }) => m),
@@ -125,6 +126,14 @@ export function register(app: App) {
       total: total?.total ?? 0,
       hasMore: b.page * 24 < (total?.total ?? 0),
     });
+  });
+  app.get("/api/v1/directory/users/:id/photo", async (c) => {
+    await requireDirectory(c);
+    const user = await target(c) as { id: string; avatarUrl: string };
+    if (!user.avatarUrl) return fail(404, "photo_not_found");
+    const image = await imageResponse(c.env.DB, "users", user.id as string);
+    if (!image) return fail(404, "photo_not_found");
+    return image;
   });
   app.get("/api/v1/directory/teams", async (c) => {
     await requireDirectory(c);
@@ -177,7 +186,7 @@ export function register(app: App) {
   });
   app.get("/api/v1/directory/users/:id", async (c) => {
     await requireDirectory(c);
-    const user = await target(c);
+    const user = await target(c) as { id: string; avatarUrl: string; [key: string]: unknown };
     const memberships = (
       await c.env.DB.prepare(
         "SELECT d.id departmentId,d.name department,t.id teamId,t.name team FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=? AND d.archived=0 AND (t.id IS NULL OR t.archived=0) ORDER BY d.name,t.name",
@@ -185,8 +194,10 @@ export function register(app: App) {
         .bind(c.req.param("id"))
         .all()
     ).results;
+    const { avatarUrl, ...profile } = user;
     return c.json({
-      ...user,
+      ...profile,
+      photoUrl: avatarUrl ? `/api/v1/directory/users/${encodeURIComponent(user.id)}/photo` : "",
       memberships,
       applications: await usedApplications(c.env, c.req.param("id")),
     });

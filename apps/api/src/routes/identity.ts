@@ -23,7 +23,27 @@ import {
   credentials,
   type App,
 } from "../common";
+import { uploadedImage, saveImage, removeImage, imageResponse } from "../image-assets";
+import { notifyDirectory } from "../directory-live";
 export function register(app: App) {
+  app.get("/api/v1/me/photo", async (c) => {
+    const image = await imageResponse(c.env.DB, "users", c.get("user").id);
+    if (!image) return fail(404, "photo_not_found");
+    return image;
+  });
+  app.post("/api/v1/me/photo", async (c) => {
+    if (c.get("session").kind !== "central") fail(403, "central_session_required");
+    const { bytes, contentType } = await uploadedImage(c.req.raw);
+    await saveImage(c.env.DB, "users", c.get("user").id, bytes, contentType);
+    await notifyDirectory(c.env);
+    return c.json({ photoUrl: `/api/v1/directory/users/${encodeURIComponent(c.get("user").id)}/photo` });
+  });
+  app.delete("/api/v1/me/photo", async (c) => {
+    if (c.get("session").kind !== "central") fail(403, "central_session_required");
+    await removeImage(c.env.DB, "users", c.get("user").id);
+    await notifyDirectory(c.env);
+    return c.json({ photoUrl: "" });
+  });
   app.get("/api/v1/me", async (c) => {
     const u = c.get("user");
     const s = c.get("session");
@@ -37,7 +57,7 @@ export function register(app: App) {
       ...(s.app_id ? { applicationId: s.app_id } : {}),
     };
     if (scopes.includes("profile"))
-      Object.assign(result, { firstName: u.first_name, lastName: u.last_name });
+      Object.assign(result, { firstName: u.first_name, lastName: u.last_name, photoUrl: u.avatar_url ? s.kind === "central" ? `/api/v1/directory/users/${encodeURIComponent(u.id)}/photo` : "/api/v1/me/photo" : "" });
     if (scopes.includes("email"))
       Object.assign(result, { email: u.email, emailVerified: !!u.verified });
     if (scopes.includes("organization"))

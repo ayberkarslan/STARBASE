@@ -41,6 +41,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0013_app_resources.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0014_app_auto_authorize.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0015_recent_admin_auth.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0016_profile_photos.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -150,6 +151,24 @@ function uploadLogo(
     env,
   );
 }
+it("stores a profile photo and shares it through the team directory", async () => {
+  const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]);
+  const upload = await app.request("https://base.test/api/v1/me/photo", {
+    method: "POST",
+    headers: { Origin: "https://base.test", Cookie: "starbase=central", "Content-Type": "image/png" },
+    body: new Blob([png.buffer], { type: "image/png" }),
+  }, env);
+  expect(upload.status).toBe(200);
+  const me = await call("/me");
+  expect(((await me.json()) as any).photoUrl).toBe("/api/v1/directory/users/u1/photo");
+  const profile = await call("/directory/users/u1");
+  expect(((await profile.json()) as any).photoUrl).toBe("/api/v1/directory/users/u1/photo");
+  const image = await call("/directory/users/u1/photo");
+  expect(image.status).toBe(200);
+  expect(new Uint8Array(await image.arrayBuffer())).toEqual(png);
+  expect((await call("/me/photo", undefined, "central", "DELETE")).status).toBe(200);
+  expect((await call("/directory/users/u1/photo")).status).toBe(404);
+});
 function uploadDepartmentLogo(id: string, bytes: Uint8Array) {
   return app.request(
     `https://base.test/api/v1/admin/departments/${id}/logo`,

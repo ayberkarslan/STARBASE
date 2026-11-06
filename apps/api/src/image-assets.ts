@@ -25,20 +25,20 @@ export async function uploadedImage(request: Request) {
   return { bytes, contentType };
 }
 
-type LogoOwner = "apps" | "teams" | "departments";
+type LogoOwner = "apps" | "teams" | "departments" | "users";
 
 export async function saveImage(db: D1Database, owner: LogoOwner, id: string, bytes: Uint8Array, contentType: string) {
   await db.batch([
     db.prepare("INSERT INTO image_assets(key,content_type,content) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET content_type=excluded.content_type,content=excluded.content")
       .bind(`${owner}/${id}/logo`, contentType, bytes),
-    db.prepare(`UPDATE ${owner} SET logo_url='uploaded' WHERE id=?`).bind(id),
+    db.prepare(`UPDATE ${owner} SET ${owner === "users" ? "avatar_url" : "logo_url"}='uploaded' WHERE id=?`).bind(id),
   ]);
 }
 
 export async function removeImage(db: D1Database, owner: LogoOwner, id: string) {
   await db.batch([
     db.prepare("DELETE FROM image_assets WHERE key=?").bind(`${owner}/${id}/logo`),
-    db.prepare(`UPDATE ${owner} SET logo_url='' WHERE id=?`).bind(id),
+    db.prepare(`UPDATE ${owner} SET ${owner === "users" ? "avatar_url" : "logo_url"}='' WHERE id=?`).bind(id),
   ]);
 }
 

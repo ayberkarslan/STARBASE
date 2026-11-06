@@ -5,6 +5,7 @@ export interface Profile {
   username: string;
   firstName?: string;
   lastName?: string;
+  photoUrl?: string;
   email?: string;
   emailVerified?: boolean;
   owner?: boolean;
@@ -32,6 +33,7 @@ export interface DirectoryUser {
   username: string;
   firstName: string;
   lastName: string;
+  photoUrl: string;
   memberships: TeamMembership[];
 }
 export interface DirectoryPage {

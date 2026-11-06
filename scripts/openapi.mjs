@@ -59,6 +59,7 @@ for (const f of fs
         "/api/v1/apps/:id/branding",
       ]);
       const centralOnly =
+        (route === "/api/v1/me/photo" && method !== "get") ||
         route.startsWith("/api/v1/admin/") ||
         route.startsWith("/api/v1/directory/") ||
         route.startsWith("/api/v1/board/") ||

@@ -55,7 +55,7 @@ export function register(app: App) {
     await permit(c, "users.manage");
     const id = c.req.param("id");
     const user = await c.env.DB.prepare(
-      "SELECT id,username,email,first_name,last_name,avatar_url,verified,disabled,owner FROM users WHERE id=?",
+      "SELECT id,username,email,first_name,last_name,avatar_url,avatar_version,verified,disabled,owner FROM users WHERE id=?",
     )
       .bind(id)
       .first();
@@ -75,7 +75,7 @@ export function register(app: App) {
     return c.json(
       (
         await c.env.DB.prepare(
-          "SELECT id,username,email,first_name,last_name,avatar_url,verified,disabled,owner FROM users ORDER BY created_at DESC LIMIT 100",
+          "SELECT id,username,email,first_name,last_name,avatar_url,avatar_version,verified,disabled,owner FROM users ORDER BY created_at DESC LIMIT 100",
         ).all()
       ).results,
     );

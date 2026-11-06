@@ -1,6 +1,7 @@
 import { HTTPException } from "hono/http-exception";
 
 export const MAX_IMAGE_BYTES = 1048576;
+export const userPhotoUrl = (id: string, version: number) => `/api/v1/directory/users/${encodeURIComponent(id)}/photo?v=${version}`;
 
 function imageType(bytes: Uint8Array) {
   if ([137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte))
@@ -31,14 +32,14 @@ export async function saveImage(db: D1Database, owner: LogoOwner, id: string, by
   await db.batch([
     db.prepare("INSERT INTO image_assets(key,content_type,content) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET content_type=excluded.content_type,content=excluded.content")
       .bind(`${owner}/${id}/logo`, contentType, bytes),
-    db.prepare(`UPDATE ${owner} SET ${owner === "users" ? "avatar_url" : "logo_url"}='uploaded' WHERE id=?`).bind(id),
+    db.prepare(owner === "users" ? "UPDATE users SET avatar_url='uploaded',avatar_version=avatar_version+1 WHERE id=?" : `UPDATE ${owner} SET logo_url='uploaded' WHERE id=?`).bind(id),
   ]);
 }
 
 export async function removeImage(db: D1Database, owner: LogoOwner, id: string) {
   await db.batch([
     db.prepare("DELETE FROM image_assets WHERE key=?").bind(`${owner}/${id}/logo`),
-    db.prepare(`UPDATE ${owner} SET ${owner === "users" ? "avatar_url" : "logo_url"}='' WHERE id=?`).bind(id),
+    db.prepare(owner === "users" ? "UPDATE users SET avatar_url='',avatar_version=avatar_version+1 WHERE id=?" : `UPDATE ${owner} SET logo_url='' WHERE id=?`).bind(id),
   ]);
 }
 

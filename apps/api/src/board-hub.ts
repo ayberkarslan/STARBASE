@@ -18,11 +18,14 @@ export class BoardHub {
       server.serializeAttachment({
         expires,
       });
-      return new Response(null, { status: 101, webSocket: client });
+      return new Response(null, { status: 101, webSocket: client,
+        headers: request.headers.get("Sec-WebSocket-Protocol") === "starbase-profile"
+          ? { "Sec-WebSocket-Protocol": "starbase-profile" } : undefined });
     }
     if (url.pathname === "/notify" && request.method === "POST") {
       const type = url.searchParams.get("type") === "directory.changed"
-        ? "directory.changed" : "board.changed";
+        ? "directory.changed" : url.searchParams.get("type") === "profile.photo.changed"
+          ? "profile.photo.changed" : "board.changed";
       for (const socket of this.state.getWebSockets()) {
         try {
           const attachment = socket.deserializeAttachment() as {

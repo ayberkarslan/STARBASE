@@ -101,7 +101,11 @@ app.use("/api/v1/*", async (c, next) => {
     /^\/api\/v1\/apps\/[a-z0-9-]{3,40}\/(branding|logo)$/.test(c.req.path)
   )
     return next();
-  const bearer = c.req.header("authorization")?.replace(/^Bearer /, "");
+  const protocols = c.req.path === "/api/v1/me/live" && c.req.header("upgrade")?.toLowerCase() === "websocket"
+    ? c.req.header("sec-websocket-protocol")?.split(",").map((value) => value.trim()) : undefined;
+  const socketBearer = protocols?.length === 2 && protocols[0] === "starbase-profile" && /^[a-f0-9]{64}$/.test(protocols[1])
+    ? protocols[1] : undefined;
+  const bearer = c.req.header("authorization")?.replace(/^Bearer /, "") ?? socketBearer;
   const raw = bearer ?? getCookie(c, "starbase");
   if (!raw) fail(401, "authentication_required");
   const session = await c.env.DB.prepare(

@@ -23,25 +23,42 @@ import {
   credentials,
   type App,
 } from "../common";
-import { uploadedImage, saveImage, removeImage, imageResponse } from "../image-assets";
-import { notifyDirectory } from "../directory-live";
+import { uploadedImage, saveImage, removeImage, imageResponse, userPhotoUrl } from "../image-assets";
+import { notifyDirectory, notifyProfilePhoto } from "../directory-live";
 export function register(app: App) {
+  app.get("/api/v1/me/live", async (c) => {
+    const session = c.get("session");
+    if (session.kind !== "access" || !JSON.parse(session.scopes).includes("profile")) fail(403, "permission_denied");
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") fail(400, "websocket_required");
+    const origin = c.req.header("origin");
+    const application = await c.env.DB.prepare("SELECT origins FROM apps WHERE id=? AND disabled=0")
+      .bind(session.app_id).first<{ origins: string }>();
+    if (!origin || !application || !(JSON.parse(application.origins) as string[]).includes(origin)) fail(403, "origin_rejected");
+    const hub = c.env.BOARD_HUB.get(c.env.BOARD_HUB.idFromName(`profile-photo:${c.get("user").id}`));
+    return hub.fetch(new Request(`https://board.internal/connect?expires=${session.expires}`, {
+      headers: { Upgrade: "websocket", "Sec-WebSocket-Protocol": "starbase-profile" },
+    }));
+  });
   app.get("/api/v1/me/photo", async (c) => {
+    if (c.get("session").kind === "access" && !JSON.parse(c.get("session").scopes).includes("profile")) fail(403, "permission_denied");
     const image = await imageResponse(c.env.DB, "users", c.get("user").id);
     if (!image) return fail(404, "photo_not_found");
-    return image;
+    return c.newResponse(image.body, image);
   });
   app.post("/api/v1/me/photo", async (c) => {
     if (c.get("session").kind !== "central") fail(403, "central_session_required");
     const { bytes, contentType } = await uploadedImage(c.req.raw);
     await saveImage(c.env.DB, "users", c.get("user").id, bytes, contentType);
     await notifyDirectory(c.env);
-    return c.json({ photoUrl: `/api/v1/directory/users/${encodeURIComponent(c.get("user").id)}/photo` });
+    await notifyProfilePhoto(c.env, c.get("user").id);
+    const user = await c.env.DB.prepare("SELECT avatar_version FROM users WHERE id=?").bind(c.get("user").id).first<{ avatar_version: number }>();
+    return c.json({ photoUrl: userPhotoUrl(c.get("user").id, user!.avatar_version) });
   });
   app.delete("/api/v1/me/photo", async (c) => {
     if (c.get("session").kind !== "central") fail(403, "central_session_required");
     await removeImage(c.env.DB, "users", c.get("user").id);
     await notifyDirectory(c.env);
+    await notifyProfilePhoto(c.env, c.get("user").id);
     return c.json({ photoUrl: "" });
   });
   app.get("/api/v1/me", async (c) => {
@@ -57,7 +74,7 @@ export function register(app: App) {
       ...(s.app_id ? { applicationId: s.app_id } : {}),
     };
     if (scopes.includes("profile"))
-      Object.assign(result, { firstName: u.first_name, lastName: u.last_name, photoUrl: u.avatar_url ? s.kind === "central" ? `/api/v1/directory/users/${encodeURIComponent(u.id)}/photo` : "/api/v1/me/photo" : "" });
+      Object.assign(result, { firstName: u.first_name, lastName: u.last_name, photoUrl: u.avatar_url ? s.kind === "central" ? userPhotoUrl(u.id, u.avatar_version) : `/api/v1/me/photo?v=${u.avatar_version}` : "" });
     if (scopes.includes("email"))
       Object.assign(result, { email: u.email, emailVerified: !!u.verified });
     if (scopes.includes("organization"))

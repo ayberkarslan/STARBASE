@@ -229,7 +229,7 @@ function App() {
       });
       const result: any = await response.json();
       if (!response.ok) throw new Error(result.error?.code ?? "Fotoğraf kaydedilemedi.");
-      setUser((current: any) => ({ ...current, photoUrl: result.photoUrl ? `${result.photoUrl}?v=${Date.now()}` : "" }));
+      setUser((current: any) => ({ ...current, photoUrl: result.photoUrl ?? "" }));
       invalidateDirectory();
     } catch (cause) {
       setPhotoError((cause as Error).message);
@@ -842,7 +842,7 @@ function App() {
               {selected && (
                 <div className="admin-member-sheet">
                   <div className="admin-member-sheet__identity">
-                    <span>{selected.avatar_url && !selected.disabled ? <img src={`/api/v1/directory/users/${encodeURIComponent(selected.id)}/photo`} alt="" /> : <>{selected.first_name?.[0]}{selected.last_name?.[0]}</>}</span>
+                    <span>{selected.avatar_url && !selected.disabled ? <img src={`/api/v1/directory/users/${encodeURIComponent(selected.id)}/photo?v=${selected.avatar_version}`} alt="" /> : <>{selected.first_name?.[0]}{selected.last_name?.[0]}</>}</span>
                     <div><strong>{selected.first_name} {selected.last_name}</strong><small>{selected.email}</small></div>
                   </div>
                   <EditUser key={selected.id} user={selected} onUpdated={(updated) => {

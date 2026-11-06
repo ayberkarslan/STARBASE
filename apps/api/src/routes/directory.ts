@@ -8,7 +8,7 @@ import {
   requireTeamMember,
 } from "../common";
 import { applicationHistory } from "../activity";
-import { imageResponse } from "../image-assets";
+import { imageResponse, userPhotoUrl } from "../image-assets";
 type C = Context<{ Bindings: Env; Variables: { session: Session; user: any } }>;
 const member = (alias: string) =>
   `(${alias}.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=${alias}.id))`;
@@ -26,7 +26,7 @@ async function usedApplications(env: Env, userId: string) {
 }
 async function target(c: C) {
   const u = await c.env.DB.prepare(
-    `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
+    `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl,u.avatar_version avatarVersion FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
   )
     .bind(c.req.param("id"))
     .first();
@@ -98,7 +98,7 @@ export function register(app: App) {
       .first<{ total: number }>();
     const users = (
       await c.env.DB.prepare(
-        `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl FROM users u WHERE ${where} ORDER BY u.first_name COLLATE NOCASE,u.last_name COLLATE NOCASE,u.username LIMIT 24 OFFSET ?`,
+        `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl,u.avatar_version avatarVersion FROM users u WHERE ${where} ORDER BY u.first_name COLLATE NOCASE,u.last_name COLLATE NOCASE,u.username LIMIT 24 OFFSET ?`,
       )
         .bind(...bindings, (b.page - 1) * 24)
         .all()
@@ -114,9 +114,9 @@ export function register(app: App) {
         ).results
       : [];
     return c.json({
-      users: users.map(({ avatarUrl, ...u }) => ({
+      users: users.map(({ avatarUrl, avatarVersion, ...u }) => ({
         ...u,
-        photoUrl: avatarUrl ? `/api/v1/directory/users/${encodeURIComponent(u.id as string)}/photo` : "",
+        photoUrl: avatarUrl ? userPhotoUrl(u.id as string, avatarVersion as number) : "",
         memberships: memberships
           .filter((m) => m.userId === u.id)
           .map(({ userId, ...m }) => m),
@@ -186,7 +186,7 @@ export function register(app: App) {
   });
   app.get("/api/v1/directory/users/:id", async (c) => {
     await requireDirectory(c);
-    const user = await target(c) as { id: string; avatarUrl: string; [key: string]: unknown };
+    const user = await target(c) as { id: string; avatarUrl: string; avatarVersion: number; [key: string]: unknown };
     const memberships = (
       await c.env.DB.prepare(
         "SELECT d.id departmentId,d.name department,t.id teamId,t.name team FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=? AND d.archived=0 AND (t.id IS NULL OR t.archived=0) ORDER BY d.name,t.name",
@@ -194,10 +194,10 @@ export function register(app: App) {
         .bind(c.req.param("id"))
         .all()
     ).results;
-    const { avatarUrl, ...profile } = user;
+    const { avatarUrl, avatarVersion, ...profile } = user;
     return c.json({
       ...profile,
-      photoUrl: avatarUrl ? `/api/v1/directory/users/${encodeURIComponent(user.id)}/photo` : "",
+      photoUrl: avatarUrl ? userPhotoUrl(user.id, avatarVersion) : "",
       memberships,
       applications: await usedApplications(c.env, c.req.param("id")),
     });

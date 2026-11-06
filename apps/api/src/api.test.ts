@@ -42,6 +42,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0014_app_auto_authorize.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0015_recent_admin_auth.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0016_profile_photos.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0017_avatar_versions.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -160,13 +161,39 @@ it("stores a profile photo and shares it through the team directory", async () =
   }, env);
   expect(upload.status).toBe(200);
   const me = await call("/me");
-  expect(((await me.json()) as any).photoUrl).toBe("/api/v1/directory/users/u1/photo");
+  expect(((await me.json()) as any).photoUrl).toBe("/api/v1/directory/users/u1/photo?v=1");
   const profile = await call("/directory/users/u1");
-  expect(((await profile.json()) as any).photoUrl).toBe("/api/v1/directory/users/u1/photo");
+  expect(((await profile.json()) as any).photoUrl).toBe("/api/v1/directory/users/u1/photo?v=1");
   const image = await call("/directory/users/u1/photo");
   expect(image.status).toBe(200);
   expect(new Uint8Array(await image.arrayBuffer())).toEqual(png);
+  const application = await call("/auth/exchange", await loginCode(), "");
+  const { accessToken } = await application.json() as { accessToken: string };
+  const appProfile = await call("/me", undefined, accessToken);
+  expect(((await appProfile.json()) as any).photoUrl).toBe("/api/v1/me/photo?v=1");
+  const appPhoto = await app.request("https://base.test/api/v1/me/photo", {
+    headers: { Origin: "https://lab.test", Authorization: `Bearer ${accessToken}` },
+  }, env);
+  expect(appPhoto.status).toBe(200);
+  expect(appPhoto.headers.get("access-control-allow-origin")).toBe("https://lab.test");
+  expect(appPhoto.headers.get("content-type")).toBe("image/png");
+  expect(new Uint8Array(await appPhoto.arrayBuffer())).toEqual(png);
+  const live = await app.request("https://base.test/api/v1/me/live", {
+    headers: { Origin: "https://lab.test", Upgrade: "websocket", "Sec-WebSocket-Protocol": `starbase-profile, ${accessToken}` },
+  }, env);
+  expect(live.status).toBe(204);
+  const wrongOrigin = await app.request("https://base.test/api/v1/me/live", {
+    headers: { Origin: "https://other.test", Upgrade: "websocket", "Sec-WebSocket-Protocol": `starbase-profile, ${accessToken}` },
+  }, env);
+  expect(wrongOrigin.status).toBe(403);
+  const updated = await app.request("https://base.test/api/v1/me/photo", {
+    method: "POST",
+    headers: { Origin: "https://base.test", Cookie: "starbase=central", "Content-Type": "image/png" },
+    body: new Blob([png.buffer], { type: "image/png" }),
+  }, env);
+  expect((await updated.json() as any).photoUrl).toBe("/api/v1/directory/users/u1/photo?v=2");
   expect((await call("/me/photo", undefined, "central", "DELETE")).status).toBe(200);
+  expect(db.prepare("SELECT avatar_version FROM users WHERE id='u1'").get()).toEqual({ avatar_version: 3 });
   expect((await call("/directory/users/u1/photo")).status).toBe(404);
 });
 function uploadDepartmentLogo(id: string, bytes: Uint8Array) {

@@ -1,0 +1,1 @@
+ALTER TABLE families ADD COLUMN reauthenticated_at INTEGER NOT NULL DEFAULT 0;

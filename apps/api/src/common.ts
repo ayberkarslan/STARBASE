@@ -144,7 +144,14 @@ export const credentials = z.object({
     .refine((s) => usernamePattern.test(s)),
   password: z.string().min(12).max(128),
 });
-export async function reauthenticate(c: any, password: string) {
+export async function reauthenticate(c: any, password?: string) {
+  if (!password) {
+    const family = await c.env.DB.prepare("SELECT reauthenticated_at FROM families WHERE id=? AND user_id=? AND revoked=0")
+      .bind(c.get("session").family, c.get("user").id)
+      .first() as { reauthenticated_at: number } | null;
+    if (family && family.reauthenticated_at > now() - 600) return;
+    return fail(401, "reauthentication_required");
+  }
   await rate(c);
   try {
     await firebase(c.env, "signInWithPassword", {
@@ -155,6 +162,9 @@ export async function reauthenticate(c: any, password: string) {
   } catch {
     return fail(401, "reauthentication_required");
   }
+  await c.env.DB.prepare("UPDATE families SET reauthenticated_at=? WHERE id=? AND user_id=?")
+    .bind(now(), c.get("session").family, c.get("user").id)
+    .run();
 }
 export type App = Hono<{
   Bindings: Env;

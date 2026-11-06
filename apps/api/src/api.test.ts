@@ -40,6 +40,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0012_app_launch.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0013_app_resources.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0014_app_auto_authorize.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0015_recent_admin_auth.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -178,6 +179,20 @@ async function loginCode(scopes = ["profile"]) {
   };
 }
 describe("identity boundaries", () => {
+  it("updates member names without revoking sessions", async () => {
+    const response = await call("/admin/users/u2/profile", { firstName: "Yeni", lastName: "Ad" }, "central", "PATCH");
+    expect(response.status).toBe(200);
+    expect(db.prepare("SELECT first_name,last_name FROM users WHERE id='u2'").get()).toMatchObject({ first_name: "Yeni", last_name: "Ad" });
+    expect(db.prepare("SELECT revoked FROM families WHERE id='f'").get()).toMatchObject({ revoked: 0 });
+  });
+  it("validates all profile fields before saving a batch", async () => {
+    db.prepare("INSERT INTO profile_fields(key,label,type,options) VALUES('position','Görev','text','[]')").run();
+    const bad = await call("/admin/profile-values/u2/batch", { values: [{ key: "position", value: "Pilot" }, { key: "unknown", value: "x" }] }, "central", "PUT");
+    expect(bad.status).toBe(400);
+    expect(db.prepare("SELECT COUNT(*) count FROM profile_values").get()).toMatchObject({ count: 0 });
+    const saved = await call("/admin/profile-values/u2/batch", { values: [{ key: "position", value: "Pilot" }] }, "central", "PUT");
+    expect(saved.status).toBe(200);
+  });
   it("auto authorizes only an explicitly trusted application", async () => {
     db.prepare("INSERT INTO apps(id,name,redirects,origins,scopes,auto_authorize) VALUES(?,?,?,?,?,1)").run(
       "test-formu-web", "YRT Test Takvimi", '["https://calendar.test/callback"]', '["https://calendar.test"]', '["profile","organization"]',

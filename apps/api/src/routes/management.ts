@@ -38,6 +38,17 @@ function validLaunchUrl(value: string) {
   }
 }
 
+function validProfileValue(field: any, value: unknown) {
+  return value === null || (
+    field.type === "text" ? typeof value === "string" && value.length <= 2000
+      : field.type === "number" ? typeof value === "number" && Number.isFinite(value)
+      : field.type === "boolean" ? typeof value === "boolean"
+      : field.type === "date" ? typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      : field.type === "select" ? JSON.parse(field.options).includes(value)
+      : false
+  );
+}
+
 export function register(app: App) {
   app.get("/api/v1/admin/users/:id", async (c) => {
     await permit(c, "users.manage");
@@ -229,7 +240,7 @@ export function register(app: App) {
     const b = await body(
       c,
       z.object({
-        currentPassword: z.string(),
+        currentPassword: z.string().optional(),
         temporaryPassword: z.string().min(12).max(128).optional(),
       }),
     );
@@ -266,6 +277,21 @@ export function register(app: App) {
     }
     return c.json({ ok: true });
   });
+  app.patch("/api/v1/admin/users/:id/profile", async (c) => {
+    await permit(c, "users.manage");
+    const b = await body(c, z.object({
+      firstName: z.string().trim().min(1).max(80),
+      lastName: z.string().trim().min(1).max(80),
+    }));
+    const uid = c.req.param("id");
+    const target = await c.env.DB.prepare("SELECT owner FROM users WHERE id=?").bind(uid).first<{ owner: number }>();
+    if (!target) fail(404, "not_found");
+    if (target?.owner && !c.get("user").owner) fail(403, "owner_protected");
+    await c.env.DB.prepare("UPDATE users SET first_name=?,last_name=? WHERE id=?")
+      .bind(b.firstName, b.lastName, uid).run();
+    await audit(c, "user.profile.update", uid);
+    return c.json({ ok: true });
+  });
   app.put("/api/v1/admin/users/:id", async (c) => {
     await permit(c, "users.manage");
     const b = await body(
@@ -275,7 +301,7 @@ export function register(app: App) {
         lastName: z.string().min(1).max(80),
         email: z.string().email(),
         disabled: z.boolean(),
-        currentPassword: z.string(),
+        currentPassword: z.string().optional(),
       }),
     );
     await reauthenticate(c, b.currentPassword);
@@ -445,26 +471,39 @@ export function register(app: App) {
       .bind(b.key)
       .first<any>();
     if (!f) fail(400, "unknown_field");
-    const valid =
-      f.type === "text"
-        ? typeof b.value === "string" && b.value.length <= 2000
-        : f.type === "number"
-          ? typeof b.value === "number" && Number.isFinite(b.value)
-          : f.type === "boolean"
-            ? typeof b.value === "boolean"
-            : f.type === "date"
-              ? typeof b.value === "string" &&
-                /^\d{4}-\d{2}-\d{2}$/.test(b.value)
-              : f.type === "select"
-                ? JSON.parse(f.options).includes(b.value)
-                : false;
+    const valid = validProfileValue(f, b.value);
     if (!valid) fail(400, "invalid_field_value");
-    await c.env.DB.prepare(
-      "INSERT INTO profile_values VALUES(?,?,?) ON CONFLICT(user_id,field_key) DO UPDATE SET value=excluded.value",
-    )
-      .bind(c.req.param("id"), b.key, JSON.stringify(b.value))
-      .run();
+    if (b.value === null) {
+      await c.env.DB.prepare("DELETE FROM profile_values WHERE user_id=? AND field_key=?")
+        .bind(c.req.param("id"), b.key).run();
+    } else {
+      await c.env.DB.prepare(
+        "INSERT INTO profile_values VALUES(?,?,?) ON CONFLICT(user_id,field_key) DO UPDATE SET value=excluded.value",
+      )
+        .bind(c.req.param("id"), b.key, JSON.stringify(b.value))
+        .run();
+    }
     await audit(c, "profile.update", c.req.param("id"));
+    return c.json({ ok: true });
+  });
+  app.put("/api/v1/admin/profile-values/:id/batch", async (c) => {
+    await permit(c, "users.manage");
+    const b = await body(c, z.object({ values: z.array(z.object({ key: z.string(), value: z.unknown() })).max(50) }));
+    const uid = c.req.param("id");
+    if (!(await c.env.DB.prepare("SELECT 1 FROM users WHERE id=?").bind(uid).first())) fail(404, "not_found");
+    const fields = (await c.env.DB.prepare("SELECT * FROM profile_fields").all()).results as any[];
+    const byKey = new Map(fields.map((field) => [field.key, field]));
+    const seen = new Set<string>();
+    for (const item of b.values) {
+      const field = byKey.get(item.key);
+      if (!field || seen.has(item.key) || !validProfileValue(field, item.value)) fail(400, "invalid_field_value");
+      seen.add(item.key);
+    }
+    if (b.values.length) await c.env.DB.batch(b.values.map((item) => item.value === null
+      ? c.env.DB.prepare("DELETE FROM profile_values WHERE user_id=? AND field_key=?").bind(uid, item.key)
+      : c.env.DB.prepare("INSERT INTO profile_values VALUES(?,?,?) ON CONFLICT(user_id,field_key) DO UPDATE SET value=excluded.value")
+        .bind(uid, item.key, JSON.stringify(item.value))));
+    await audit(c, "profile.update", uid);
     return c.json({ ok: true });
   });
   app.get("/api/v1/admin/profile-values/:id", async (c) => {

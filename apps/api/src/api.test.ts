@@ -179,6 +179,13 @@ async function loginCode(scopes = ["profile"]) {
   };
 }
 describe("identity boundaries", () => {
+  it("reuses recent admin verification for ten minutes", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
+    db.prepare("UPDATE families SET reauthenticated_at=? WHERE id='f'").run(now());
+    expect((await call("/admin/users/u2/password", {})).status).toBe(200);
+    db.prepare("UPDATE families SET reauthenticated_at=? WHERE id='f'").run(now() - 601);
+    expect((await call("/admin/users/u2/password", {})).status).toBe(401);
+  });
   it("updates member names without revoking sessions", async () => {
     const response = await call("/admin/users/u2/profile", { firstName: "Yeni", lastName: "Ad" }, "central", "PATCH");
     expect(response.status).toBe(200);

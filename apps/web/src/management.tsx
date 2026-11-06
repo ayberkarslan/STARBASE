@@ -1,7 +1,8 @@
 import { FormSelect } from "./form-select";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, IconButton, TextField, Panel, SelectMenu } from "@stardrop/ui";
 import { Check, Pencil, X } from "lucide-react";
+import { invalidateDirectory } from "./member-live";
 export async function request(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -10,6 +11,7 @@ export async function request(path: string, body?: unknown, method?: string) {
   });
   const b: any = await r.json();
   if (!r.ok) throw new Error(b.error?.code ?? "service_unavailable");
+  if ((method ?? (body ? "POST" : "GET")) !== "GET" && /^\/admin\/(users\/|memberships|profile-values\/)/.test(path)) invalidateDirectory();
   return b;
 }
 async function uploadApplicationLogo(appId: string, file: File) {
@@ -95,9 +97,10 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
     {feedback && <p className={feedback.error ? "member-form-feedback is-error" : "member-form-feedback"} role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
   </Panel>;
 }
-export function Fields({ run, userId }: { run: Run; userId?: string }) {
+export function Fields({ run, userId, revision = 0 }: { run: Run; userId?: string; revision?: number }) {
   const [fields, setFields] = useState<any[]>([]);
   const [draft, setDraft] = useState<Record<string, any>>({});
+  const dirty = useRef(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
   const reloadValues = () =>
@@ -105,10 +108,14 @@ export function Fields({ run, userId }: { run: Run; userId?: string }) {
       ? request("/admin/profile-values/" + userId).then((rows: any[]) => setDraft(Object.fromEntries(rows.map((row) => [row.field_key, JSON.parse(row.value)]))))
       : Promise.resolve();
   useEffect(() => {
+    dirty.current = false;
     setDraft({});
     setFeedback(null);
     reloadValues().catch(() => {});
   }, [userId]);
+  useEffect(() => {
+    if (revision && !dirty.current) reloadValues().catch(() => {});
+  }, [revision]);
   const reload = () => request("/admin/profile-fields").then(setFields);
   useEffect(() => {
     reload().catch(() => {});
@@ -128,13 +135,13 @@ export function Fields({ run, userId }: { run: Run; userId?: string }) {
           setSaving(true);
           setFeedback(null);
           void request("/admin/profile-values/" + userId + "/batch", { values }, "PUT")
-            .then(async () => { await reloadValues(); setFeedback({ text: "Profil bilgileri kaydedildi.", error: false }); })
+            .then(async () => { dirty.current = false; await reloadValues(); setFeedback({ text: "Profil bilgileri kaydedildi.", error: false }); })
             .catch((cause) => setFeedback({ text: "Kaydedilemedi: " + (cause as Error).message, error: true }))
             .finally(() => setSaving(false));
         }}>
           <div className="member-fields-grid">{fields.map((field) => {
             const value = draft[field.key];
-            const setValue = (next: unknown) => setDraft((current) => ({ ...current, [field.key]: next }));
+            const setValue = (next: unknown) => { dirty.current = true; setDraft((current) => ({ ...current, [field.key]: next })); };
             if (field.type === "boolean") return <label className="member-access-toggle" key={field.key}><input type="checkbox" checked={Boolean(value)} onChange={(event) => setValue(event.target.checked)} /><span>{field.label}</span></label>;
             if (field.type === "select") return <SelectMenu key={field.key} label={field.label} value={String(value ?? "")} options={[{ value: "", label: "Seç" }, ...JSON.parse(field.options).map((item: string) => ({ value: item, label: item }))]} onChange={setValue} />;
             return <TextField key={field.key} label={field.label} type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"} value={value ?? ""} onChange={(event) => setValue(event.target.value)} />;

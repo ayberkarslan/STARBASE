@@ -10,6 +10,7 @@ import { TeamDirectory, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
 import { FormSelect } from "./form-select";
+import { invalidateDirectory, subscribeDirectoryChanges } from "./member-live";
 import { Captcha } from "./captcha";
 import {
   Invitations,
@@ -71,6 +72,7 @@ async function api(path: string, body?: unknown, method?: string) {
   });
   const data: any = await r.json();
   if (!r.ok) throw new Error(data.error?.code ?? "İşlem tamamlanamadı");
+  if ((method ?? (body ? "POST" : "GET")) !== "GET" && /^\/admin\/(users|memberships|profile-values\/)/.test(path)) invalidateDirectory();
   return data;
 }
 const messages: Record<string, string> = {
@@ -118,6 +120,7 @@ function App() {
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
+  const [directoryRevision, setDirectoryRevision] = useState(0);
   const path = location.pathname;
   const params = new URLSearchParams(location.search);
   async function load() {
@@ -167,7 +170,20 @@ function App() {
           .then(setConsent)
           .catch((e) => setError(e.message));
     }
-  }, [user]);
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    return subscribeDirectoryChanges(() => setDirectoryRevision((value) => value + 1));
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id || directoryRevision === 0) return;
+    api("/me").then(setUser).catch(() => {});
+    api("/organization").then(setOrg).catch(() => {});
+    if (tab === "members") {
+      api("/admin/users").then(setRows).catch(() => {});
+      if (selected?.id) api("/admin/users/" + selected.id).then(setSelected).catch(() => {});
+    }
+  }, [directoryRevision]);
   useEffect(() => {
     setError("");
     setNotice("");
@@ -182,7 +198,7 @@ function App() {
       api(p)
         .then(setRows)
         .catch((e) => setError(messages[e.message] ?? e.message));
-  }, [tab, user]);
+  }, [tab, user?.id]);
   async function act(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -670,6 +686,7 @@ function App() {
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
               key={tab}
+              revision={directoryRevision}
               currentUserId={user.id}
               teamsOnly={tab === "teams"}
               canManageOrganization={user.owner || permissions.includes("organization.manage")}
@@ -799,8 +816,8 @@ function App() {
                     setSelected(updated);
                     setRows((current) => current.map((item) => item.id === updated.id ? updated : item));
                   }} />
-                  <AdminUser key={selected.id} user={selected} org={org} />
-                  <Fields key={selected.id} userId={selected.id} run={act} />
+                  <AdminUser key={selected.id} user={selected} org={org} revision={directoryRevision} />
+                  <Fields key={selected.id} userId={selected.id} run={act} revision={directoryRevision} />
                 </div>
               )}
               </Drawer>
@@ -831,7 +848,7 @@ function App() {
     </div>
   );
 }
-function AdminUser({ user, org }: { user: any; org: any }) {
+function AdminUser({ user, org, revision }: { user: any; org: any; revision: number }) {
   const [memberships, setMemberships] = useState<any[]>([]);
   const [working, setWorking] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
@@ -848,7 +865,7 @@ function AdminUser({ user, org }: { user: any; org: any }) {
     api("/admin/users/" + user.id).then((u) => setMemberships(u.memberships));
   useEffect(() => {
     refresh().catch(() => {});
-  }, [user.id]);
+  }, [user.id, revision]);
   return (
     <div className="admin-forms">
       <h3>Ekip üyelikleri</h3>

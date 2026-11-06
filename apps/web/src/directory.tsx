@@ -58,9 +58,11 @@ export function ApplicationHistoryView({
 function MemberProfile({
   id,
   onClose,
+  revision,
 }: {
   id: string | null;
   onClose: () => void;
+  revision: number;
 }) {
   const [profile, setProfile] = useState<DirectoryProfile | null>(null),
     [error, setError] = useState(""),
@@ -86,7 +88,7 @@ function MemberProfile({
     return () => {
       live = false;
     };
-  }, [id, attempt]);
+  }, [id, attempt, revision]);
   return (
     <Drawer
       open={!!id}
@@ -139,10 +141,12 @@ export function TeamDirectory({
   currentUserId,
   teamsOnly = false,
   canManageOrganization = false,
+  revision = 0,
 }: {
   currentUserId: string;
   teamsOnly?: boolean;
   canManageOrganization?: boolean;
+  revision?: number;
 }) {
   const [query, setQuery] = useState(""),
     [department, setDepartment] = useState(""),
@@ -172,7 +176,7 @@ export function TeamDirectory({
     return () => {
       live = false;
     };
-  }, [retry]);
+  }, [retry, revision]);
   useEffect(() => {
     let live = true;
     setBusy(true);
@@ -204,7 +208,7 @@ export function TeamDirectory({
       live = false;
       clearTimeout(timer);
     };
-  }, [query, department, team, page, retry]);
+  }, [query, department, team, page, retry, revision]);
   function reset() {
     setQuery("");
     setDepartment("");
@@ -402,7 +406,7 @@ export function TeamDirectory({
           ))}
         </div>
       )}
-      <MemberProfile id={selected} onClose={() => setSelected(null)} />
+      <MemberProfile id={selected} onClose={() => setSelected(null)} revision={revision} />
     </div>
   );
 }

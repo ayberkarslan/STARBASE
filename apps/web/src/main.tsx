@@ -179,6 +179,7 @@ function App() {
   useEffect(() => {
     if (!user?.id || directoryRevision === 0) return;
     api("/me").then(setUser).catch(() => {});
+    api("/permissions").then(setPermissions).catch(() => {});
     api("/organization").then(setOrg).catch(() => {});
     if (tab === "members") {
       api("/admin/users").then(setRows).catch(() => {});
@@ -614,6 +615,7 @@ function App() {
                 ? [
                     { id: "members", name: "Üyeler", icon: Users },
                     { id: "roles", name: "Roller ve izinler", icon: Shield },
+                    { id: "application_management", name: "Uygulama yönetimi", icon: AppWindow },
                   ]
                 : []),
               { id: "docs", name: "Geliştiriciler", icon: BookOpen },
@@ -625,7 +627,7 @@ function App() {
                     {
                       members: "users.manage",
                       roles: "roles.manage",
-                      applications: "apps.manage",
+                      application_management: "apps.manage",
                     } as Record<string, string>
                   )[n.id] ||
                   permissions.includes(
@@ -633,7 +635,7 @@ function App() {
                       {
                         members: "users.manage",
                         roles: "roles.manage",
-                        applications: "apps.manage",
+                        application_management: "apps.manage",
                         audit: "users.manage",
                       } as Record<string, string>
                     )[n.id],
@@ -643,7 +645,7 @@ function App() {
                 <button
                   key={n.id}
                   className={tab === n.id ? "active" : ""}
-                  onClick={() => setTab(n.id)}
+                  onClick={() => { if (n.id === "applications") setSelectedApplication(null); setTab(n.id); }}
                 >
                   <n.icon size={17} />
                   {n.name}
@@ -832,8 +834,16 @@ function App() {
               <span className="eyebrow">STARBASE SHOWROOM</span><h1>Uygulamalar</h1>
               <p>Yıldız Roket Takımının ortak hesabıyla çalışan platformlar.</p>
               <div className="application-showroom">{apps.map((app) => <Panel className="app-showcase-card" key={app.id} title={app.name}><button type="button" className="app-showcase-hit" onClick={() => setSelectedApplication(app.id)} aria-label={`${app.name} uygulama sayfasını aç`} /><div className="app-showcase-logo">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={26} />}</div><div className="app-showcase-actions"><span>STARBASE ile giriş</span>{app.launchUrl ? <a className="sd-button sd-button--secondary sd-button--md" href={app.launchUrl}>{app.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={15} /></a> : <small>Geliştiriliyor</small>}</div><ArrowUpRight className="app-showcase-corner" size={22} aria-hidden="true" /></Panel>)}</div>
-              {(user.owner || permissions.includes("apps.manage")) && <AppsList run={act} onChanged={() => api("/apps").then(setApps)} />}
             </>
+          )}
+          {tab === "application_management" && (user.owner || permissions.includes("apps.manage")) && (
+            <section className="application-management">
+              <span className="eyebrow">STARBASE YÖNETİMİ</span>
+              <h1>Uygulama yönetimi</h1>
+              <p>Uygulama adları, logoları ve erişim durumları.</p>
+              <Button variant="bare" onClick={() => { setSelectedApplication(null); setTab("applications"); }}>Uygulama vitrinine dön <ArrowUpRight size={15} /></Button>
+              <AppsList run={act} onChanged={() => api("/apps").then(setApps)} />
+            </section>
           )}
           {tab === "roles" && (
             <>
@@ -848,7 +858,7 @@ function App() {
           {tab === "docs" && <Docs />}
         </main>
       </div>
-      <ApplicationOrbit apps={apps} onApplications={() => setTab("applications")} />
+      <ApplicationOrbit apps={apps} onApplications={() => { setSelectedApplication(null); setTab("applications"); }} />
     </div>
   );
 }

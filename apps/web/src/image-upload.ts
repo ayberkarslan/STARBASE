@@ -3,7 +3,7 @@ const MAX_SOURCE_BYTES = 6291456;
 
 export async function compactPatch(file: File): Promise<Blob> {
   if (!/^image\/(png|jpeg|webp)$/.test(file.type) || !file.size || file.size > MAX_SOURCE_BYTES)
-    throw new Error("Patch PNG, JPEG veya WebP olmalı ve 6 MB'ı geçmemeli.");
+    throw new Error("Görsel PNG, JPEG veya WebP olmalı ve 6 MB'ı geçmemeli.");
   if (file.size <= MAX_STORED_BYTES) return file;
 
   const bitmap = await createImageBitmap(file);
@@ -24,7 +24,7 @@ export async function compactPatch(file: File): Promise<Blob> {
         return result;
       scale *= 0.75;
     }
-    throw new Error("Patch 1 MB sınırına indirilemedi.");
+    throw new Error("Görsel 1 MB sınırına indirilemedi.");
   } finally {
     bitmap.close();
   }

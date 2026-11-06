@@ -4,6 +4,7 @@ import { Button, IconButton, TextField, Panel, SelectMenu } from "@stardrop/ui";
 import { Check, Pencil, X } from "lucide-react";
 import { invalidateDirectory } from "./member-live";
 import { memberStatus, memberStatusOptions, type MemberStatus } from "./member-status";
+import { PasswordField } from "./password-field";
 export async function request(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -93,7 +94,7 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
     }}>
       <SelectMenu label="Hesap durumu" value={status} options={memberStatusOptions} onChange={(value) => setStatus(value as MemberStatus)} />
       <p>Aktif hesabın e-postası onaylanır. Beklemede onay ister; yasaklı hesap giriş yapamaz. Değişiklik mevcut oturumları kapatır.</p>
-      <TextField name="currentPassword" label="Senin şifren" type="password" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
+      <PasswordField name="currentPassword" label="Senin şifren" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
       <Button type="submit" disabled={busy || status === memberStatus(user) || (user.owner && status !== "active")}>Durumu güncelle</Button>
     </form>
     <details className="member-security">
@@ -108,7 +109,7 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
         }, "PUT", "Hesap erişimi güncellendi.");
       }}>
         <TextField name="email" label="E-posta" type="email" defaultValue={user.email} required />
-        <TextField name="currentPassword" label="Senin şifren" type="password" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
+        <PasswordField name="currentPassword" label="Senin şifren" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
         <Button type="submit" disabled={busy}>Erişimi güncelle</Button>
       </form>
     </details>
@@ -300,10 +301,9 @@ export function RolesList({ run }: { run: Run }) {
                   .map((g: any) => g.permission_id)
                   .join(",")}
               />
-              <TextField
+              <PasswordField
                 name="currentPassword"
                 label="Senin şifren"
-                type="password"
                 required
               />
               <Button type="submit">Güncelle</Button>

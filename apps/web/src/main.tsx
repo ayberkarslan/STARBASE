@@ -13,6 +13,8 @@ import { FormSelect } from "./form-select";
 import { memberStatus, memberStatusLabel } from "./member-status";
 import { invalidateDirectory, subscribeDirectoryChanges } from "./member-live";
 import { Captcha } from "./captcha";
+import { PasswordField } from "./password-field";
+import { compactPatch } from "./image-upload";
 import {
   Invitations,
   EditUser,
@@ -122,6 +124,8 @@ function App() {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [directoryRevision, setDirectoryRevision] = useState(0);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const path = location.pathname;
   const params = new URLSearchParams(location.search);
   async function load() {
@@ -214,6 +218,23 @@ function App() {
       setBusy(false);
     }
   }
+  async function updatePhoto(file?: File) {
+    setPhotoBusy(true);
+    setPhotoError("");
+    try {
+      const image = file ? await compactPatch(file) : null;
+      const response = await fetch("/api/v1/me/photo", {
+        method: image ? "POST" : "DELETE",
+        ...(image ? { headers: { "Content-Type": image.type }, body: image } : {}),
+      });
+      const result: any = await response.json();
+      if (!response.ok) throw new Error(result.error?.code ?? "Fotoğraf kaydedilemedi.");
+      setUser((current: any) => ({ ...current, photoUrl: result.photoUrl ? `${result.photoUrl}?v=${Date.now()}` : "" }));
+      invalidateDirectory();
+    } catch (cause) {
+      setPhotoError((cause as Error).message);
+    } finally { setPhotoBusy(false); }
+  }
   function field(form: FormData, k: string) {
     return String(form.get(k) ?? "");
   }
@@ -221,6 +242,8 @@ function App() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     await act(async () => {
+      if (["register", "change", "reset"].includes(mode) && field(f, "password") !== field(f, "passwordConfirm"))
+        throw new Error("Şifreler eşleşmiyor.");
       if (mode === "login") {
         const r = await api("/auth/login", {
           username: field(f, "username"),
@@ -452,19 +475,17 @@ function App() {
                   />
                 )}
                 {mode === "change" && (
-                  <TextField
+                  <PasswordField
                     label="Mevcut / geçici şifre"
                     name="currentPassword"
-                    type="password"
                     required
                     autoComplete="current-password"
                   />
                 )}
                 {["login", "register", "reset", "change"].includes(mode) && (
-                  <TextField
+                  <PasswordField
                     label={mode === "change" ? "Yeni şifre" : "Şifre"}
                     name="password"
-                    type="password"
                     required
                     minLength={12}
                     autoComplete={
@@ -472,6 +493,7 @@ function App() {
                     }
                   />
                 )}
+                {["register", "change", "reset"].includes(mode) && <PasswordField label="Şifre tekrarı" name="passwordConfirm" required minLength={12} autoComplete="new-password" />}
                 {mode === "login" && (
                   <Button
                     variant="bare"
@@ -698,8 +720,13 @@ function App() {
           {tab === "account" && (
             <section className="profile-page">
               <div className="profile-hero">
-                <span className="member-initials" aria-hidden="true">{user.firstName?.[0]}{user.lastName?.[0]}</span>
+                <span className="member-initials" aria-hidden="true">{user.photoUrl ? <img src={user.photoUrl} alt="" /> : <>{user.firstName?.[0]}{user.lastName?.[0]}</>}</span>
                 <div><span className="eyebrow">STARBASE PROFİLİ</span><h1>{user.firstName} {user.lastName}</h1><p>@{user.username} · {user.owner ? "Takım sahibi" : "Yıldız Roket Takımı"}</p></div>
+              </div>
+              <div className="profile-photo-actions">
+                <label className="profile-photo-upload">{photoBusy ? "Yükleniyor…" : user.photoUrl ? "Fotoğrafı değiştir" : "Profil fotoğrafı ekle"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void updatePhoto(file); event.target.value = ""; }} /></label>
+                {user.photoUrl && <Button variant="bare" disabled={photoBusy} onClick={() => void updatePhoto()}>Fotoğrafı kaldır</Button>}
+                {photoError && <span className="member-form-feedback is-error" role="alert">{photoError}</span>}
               </div>
               <div className="profile-grid">
                 <Panel title="Hesap bilgileri">
@@ -815,7 +842,7 @@ function App() {
               {selected && (
                 <div className="admin-member-sheet">
                   <div className="admin-member-sheet__identity">
-                    <span>{selected.first_name?.[0]}{selected.last_name?.[0]}</span>
+                    <span>{selected.avatar_url && !selected.disabled ? <img src={`/api/v1/directory/users/${encodeURIComponent(selected.id)}/photo`} alt="" /> : <>{selected.first_name?.[0]}{selected.last_name?.[0]}</>}</span>
                     <div><strong>{selected.first_name} {selected.last_name}</strong><small>{selected.email}</small></div>
                   </div>
                   <EditUser key={selected.id} user={selected} onUpdated={(updated) => {
@@ -955,14 +982,12 @@ function AdminUser({ user, org, revision }: { user: any; org: any; revision: num
           }, "Şifre kurtarma işlemi başlatıldı.");
         }}
       >
-        <TextField
-          type="password"
+        <PasswordField
           name="currentPassword"
           label="Senin şifren"
           hint="İlk güvenlik işleminde gir; 10 dakika boyunca tekrar gerekmez."
         />
-        <TextField
-          type="password"
+        <PasswordField
           name="temporaryPassword"
           label="Geçici şifre (boşsa e-posta gönderilir)"
           minLength={12}
@@ -1024,7 +1049,12 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
         }}
       >
         {spec.fields.map((f) => (
-          <TextField
+          f === "currentPassword" ? <PasswordField
+            key={f}
+            name={f}
+            label="Senin şifren"
+            required
+          /> : <TextField
             key={f}
             name={f}
             label={
@@ -1041,7 +1071,7 @@ function AdminForm({ kind, run }: { kind: string; run: any }) {
                 roleId: "Rol kimliği",
               }[f]
             }
-            type={f === "currentPassword" ? "password" : "text"}
+            type="text"
             hint={
               f === "logoUrl"
                 ? "İsteğe bağlı HTTPS logo görseli; uygulama adresinde barınmalı."

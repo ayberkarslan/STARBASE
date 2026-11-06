@@ -882,11 +882,20 @@ input:is(:autofill, :-webkit-autofill) {
   caret-color: var(--sd-white, #fff);
   box-shadow: 0 0 0 1000px var(--sd-black, #000) inset !important;
 }
+.password-field { position: relative; }
+.password-field .sd-field__input { padding-right: 46px; }
+.password-field__toggle { position: absolute; top: 26px; right: 6px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 5px; background: #000; color: #fff; }
+.password-field__toggle:hover, .password-field__toggle:focus-visible { outline: 1px solid #fff; }
 .profile-page { max-width: 980px; margin: 0 auto; }
 .profile-hero { display: flex; align-items: center; gap: 22px; padding: 24px 0 28px; border-bottom: 1px solid var(--ui-border, #252525); }
 .profile-hero .member-initials { width: 76px; height: 76px; font-size: 1.3rem; flex: 0 0 auto; }
 .profile-hero h1 { margin: 5px 0; }
 .profile-hero p { margin: 0; }
+.member-initials img, .directory-profile__avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.profile-photo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 0 2px; }
+.profile-photo-upload { display: inline-flex; width: auto; padding: 10px 14px; border: 1px solid #ffffff60; border-radius: 6px; cursor: pointer; font-size: 10px; }
+.profile-photo-upload:hover, .profile-photo-upload:focus-within { border-color: #fff; }
+.profile-photo-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
 .account-sessions { margin: 24px 0; }
 .account-sessions > button { margin-top: 12px; }
@@ -897,6 +906,7 @@ input:is(:autofill, :-webkit-autofill) {
 .admin-member-sheet { display: grid; gap: 20px; }
 .admin-member-sheet__identity { display: flex; align-items: center; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid #ffffff26; }
 .admin-member-sheet__identity > span { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #fff; border-radius: 50%; }
+.admin-member-sheet__identity > span img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .admin-member-sheet__identity strong { display: block; font-size: 13px; font-weight: 400; }
 .admin-member-sheet__identity small { margin-top: 3px; }
 .admin-member-sheet .admin-forms { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 24px; border: 1px solid var(--sd-line); border-radius: 10px; }

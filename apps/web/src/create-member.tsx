@@ -3,6 +3,7 @@ import { Button, Dialog, TextField } from "@stardrop/ui";
 import { UserPlus } from "lucide-react";
 import { FormSelect } from "./form-select";
 import { request } from "./management";
+import { PasswordField } from "./password-field";
 interface CreatedMember {
   user: {
     id: string;
@@ -121,10 +122,9 @@ export function CreateMember({
               ))}
             </FormSelect>
           </label>
-          <TextField
+          <PasswordField
             label="Geçici şifre"
             name="temporaryPassword"
-            type="password"
             minLength={12}
             maxLength={128}
             autoComplete="new-password"
@@ -134,10 +134,9 @@ export function CreateMember({
             <input name="skipEmailVerification" type="checkbox" />
             <span>E-posta onayını atla · hesabı doğrudan etkinleştir</span>
           </label>
-          <TextField
+          <PasswordField
             label="Yönetici şifren"
             name="currentPassword"
-            type="password"
             autoComplete="current-password"
             required
           />

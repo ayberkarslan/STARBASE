@@ -117,7 +117,7 @@ function MemberProfile({
         <div className="directory-profile">
           <section className="directory-profile__hero">
             <span className="directory-profile__avatar" aria-hidden="true">
-              {profile.firstName[0]}{profile.lastName[0]}
+              {profile.photoUrl ? <img src={profile.photoUrl} alt="" /> : <>{profile.firstName[0]}{profile.lastName[0]}</>}
             </span>
             <div>
               <h3>{profile.firstName} {profile.lastName}</h3>
@@ -331,8 +331,7 @@ export function TeamDirectory({
                     onClick={() => setSelected(u.id)}
                   >
                     <span className="member-initials" aria-hidden="true">
-                      {u.firstName[0]}
-                      {u.lastName[0]}
+                      {u.photoUrl ? <img src={u.photoUrl} alt="" /> : <>{u.firstName[0]}{u.lastName[0]}</>}
                     </span>
                     <span className="member-card-body">
                       <strong>

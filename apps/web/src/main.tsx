@@ -795,12 +795,12 @@ function App() {
                     <span>{selected.first_name?.[0]}{selected.last_name?.[0]}</span>
                     <div><strong>{selected.first_name} {selected.last_name}</strong><small>{selected.email}</small></div>
                   </div>
-                  <EditUser user={selected} onUpdated={(updated) => {
+                  <EditUser key={selected.id} user={selected} onUpdated={(updated) => {
                     setSelected(updated);
                     setRows((current) => current.map((item) => item.id === updated.id ? updated : item));
                   }} />
-                  <AdminUser user={selected} org={org} />
-                  <Fields userId={selected.id} run={act} />
+                  <AdminUser key={selected.id} user={selected} org={org} />
+                  <Fields key={selected.id} userId={selected.id} run={act} />
                 </div>
               )}
               </Drawer>

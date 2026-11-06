@@ -273,7 +273,7 @@ export function register(app: App) {
     const scope = c.req.query("scope") ?? "private";
     if (!["private", "shared"].includes(scope)) fail(400, "invalid_query");
     await access(c, scope);
-    if (c.req.header("origin") !== c.env.PUBLIC_ORIGIN)
+    if (c.req.header("origin") !== new URL(c.req.url).origin)
       fail(403, "origin_rejected");
     if (c.req.header("upgrade")?.toLowerCase() !== "websocket")
       return fail(400, "websocket_required");

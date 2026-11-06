@@ -54,7 +54,8 @@ app.use("/api/*", async (c, next) => {
   if (Number(c.req.header("content-length") ?? 0) > maxBodySize)
     return fail(400, "input_too_large");
   const origin = c.req.header("origin");
-  if (origin && origin !== c.env.PUBLIC_ORIGIN) {
+  const requestOrigin = new URL(c.req.url).origin;
+  if (origin && origin !== requestOrigin) {
     const apps = await c.env.DB.prepare(
       "SELECT origins FROM apps WHERE disabled=0",
     ).all<{ origins: string }>();
@@ -76,7 +77,7 @@ app.use("/api/*", async (c, next) => {
   if (
     !["GET", "HEAD"].includes(c.req.method) &&
     getCookie(c, "starbase") &&
-    origin !== c.env.PUBLIC_ORIGIN
+    origin !== requestOrigin
   )
     return fail(403, "csrf_rejected");
   await next();

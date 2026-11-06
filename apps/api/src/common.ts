@@ -124,7 +124,7 @@ export async function captcha(c: any) {
   const result: any = await r.json();
   if (
     !result.success ||
-    result.hostname !== new URL(c.env.PUBLIC_ORIGIN).hostname
+    result.hostname !== new URL(c.req.url).hostname
   )
     fail(403, "captcha_rejected");
 }

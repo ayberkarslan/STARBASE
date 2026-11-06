@@ -37,6 +37,8 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0009_team_branding.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0010_department_branding.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0011_image_assets.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0012_app_launch.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0013_app_resources.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -114,6 +116,14 @@ function call(
     env,
   );
 }
+
+it("accepts a same-origin central session on a second hostname", async () => {
+  const response = await app.request("https://legacy.test/api/v1/auth/logout", {
+    method: "POST",
+    headers: { Origin: "https://legacy.test", Cookie: "starbase=central" },
+  }, env);
+  expect(response.status).toBe(200);
+});
 function uploadLogo(
   appId: string,
   bytes: Uint8Array,
@@ -289,7 +299,7 @@ describe("application branding", () => {
     db.prepare("UPDATE apps SET logo_url='uploaded' WHERE id='starlab'").run();
     const response = await call("/apps", undefined, "");
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual([{ id: "starlab", name: "STARLAB", logoUrl: "/api/v1/apps/starlab/logo" }]);
+    expect(await response.json()).toEqual([{ id: "starlab", name: "STARLAB", logoUrl: "/api/v1/apps/starlab/logo", launchUrl: "" }]);
   });
   it("returns branding only for a registered callback URI", async () => {
     db.prepare("UPDATE apps SET logo_url=? WHERE id=?").run("uploaded", "starlab");

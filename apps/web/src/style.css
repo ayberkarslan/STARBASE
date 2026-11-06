@@ -940,8 +940,9 @@ input:is(:autofill, :-webkit-autofill) {
 .app-showcase-logo img { width: 100%; height: 100%; object-fit: contain; transform: scale(1.22); }
 .app-showcase-logo > svg { width: 58%; height: 58%; }
 .app-showcase-actions { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; max-width: 58%; padding-bottom: 4px; pointer-events: none; }
-.app-showcase-actions > span:nth-child(2) { display: inline-flex; align-items: center; gap: 7px; }
 .app-showcase-actions .sd-button { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; white-space: nowrap; }
 .app-showcase-actions > a { pointer-events: auto; }
+.app-showcase-corner { position: absolute; right: 23px; bottom: 22px; z-index: 2; color: #ffffff9c; pointer-events: none; transition: color 180ms ease, transform 180ms ease; }
+.app-showcase-card:hover .app-showcase-corner, .app-showcase-card:focus-within .app-showcase-corner { color: #fff; transform: translate(2px, -2px); }
 @media (max-width: 700px) { .app-showcase-logo { width: 75%; right: -17%; } .app-showcase-actions { max-width: 65%; } }
 @media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }

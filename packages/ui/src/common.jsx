@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const join = (...parts) => parts.filter(Boolean).join(' ');
 
@@ -125,13 +126,13 @@ export function YRT_Drawer({ open, onClose, title, eyebrow, description, childre
     return () => { document.removeEventListener('keydown', onKeyDown); previous?.focus?.(); };
   }, [open]);
   if (!open) return null;
-  return <div className="sd-drawer-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
+  return createPortal(<div className="sd-drawer-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
     <aside ref={drawerRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className={join('sd-drawer', className)}>
       <header className="sd-drawer__header"><div>{eyebrow && <small>{eyebrow}</small>}<h2 id={titleId}>{title}</h2></div>
         <button ref={closeRef} type="button" aria-label={closeLabel} onClick={onClose}>×</button></header>
       <div className="sd-drawer__body">{description && <p>{description}</p>}{children}</div>
     </aside>
-  </div>;
+  </div>, document.body);
 }
 
 export function YRT_Stepper({ items, current, label = 'İş akışı', className }) {

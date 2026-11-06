@@ -12,6 +12,7 @@ interface CreatedMember {
     last_name: string;
   };
   verificationDelivered: boolean;
+  verificationSkipped: boolean;
   developmentVerificationUrl?: string;
 }
 const errors: Record<string, string> = {
@@ -50,6 +51,7 @@ export function CreateMember({
         temporaryPassword: data.get("temporaryPassword"),
         currentPassword: data.get("currentPassword"),
         teamId: data.get("teamId") || null,
+        skipEmailVerification: data.has("skipEmailVerification"),
       });
       form.reset();
       setOpen(false);
@@ -128,6 +130,10 @@ export function CreateMember({
             autoComplete="new-password"
             required
           />
+          <label className="member-access-toggle">
+            <input name="skipEmailVerification" type="checkbox" />
+            <span>E-posta onayını atla · hesabı doğrudan etkinleştir</span>
+          </label>
           <TextField
             label="Yönetici şifren"
             name="currentPassword"

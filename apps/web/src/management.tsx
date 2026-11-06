@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, IconButton, TextField, Panel, SelectMenu } from "@stardrop/ui";
 import { Check, Pencil, X } from "lucide-react";
 import { invalidateDirectory } from "./member-live";
+import { memberStatus, memberStatusOptions, type MemberStatus } from "./member-status";
 export async function request(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -52,6 +53,8 @@ export function Invitations({ run }: { run: Run }) {
 }
 export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: any) => void }) {
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<MemberStatus>(() => memberStatus(user));
+  useEffect(() => setStatus(memberStatus(user)), [user.id, user.disabled, user.verified]);
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
   const save = async (path: string, data: unknown, method: string, success: string) => {
     setBusy(true);
@@ -60,12 +63,14 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
       await request(path, data, method);
       onUpdated(await request("/admin/users/" + user.id));
       setFeedback({ text: success, error: false });
+      return true;
     } catch (cause) {
       const code = (cause as Error).message;
       setFeedback({ text: code === "reauthentication_required" ? "Güvenlik değişikliği için şifreni gir. Doğrulama 10 dakika geçerli." : "Kaydedilemedi: " + code, error: true });
+      return false;
     } finally { setBusy(false); }
   };
-  return <Panel title="Üye bilgileri" description="Ad ve soyadı doğrudan düzenle. Hesap erişimi ayrı bir güvenlik adımıdır." className="member-edit-card">
+  return <Panel title="Üye bilgileri" description="Kimlik ve erişim ayrı ayrı düzenlenir." className="member-edit-card">
     <form key={`${user.id}:${user.first_name}:${user.last_name}`} className="member-edit-form" onSubmit={(event) => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
@@ -77,19 +82,32 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
       </div>
       <Button type="submit" disabled={busy}>İsmi kaydet</Button>
     </form>
+    <form className="member-edit-form member-status-form" onSubmit={(event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const data = new FormData(form);
+      void save("/admin/users/" + user.id + "/status", {
+        status,
+        currentPassword: String(data.get("currentPassword") || ""),
+      }, "PATCH", "Hesap durumu güncellendi.").then((ok) => { if (ok) form.reset(); });
+    }}>
+      <SelectMenu label="Hesap durumu" value={status} options={memberStatusOptions} onChange={(value) => setStatus(value as MemberStatus)} />
+      <p>Aktif hesabın e-postası onaylanır. Beklemede onay ister; yasaklı hesap giriş yapamaz. Değişiklik mevcut oturumları kapatır.</p>
+      <TextField name="currentPassword" label="Senin şifren" type="password" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
+      <Button type="submit" disabled={busy || status === memberStatus(user) || (user.owner && status !== "active")}>Durumu güncelle</Button>
+    </form>
     <details className="member-security">
-      <summary>Hesap erişimi <span>E-posta ve hesap durumu</span></summary>
+      <summary>E-posta adresi <span>Gerekirse değiştir</span></summary>
       <form key={`${user.id}:${user.email}:${user.disabled}`} className="member-edit-form" onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         void save("/admin/users/" + user.id, {
           firstName: user.first_name, lastName: user.last_name,
-          email: String(form.get("email")), disabled: form.has("disabled"),
+          email: String(form.get("email")), disabled: Boolean(user.disabled),
           currentPassword: String(form.get("currentPassword") || ""),
         }, "PUT", "Hesap erişimi güncellendi.");
       }}>
         <TextField name="email" label="E-posta" type="email" defaultValue={user.email} required />
-        <label className="member-access-toggle"><input name="disabled" type="checkbox" defaultChecked={!!user.disabled} /><span>Hesap erişimini kapat</span></label>
         <TextField name="currentPassword" label="Senin şifren" type="password" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
         <Button type="submit" disabled={busy}>Erişimi güncelle</Button>
       </form>

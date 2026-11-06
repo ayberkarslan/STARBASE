@@ -908,6 +908,12 @@ input:is(:autofill, :-webkit-autofill) {
 .member-password > form { display: grid; gap: 14px; margin-top: 18px; }
 .member-password > form > .sd-button { justify-self: start; }
 .member-edit-card, .member-fields-card { border-radius: 10px; }
+.member-state { display: inline-flex; align-items: center; gap: 7px; min-width: 82px; padding: 5px 8px; border: 1px solid #ffffff70; border-radius: 4px; font-size: 10px; letter-spacing: .03em; }
+.member-state::before { content: ''; width: 5px; height: 5px; flex: 0 0 auto; background: currentColor; }
+.member-state--pending { border-style: dashed; color: #ffffffb5; }
+.member-state--banned { color: #000; background: #fff; }
+.member-status-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid #ffffff35; }
+.member-status-form > p { max-width: 58ch; margin: 0; color: #ffffffa8; font-size: 10px; line-height: 1.7; }
 .member-edit-form, .member-fields-form { display: grid; gap: 14px; }
 .member-edit-grid, .member-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .member-edit-form > .sd-button, .member-fields-form > .sd-button { justify-self: start; }

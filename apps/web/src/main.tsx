@@ -10,6 +10,7 @@ import { TeamDirectory, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
 import { FormSelect } from "./form-select";
+import { memberStatus, memberStatusLabel } from "./member-status";
 import { invalidateDirectory, subscribeDirectoryChanges } from "./member-live";
 import { Captcha } from "./captcha";
 import {
@@ -763,7 +764,9 @@ function App() {
                       result.developmentVerificationUrl ?? null,
                     );
                     setNotice(
-                      result.verificationDelivered
+                      result.verificationSkipped
+                        ? "Üye oluşturuldu ve e-postası yönetici tarafından onaylandı. İlk girişte geçici şifresini değiştirecek."
+                        : result.verificationDelivered
                         ? "Üye oluşturuldu. Doğrulama e-postası gönderildi; ilk girişte şifre değişimi istenecek."
                         : "Üye oluşturuldu; doğrulama e-postası gönderilemedi. Üye giriş ekranından yeniden isteyebilir.",
                     );
@@ -783,7 +786,7 @@ function App() {
                 <div className="table-head">
                   <span>ÜYE</span>
                   <span>E-POSTA</span>
-                  <span>HESAP</span>
+                  <span>DURUM</span>
                 </div>
                 {rows.map((r) => (
                   <button key={r.id} onClick={() => setSelected(r)}>
@@ -793,7 +796,8 @@ function App() {
                     </span>
                     <span>{r.email}</span>
                     <span>
-                      {r.owner ? "Sahip" : r.disabled ? "Kapalı" : "Üye"}{" "}
+                      <span className={`member-state member-state--${memberStatus(r)}`}>{memberStatusLabel[memberStatus(r)]}</span>
+                      {r.owner && <small>Sahip</small>}{" "}
                       <ArrowUpRight size={14} />
                     </span>
                   </button>

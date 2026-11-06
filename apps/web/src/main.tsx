@@ -795,8 +795,11 @@ function App() {
                     <span>{selected.first_name?.[0]}{selected.last_name?.[0]}</span>
                     <div><strong>{selected.first_name} {selected.last_name}</strong><small>{selected.email}</small></div>
                   </div>
-                  <AdminUser user={selected} org={org} run={act} />
-                  <EditUser user={selected} run={act} />
+                  <EditUser user={selected} onUpdated={(updated) => {
+                    setSelected(updated);
+                    setRows((current) => current.map((item) => item.id === updated.id ? updated : item));
+                  }} />
+                  <AdminUser user={selected} org={org} />
                   <Fields userId={selected.id} run={act} />
                 </div>
               )}
@@ -828,8 +831,19 @@ function App() {
     </div>
   );
 }
-function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
+function AdminUser({ user, org }: { user: any; org: any }) {
   const [memberships, setMemberships] = useState<any[]>([]);
+  const [working, setWorking] = useState(false);
+  const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
+  const perform = async (action: () => Promise<void>, success: string) => {
+    setWorking(true);
+    setFeedback(null);
+    try { await action(); setFeedback({ text: success, error: false }); }
+    catch (cause) {
+      const code = (cause as Error).message;
+      setFeedback({ text: code === "reauthentication_required" ? "Bu işlem için şifreni gir. Doğrulama 10 dakika geçerli." : "İşlem tamamlanamadı: " + code, error: true });
+    } finally { setWorking(false); }
+  };
   const refresh = () =>
     api("/admin/users/" + user.id).then((u) => setMemberships(u.memberships));
   useEffect(() => {
@@ -837,14 +851,16 @@ function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
   }, [user.id]);
   return (
     <div className="admin-forms">
+      <h3>Ekip üyelikleri</h3>
       {memberships.map((m) => (
         <div className="org-row" key={m.team_id}>
           <span>
             {m.department} / {m.team}
           </span>
           <Button
+            disabled={working}
             onClick={() =>
-              run(async () => {
+              void perform(async () => {
                 await api(
                   "/admin/memberships",
                   {
@@ -855,7 +871,7 @@ function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
                   "DELETE",
                 );
                 await refresh();
-              })
+              }, "Üyelik kaldırıldı.")
             }
           >
             Üyeliği kaldır
@@ -866,13 +882,14 @@ function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
         onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
-          run(async () => {
+          void perform(async () => {
             await api("/admin/memberships", {
               userId: user.id,
               departmentId: String(f.get("team")).split(":")[0],
               teamId: String(f.get("team")).split(":")[1],
             });
-          });
+            await refresh();
+          }, "Üyelik eklendi.");
         }}
       >
         <label>
@@ -889,27 +906,29 @@ function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
             ))}
           </FormSelect>
         </label>
-        <Button type="submit">Üyelik ekle</Button>
+        <Button type="submit" disabled={working || !org.teams.length}>Üyelik ekle</Button>
       </form>
+      <details className="member-security member-password">
+        <summary>Şifre kurtarma <span>Gerekirse kullan</span></summary>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
-          run(async () => {
+          void perform(async () => {
             await api("/admin/users/" + user.id + "/password", {
-              currentPassword: f.get("currentPassword"),
+              currentPassword: String(f.get("currentPassword") || ""),
               ...(f.get("temporaryPassword")
                 ? { temporaryPassword: f.get("temporaryPassword") }
                 : {}),
             });
-          });
+          }, "Şifre kurtarma işlemi başlatıldı.");
         }}
       >
         <TextField
           type="password"
           name="currentPassword"
           label="Senin şifren"
-          required
+          hint="İlk güvenlik işleminde gir; 10 dakika boyunca tekrar gerekmez."
         />
         <TextField
           type="password"
@@ -917,8 +936,10 @@ function AdminUser({ user, org, run }: { user: any; org: any; run: any }) {
           label="Geçici şifre (boşsa e-posta gönderilir)"
           minLength={12}
         />
-        <Button type="submit">Şifreyi sıfırla</Button>
+        <Button type="submit" disabled={working}>Şifreyi sıfırla</Button>
       </form>
+      </details>
+      {feedback && <p className={feedback.error ? "member-form-feedback is-error" : "member-form-feedback"} role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
     </div>
   );
 }

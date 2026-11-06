@@ -1,6 +1,6 @@
 import { FormSelect } from "./form-select";
 import { useEffect, useState, type FormEvent } from "react";
-import { Button, IconButton, TextField, Panel } from "@stardrop/ui";
+import { Button, IconButton, TextField, Panel, SelectMenu } from "@stardrop/ui";
 import { Check, Pencil, X } from "lucide-react";
 export async function request(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
@@ -48,75 +48,65 @@ export function Invitations({ run }: { run: Run }) {
     </Panel>
   );
 }
-export function EditUser({ user, run }: { user: any; run: Run }) {
-  return (
-    <Panel title="Profil ve hesap">
-      <form
-        key={user.id}
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          run(async () => {
-            await request(
-              "/admin/users/" + user.id,
-              {
-                firstName: f.get("firstName"),
-                lastName: f.get("lastName"),
-                email: f.get("email"),
-                disabled: f.has("disabled"),
-                currentPassword: f.get("currentPassword"),
-              },
-              "PUT",
-            );
-          });
-        }}
-      >
-        <TextField
-          name="firstName"
-          label="İsim"
-          defaultValue={user.first_name}
-          required
-        />
-        <TextField
-          name="lastName"
-          label="Soyisim"
-          defaultValue={user.last_name}
-          required
-        />
-        <TextField
-          name="email"
-          label="E-posta"
-          type="email"
-          defaultValue={user.email}
-          required
-        />
-        <label>
-          <input
-            name="disabled"
-            type="checkbox"
-            defaultChecked={!!user.disabled}
-          />{" "}
-          Hesabı kapat
-        </label>
-        <TextField
-          name="currentPassword"
-          label="Senin şifren"
-          type="password"
-          required
-        />
-        <Button type="submit">Değişiklikleri kaydet</Button>
+export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: any) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
+  const save = async (path: string, data: unknown, method: string, success: string) => {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await request(path, data, method);
+      onUpdated(await request("/admin/users/" + user.id));
+      setFeedback({ text: success, error: false });
+    } catch (cause) {
+      const code = (cause as Error).message;
+      setFeedback({ text: code === "reauthentication_required" ? "Güvenlik değişikliği için şifreni gir. Doğrulama 10 dakika geçerli." : "Kaydedilemedi: " + code, error: true });
+    } finally { setBusy(false); }
+  };
+  return <Panel title="Üye bilgileri" description="Ad ve soyadı doğrudan düzenle. Hesap erişimi ayrı bir güvenlik adımıdır." className="member-edit-card">
+    <form key={`${user.id}:${user.first_name}:${user.last_name}`} className="member-edit-form" onSubmit={(event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      void save("/admin/users/" + user.id + "/profile", { firstName: String(form.get("firstName")), lastName: String(form.get("lastName")) }, "PATCH", "İsim bilgileri kaydedildi.");
+    }}>
+      <div className="member-edit-grid">
+        <TextField name="firstName" label="İsim" defaultValue={user.first_name} required maxLength={80} />
+        <TextField name="lastName" label="Soyisim" defaultValue={user.last_name} required maxLength={80} />
+      </div>
+      <Button type="submit" disabled={busy}>İsmi kaydet</Button>
+    </form>
+    <details className="member-security">
+      <summary>Hesap erişimi <span>E-posta ve hesap durumu</span></summary>
+      <form key={`${user.id}:${user.email}:${user.disabled}`} className="member-edit-form" onSubmit={(event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        void save("/admin/users/" + user.id, {
+          firstName: user.first_name, lastName: user.last_name,
+          email: String(form.get("email")), disabled: form.has("disabled"),
+          currentPassword: String(form.get("currentPassword") || ""),
+        }, "PUT", "Hesap erişimi güncellendi.");
+      }}>
+        <TextField name="email" label="E-posta" type="email" defaultValue={user.email} required />
+        <label className="member-access-toggle"><input name="disabled" type="checkbox" defaultChecked={!!user.disabled} /><span>Hesap erişimini kapat</span></label>
+        <TextField name="currentPassword" label="Senin şifren" type="password" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
+        <Button type="submit" disabled={busy}>Erişimi güncelle</Button>
       </form>
-    </Panel>
-  );
+    </details>
+    {feedback && <p className={feedback.error ? "member-form-feedback is-error" : "member-form-feedback"} role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
+  </Panel>;
 }
 export function Fields({ run, userId }: { run: Run; userId?: string }) {
   const [fields, setFields] = useState<any[]>([]);
-  const [values, setValues] = useState<any[]>([]);
+  const [draft, setDraft] = useState<Record<string, any>>({});
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
   const reloadValues = () =>
     userId
-      ? request("/admin/profile-values/" + userId).then(setValues)
+      ? request("/admin/profile-values/" + userId).then((rows: any[]) => setDraft(Object.fromEntries(rows.map((row) => [row.field_key, JSON.parse(row.value)]))))
       : Promise.resolve();
   useEffect(() => {
+    setDraft({});
+    setFeedback(null);
     reloadValues().catch(() => {});
   }, [userId]);
   const reload = () => request("/admin/profile-fields").then(setFields);
@@ -124,49 +114,34 @@ export function Fields({ run, userId }: { run: Run; userId?: string }) {
     reload().catch(() => {});
   }, []);
   return (
-    <Panel title={userId ? "Ek profil bilgileri" : "Profil alanları"}>
+    <Panel title={userId ? "Ek profil bilgileri" : "Profil alanları"} className={userId ? "member-fields-card" : undefined}>
       {userId ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            run(async () => {
-              const field = fields.find((x) => x.key === f.get("key"));
-              const raw = String(f.get("value"));
-              const value =
-                field.type === "number"
-                  ? Number(raw)
-                  : field.type === "boolean"
-                    ? raw === "true"
-                    : raw;
-              await request(
-                "/admin/profile-values/" + userId,
-                { key: field.key, value },
-                "PUT",
-              );
-              await reloadValues();
-            });
-          }}
-        >
-          {values.map((v) => (
-            <p key={v.field_key}>
-              {fields.find((f) => f.key === v.field_key)?.label ?? v.field_key}:{" "}
-              {String(JSON.parse(v.value))}
-            </p>
-          ))}
-          <label>
-            Alan
-            <FormSelect name="key">
-              {fields.map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label} ({f.type})
-                </option>
-              ))}
-            </FormSelect>
-          </label>
-          <TextField name="value" label="Değer" required />
-          <Button type="submit">Kaydet</Button>
-        </form>
+        fields.length ? <form className="member-fields-form" onSubmit={(event) => {
+          event.preventDefault();
+          const values = fields.map((field) => {
+            const raw = draft[field.key];
+            const value = field.type === "boolean" ? Boolean(raw)
+              : raw === undefined || raw === "" ? null
+              : field.type === "number" ? Number(raw) : raw;
+            return { key: field.key, value };
+          });
+          setSaving(true);
+          setFeedback(null);
+          void request("/admin/profile-values/" + userId + "/batch", { values }, "PUT")
+            .then(async () => { await reloadValues(); setFeedback({ text: "Profil bilgileri kaydedildi.", error: false }); })
+            .catch((cause) => setFeedback({ text: "Kaydedilemedi: " + (cause as Error).message, error: true }))
+            .finally(() => setSaving(false));
+        }}>
+          <div className="member-fields-grid">{fields.map((field) => {
+            const value = draft[field.key];
+            const setValue = (next: unknown) => setDraft((current) => ({ ...current, [field.key]: next }));
+            if (field.type === "boolean") return <label className="member-access-toggle" key={field.key}><input type="checkbox" checked={Boolean(value)} onChange={(event) => setValue(event.target.checked)} /><span>{field.label}</span></label>;
+            if (field.type === "select") return <SelectMenu key={field.key} label={field.label} value={String(value ?? "")} options={[{ value: "", label: "Seç" }, ...JSON.parse(field.options).map((item: string) => ({ value: item, label: item }))]} onChange={setValue} />;
+            return <TextField key={field.key} label={field.label} type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"} value={value ?? ""} onChange={(event) => setValue(event.target.value)} />;
+          })}</div>
+          <Button type="submit" disabled={saving}>Profil bilgilerini kaydet</Button>
+          {feedback && <p className={feedback.error ? "member-form-feedback is-error" : "member-form-feedback"} role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
+        </form> : <p className="member-fields-empty">Henüz ek profil alanı tanımlanmamış.</p>
       ) : (
         <>
           <div>

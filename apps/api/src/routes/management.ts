@@ -80,6 +80,35 @@ export function register(app: App) {
       ).results,
     );
   });
+  app.patch("/api/v1/admin/users/:id/status", async (c) => {
+    await permit(c, "users.manage");
+    const b = await body(c, z.object({
+      status: z.enum(["active", "pending", "banned"]),
+      currentPassword: z.string().optional(),
+    }));
+    await reauthenticate(c, b.currentPassword);
+    const id = c.req.param("id");
+    const target = await c.env.DB.prepare("SELECT owner FROM users WHERE id=?")
+      .bind(id).first<{ owner: number }>();
+    if (!target) fail(404, "not_found");
+    if (target?.owner && (!c.get("user").owner || b.status !== "active"))
+      fail(403, "owner_protected");
+    const disabled = b.status === "banned";
+    const verified = b.status === "active";
+    // Revoke existing central sessions before changing identity state.
+    await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?")
+      .bind(id).run();
+    await adminUpdate(c.env, id, {
+      disableUser: disabled,
+      emailVerified: verified,
+      validSince: String(now()),
+    });
+    await c.env.DB.prepare("UPDATE users SET disabled=?,verified=? WHERE id=?")
+      .bind(Number(disabled), Number(verified), id).run();
+    await audit(c, "user.status." + b.status, id);
+    await notifyDirectory(c.env);
+    return c.json({ ok: true, status: b.status });
+  });
   app.post("/api/v1/admin/departments", async (c) => {
     await permit(c, "organization.manage");
     const b = await body(c, z.object({ name: z.string().min(1).max(80) }));

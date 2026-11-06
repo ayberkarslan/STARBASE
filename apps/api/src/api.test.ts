@@ -478,7 +478,7 @@ describe("admin member creation", () => {
     teamId: "software",
   };
   function identityMock(rejectSignup = false) {
-    const f = vi.fn(async (url: RequestInfo | URL) => {
+    const f = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) => {
       const path = String(url);
       if (path.includes("signInWithPassword"))
         return Response.json({ localId: "u1", idToken: "admin-token" });
@@ -513,6 +513,49 @@ describe("admin member creation", () => {
     expect(
       JSON.stringify(db.prepare("SELECT * FROM audit").all()),
     ).not.toContain(input.temporaryPassword);
+  });
+  it("lets an administrator create a verified member without an email link", async () => {
+    const fetcher = identityMock();
+    const response = await call("/admin/users", { ...input, skipEmailVerification: true });
+    expect(response.status).toBe(201);
+    const result: any = await response.json();
+    expect(result.verificationSkipped).toBe(true);
+    expect(result.user.verified).toBe(1);
+    expect(db.prepare("SELECT verified,must_change_password FROM users WHERE id='u3'").get())
+      .toMatchObject({ verified: 1, must_change_password: 1 });
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("sendOobCode"))).toBe(false);
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("accounts:update"))).toBe(true);
+    const update = fetcher.mock.calls.find(([url]) => String(url).includes("accounts:update"));
+    expect(JSON.parse(String(update?.[1]?.body))).toMatchObject({
+      localId: "u3", emailVerified: true,
+    });
+  });
+  it("changes member status and keeps owners protected", async () => {
+    const fetcher = identityMock();
+    db.prepare("INSERT INTO families(id,user_id,expires) VALUES(?,?,?)")
+      .run("f2", "u2", now() + 1000);
+    const banned = await call("/admin/users/u2/status", {
+      status: "banned", currentPassword: "admin-password",
+    }, "central", "PATCH");
+    expect(banned.status).toBe(200);
+    expect(db.prepare("SELECT verified,disabled FROM users WHERE id='u2'").get())
+      .toMatchObject({ verified: 0, disabled: 1 });
+    expect(db.prepare("SELECT revoked FROM families WHERE id='f2'").get())
+      .toMatchObject({ revoked: 1 });
+    const update = fetcher.mock.calls.find(([url]) => String(url).includes("accounts:update"));
+    expect(JSON.parse(String(update?.[1]?.body))).toMatchObject({
+      localId: "u2", disableUser: true, emailVerified: false,
+    });
+    const pending = await call("/admin/users/u2/status", { status: "pending" }, "central", "PATCH");
+    expect(pending.status).toBe(200);
+    expect(db.prepare("SELECT verified,disabled FROM users WHERE id='u2'").get())
+      .toMatchObject({ verified: 0, disabled: 0 });
+    const active = await call("/admin/users/u2/status", { status: "active" }, "central", "PATCH");
+    expect(active.status).toBe(200);
+    expect(db.prepare("SELECT verified,disabled FROM users WHERE id='u2'").get())
+      .toMatchObject({ verified: 1, disabled: 0 });
+    const owner = await call("/admin/users/u1/status", { status: "banned" }, "central", "PATCH");
+    expect(owner.status).toBe(403);
   });
   it("rejects administrators without user management permission", async () => {
     db.exec("UPDATE users SET owner=0 WHERE id='u1'");

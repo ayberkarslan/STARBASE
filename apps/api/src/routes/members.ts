@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { body, fail, reauthenticate, permit, type App } from "../common";
-import { firebase } from "../firebase";
+import { firebase, adminUpdate } from "../firebase";
 import { localVerificationUrl } from "../local-actions";
 import { now, usernamePattern } from "../security";
 import { notifyDirectory } from "../directory-live";
@@ -21,6 +21,7 @@ export function register(app: App) {
         temporaryPassword: z.string().min(12).max(128),
         currentPassword: z.string().min(1).max(128),
         teamId: z.string().min(1).nullable().default(null),
+        skipEmailVerification: z.boolean().default(false),
       }),
     );
     await reauthenticate(c, b.currentPassword);
@@ -56,9 +57,12 @@ export function register(app: App) {
       return fail(400, "member_creation_failed");
     }
     try {
+      if (b.skipEmailVerification)
+        await adminUpdate(c.env, identity.localId, { emailVerified: true });
       await c.env.DB.batch([
-        c.env.DB.prepare("UPDATE users SET id=? WHERE id=?").bind(
+        c.env.DB.prepare("UPDATE users SET id=?,verified=? WHERE id=?").bind(
           identity.localId,
+          Number(b.skipEmailVerification),
           pendingId,
         ),
         c.env.DB.prepare(
@@ -92,14 +96,17 @@ export function register(app: App) {
       } catch {}
       return fail(503, "member_creation_incomplete");
     }
-    let verificationDelivered = true;
-    try {
-      await firebase(c.env, "sendOobCode", {
-        requestType: "VERIFY_EMAIL",
-        idToken: identity.idToken,
-      });
-    } catch {
-      verificationDelivered = false;
+    let verificationDelivered = false;
+    if (!b.skipEmailVerification) {
+      try {
+        await firebase(c.env, "sendOobCode", {
+          requestType: "VERIFY_EMAIL",
+          idToken: identity.idToken,
+        });
+        verificationDelivered = true;
+      } catch {
+        verificationDelivered = false;
+      }
     }
     await notifyDirectory(c.env);
     return c.json(
@@ -110,12 +117,13 @@ export function register(app: App) {
           email: b.email,
           first_name: b.firstName,
           last_name: b.lastName,
-          verified: 0,
+          verified: Number(b.skipEmailVerification),
           disabled: 0,
           owner: 0,
         },
         verificationDelivered,
-        developmentVerificationUrl: await localVerificationUrl(c.env, b.email),
+        verificationSkipped: b.skipEmailVerification,
+        developmentVerificationUrl: b.skipEmailVerification ? null : await localVerificationUrl(c.env, b.email),
       },
       201,
     );

@@ -176,7 +176,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 220px;
+  height: 190px;
   z-index: 12;
   pointer-events: none;
   background: linear-gradient(to bottom, #0003 0%, #000b 24%, #000e 50%, #000 82%);
@@ -241,7 +241,7 @@
 }
 @media (max-width: 650px) {
   .application-orbit {
-    height: 112px;
+    height: 100px;
   }
   .orbit-application {
     font-size: 7px;

@@ -3,6 +3,7 @@ import { body, fail, reauthenticate, permit, type App } from "../common";
 import { firebase } from "../firebase";
 import { localVerificationUrl } from "../local-actions";
 import { now, usernamePattern } from "../security";
+import { notifyDirectory } from "../directory-live";
 export function register(app: App) {
   app.post("/api/v1/admin/users", async (c) => {
     await permit(c, "users.manage");
@@ -100,6 +101,7 @@ export function register(app: App) {
     } catch {
       verificationDelivered = false;
     }
+    await notifyDirectory(c.env);
     return c.json(
       {
         user: {

@@ -34,6 +34,16 @@ async function target(c: C) {
   return u;
 }
 export function register(app: App) {
+  app.get("/api/v1/directory/live", async (c) => {
+    await requireDirectory(c);
+    if (c.req.header("origin") !== new URL(c.req.url).origin) fail(403, "origin_rejected");
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") fail(400, "websocket_required");
+    const hub = c.env.BOARD_HUB.get(c.env.BOARD_HUB.idFromName("team-directory"));
+    return hub.fetch(new Request(
+      `https://board.internal/connect?expires=${c.get("session").expires}`,
+      c.req.raw,
+    ));
+  });
   app.get("/api/v1/directory/users", async (c) => {
     await requireDirectory(c);
     const parsed = z

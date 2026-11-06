@@ -24,6 +24,7 @@ import {
   type App,
 } from "../common";
 import { uploadedImage, saveImage, removeImage } from "../image-assets";
+import { notifyDirectory } from "../directory-live";
 
 function validLaunchUrl(value: string) {
   if (!value) return true;
@@ -87,6 +88,7 @@ export function register(app: App) {
       .bind(id, b.name)
       .run();
     await audit(c, "department.create", id);
+    await notifyDirectory(c.env);
     return c.json({ id }, 201);
   });
   app.post("/api/v1/admin/departments/:id/logo", async (c) => {
@@ -112,6 +114,7 @@ export function register(app: App) {
       .bind(id, b.departmentId, b.name)
       .run();
     await audit(c, "team.create", id);
+    await notifyDirectory(c.env);
     return c.json({ id }, 201);
   });
   app.post("/api/v1/admin/memberships", async (c) => {
@@ -139,6 +142,7 @@ export function register(app: App) {
       .bind(b.userId, "member")
       .run();
     await audit(c, "membership.assign", b.userId);
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.get("/api/v1/admin/audit", async (c) => {
@@ -290,6 +294,7 @@ export function register(app: App) {
     await c.env.DB.prepare("UPDATE users SET first_name=?,last_name=? WHERE id=?")
       .bind(b.firstName, b.lastName, uid).run();
     await audit(c, "user.profile.update", uid);
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.put("/api/v1/admin/users/:id", async (c) => {
@@ -334,6 +339,7 @@ export function register(app: App) {
       )
       .run();
     await audit(c, "user.update", uid);
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.get("/api/v1/admin/roles", async (c) => {
@@ -404,6 +410,7 @@ export function register(app: App) {
       .bind(b.userId, b.roleId)
       .run();
     await audit(c, "role.assign", b.userId);
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.delete("/api/v1/admin/role-assignments", async (c) => {
@@ -423,6 +430,7 @@ export function register(app: App) {
       .bind(b.userId, b.roleId)
       .run();
     await audit(c, "role.remove", b.userId);
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.post("/api/v1/admin/profile-fields", async (c) => {
@@ -484,6 +492,7 @@ export function register(app: App) {
         .run();
     }
     await audit(c, "profile.update", c.req.param("id"));
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.put("/api/v1/admin/profile-values/:id/batch", async (c) => {
@@ -504,6 +513,7 @@ export function register(app: App) {
       : c.env.DB.prepare("INSERT INTO profile_values VALUES(?,?,?) ON CONFLICT(user_id,field_key) DO UPDATE SET value=excluded.value")
         .bind(uid, item.key, JSON.stringify(item.value))));
     await audit(c, "profile.update", uid);
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.get("/api/v1/admin/profile-values/:id", async (c) => {
@@ -528,6 +538,7 @@ export function register(app: App) {
       .bind(b.name, Number(b.archived), c.req.param("id"))
       .run();
     await audit(c, "department.update", c.req.param("id"));
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.put("/api/v1/admin/teams/:id", async (c) => {
@@ -540,6 +551,7 @@ export function register(app: App) {
       .bind(b.name, Number(b.archived), c.req.param("id"))
       .run();
     await audit(c, "team.update", c.req.param("id"));
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.delete("/api/v1/admin/memberships", async (c) => {
@@ -558,6 +570,7 @@ export function register(app: App) {
       .bind(b.userId, b.departmentId, b.teamId)
       .run();
     await audit(c, "membership.remove", b.userId);
+    await notifyDirectory(c.env);
     return c.json({ ok: true });
   });
   app.put("/api/v1/admin/roles/:id", async (c) => {

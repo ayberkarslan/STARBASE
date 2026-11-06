@@ -21,6 +21,8 @@ export class BoardHub {
       return new Response(null, { status: 101, webSocket: client });
     }
     if (url.pathname === "/notify" && request.method === "POST") {
+      const type = url.searchParams.get("type") === "directory.changed"
+        ? "directory.changed" : "board.changed";
       for (const socket of this.state.getWebSockets()) {
         try {
           const attachment = socket.deserializeAttachment() as {
@@ -34,7 +36,7 @@ export class BoardHub {
             socket.close(1008, "Session expired");
             continue;
           }
-          socket.send('{"type":"board.changed"}');
+          socket.send(JSON.stringify({ type }));
         } catch {
           try {
             socket.close(1011, "Reconnect required");

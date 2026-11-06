@@ -32,3 +32,12 @@ it("does not let clients broadcast websocket messages", () => {
   );
   expect(socket.send).not.toHaveBeenCalled();
 });
+it("broadcasts a content-free directory invalidation", async () => {
+  const socket = {
+    deserializeAttachment: () => ({ expires: Date.now() / 1000 + 100 }),
+    send: vi.fn(), close: vi.fn(),
+  };
+  const hub = new BoardHub({ getWebSockets: () => [socket] } as any);
+  await hub.fetch(new Request("https://board.internal/notify?type=directory.changed", { method: "POST" }));
+  expect(socket.send).toHaveBeenCalledWith('{"type":"directory.changed"}');
+});

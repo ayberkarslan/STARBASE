@@ -145,7 +145,6 @@ export function register(app: App) {
     return c.json({
       users: users.map(({ avatarUrl, avatarVersion, customTitle, owner, ...u }: any) => ({
         ...u,
-        owner: !!owner,
         customTitle: customTitle || (u.username === "ayberkarslan" ? "Geliştirici Hesabı" : (owner ? "Takım Sahibi" : "")),
         photoUrl: avatarUrl ? userPhotoUrl(u.id as string, avatarVersion as number) : "",
         memberships: memberships
@@ -228,7 +227,7 @@ export function register(app: App) {
         .bind(c.req.param("id"))
         .all()
     ).results;
-    const { avatarUrl, avatarVersion, ...profile } = user;
+    const { avatarUrl, avatarVersion, owner, ...profile } = user;
     const [applications, resources, badges, roles] = await Promise.all([
       usedApplications(c.env, c.req.param("id")),
       userResources(c.env, c.req.param("id")),
@@ -239,10 +238,9 @@ export function register(app: App) {
         "SELECT r.id, r.name FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id=?",
       ).bind(c.req.param("id")).all().then((r) => r.results),
     ]);
-    const customTitle = profile.customTitle || (profile.username === "ayberkarslan" ? "Geliştirici Hesabı" : (profile.owner ? "Takım Sahibi" : ""));
+    const customTitle = profile.customTitle || (profile.username === "ayberkarslan" ? "Geliştirici Hesabı" : (owner ? "Takım Sahibi" : ""));
     return c.json({
       ...profile,
-      owner: !!profile.owner,
       customTitle,
       photoUrl: avatarUrl ? userPhotoUrl(user.id, avatarVersion) : "",
       memberships,

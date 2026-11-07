@@ -2,13 +2,40 @@ import { z } from "zod";
 import { type App, type Env, body, fail } from "../common";
 import { requireTeamMember } from "../common";
 import { now } from "../security";
+const itemKindSchema = z.enum([
+  "note",
+  "announcement",
+  "shortcut",
+  "text",
+  "drawing",
+  "checklist",
+]);
 const fields = z.object({
   title: z.string().trim().min(1).max(120),
   content: z.string().trim().min(1).max(2000),
   kind: z.enum(["note", "announcement"]),
+  itemType: itemKindSchema.optional(),
+  itemData: z.record(z.string(), z.unknown()).optional(),
   teamId: z.string().min(1).nullable(),
   dueAt: z.number().int().min(0).max(4102444800).nullable(),
 });
+function serializeItemData(value?: Record<string, unknown>) {
+  if (!value) return "{}";
+  const raw = JSON.stringify(value);
+  if (raw.length > 8192) fail(400, "invalid_input");
+  return raw;
+}
+function parseItemData(raw: unknown): Record<string, unknown> {
+  if (typeof raw !== "string" || !raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
 async function moderate(c: any) {
   if (c.get("user").owner) return true;
   return !!(await c.env.DB.prepare(
@@ -66,7 +93,7 @@ async function notify(env: Env, scope = "shared", authorId = "") {
   }
 }
 const select =
-  "SELECT n.id,n.author_id authorId,u.first_name authorFirstName,u.last_name authorLastName,u.username authorUsername,n.title,n.content,n.kind,n.scope,n.x,n.y,n.layout_version layoutVersion,n.team_id teamId,t.name team,n.due_at dueAt,n.pinned,n.archived,n.version,n.created_at createdAt,n.updated_at updatedAt FROM board_notes n LEFT JOIN users u ON u.id=n.author_id LEFT JOIN teams t ON t.id=n.team_id";
+  "SELECT n.id,n.author_id authorId,u.first_name authorFirstName,u.last_name authorLastName,u.username authorUsername,n.title,n.content,n.kind,n.item_type itemType,n.item_data itemData,n.scope,n.x,n.y,n.layout_version layoutVersion,n.team_id teamId,t.name team,n.due_at dueAt,n.pinned,n.archived,n.version,n.created_at createdAt,n.updated_at updatedAt FROM board_notes n LEFT JOIN users u ON u.id=n.author_id LEFT JOIN teams t ON t.id=n.team_id";
 export function register(app: App) {
   app.get("/api/v1/board/notes", async (c) => {
     const parsed = z
@@ -75,7 +102,7 @@ export function register(app: App) {
         limit: z.coerce.number().int().min(1).max(200).default(24),
         page: z.coerce.number().int().min(1).max(10000).default(1),
         archived: z.enum(["0", "1"]).default("0"),
-        kind: z.enum(["note", "announcement"]).optional(),
+        kind: itemKindSchema.optional(),
         teamId: z.string().max(100).optional(),
       })
       .safeParse(c.req.query());
@@ -89,8 +116,13 @@ export function register(app: App) {
       bindings.push(c.get("user").id);
     }
     if (b.kind) {
-      where.push("n.kind=?");
-      bindings.push(b.kind);
+      if (b.kind === "note" || b.kind === "announcement") {
+        where.push("(n.item_type=? OR (n.item_type='note' AND n.kind=?))");
+        bindings.push(b.kind, b.kind);
+      } else {
+        where.push("n.item_type=?");
+        bindings.push(b.kind);
+      }
     }
     if (b.teamId) {
       where.push("n.team_id=?");
@@ -101,7 +133,7 @@ export function register(app: App) {
     )
       .bind(...bindings)
       .first<{ total: number }>();
-    const notes = (
+    const rawNotes = (
       await c.env.DB.prepare(
         select +
           " WHERE " +
@@ -109,8 +141,18 @@ export function register(app: App) {
           " ORDER BY n.pinned DESC,n.updated_at DESC,n.id DESC LIMIT ? OFFSET ?",
       )
         .bind(...bindings, b.limit, (b.page - 1) * b.limit)
-        .all()
+        .all<Record<string, unknown>>()
     ).results;
+    const notes = rawNotes.map((row) => ({
+      ...row,
+      itemType:
+        typeof row.itemType === "string" && row.itemType !== "note"
+          ? row.itemType
+          : row.kind === "announcement"
+            ? "announcement"
+            : "note",
+      itemData: parseItemData(row.itemData),
+    }));
     return c.json({
       notes,
       page: b.page,
@@ -129,6 +171,8 @@ export function register(app: App) {
         x: z.number().int().min(0).max(20000).default(40),
         y: z.number().int().min(0).max(20000).default(40),
         kind: z.enum(["note", "announcement"]).default("note"),
+        itemType: itemKindSchema.optional(),
+        itemData: z.record(z.string(), z.unknown()).optional(),
         teamId: z.string().min(1).nullable().default(null),
         dueAt: z.number().int().min(0).max(4102444800).nullable().default(null),
       }),
@@ -137,15 +181,21 @@ export function register(app: App) {
     await team(c.env, b.teamId);
     const id = crypto.randomUUID();
     const timestamp = now();
+    const effectiveType = b.itemType ?? b.kind;
+    const effectiveKind =
+      effectiveType === "announcement" ? "announcement" : "note";
+    const serializedData = serializeItemData(b.itemData);
     await c.env.DB.batch([
       c.env.DB.prepare(
-        "INSERT INTO board_notes(id,author_id,title,content,kind,team_id,due_at,created_at,updated_at,scope,x,y) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO board_notes(id,author_id,title,content,kind,item_type,item_data,team_id,due_at,created_at,updated_at,scope,x,y) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       ).bind(
         id,
         c.get("user").id,
         b.title,
         b.content,
-        b.kind,
+        effectiveKind,
+        effectiveType,
+        serializedData,
         b.teamId,
         b.dueAt,
         timestamp,
@@ -187,13 +237,26 @@ export function register(app: App) {
       fail(403, "permission_denied");
     if (b.pinned !== undefined && !canModerate) fail(403, "permission_denied");
     if (b.teamId !== undefined) await team(c.env, b.teamId);
+    const nextItemType =
+      b.itemType ??
+      (b.kind !== undefined
+        ? b.kind
+        : (old.item_type as string) || (old.kind as string));
+    const nextKind =
+      nextItemType === "announcement" ? "announcement" : (b.kind ?? old.kind);
+    const nextItemData =
+      b.itemData !== undefined
+        ? serializeItemData(b.itemData)
+        : (old.item_data ?? "{}");
     const updated = await c.env.DB.prepare(
-      "UPDATE board_notes SET title=?,content=?,kind=?,team_id=?,due_at=?,pinned=?,archived=?,version=version+1,updated_at=? WHERE id=? AND version=? RETURNING version",
+      "UPDATE board_notes SET title=?,content=?,kind=?,item_type=?,item_data=?,team_id=?,due_at=?,pinned=?,archived=?,version=version+1,updated_at=? WHERE id=? AND version=? RETURNING version",
     )
       .bind(
         b.title ?? old.title,
         b.content ?? old.content,
-        b.kind ?? old.kind,
+        nextKind,
+        nextItemType,
+        nextItemData,
         b.teamId === undefined ? old.team_id : b.teamId,
         b.dueAt === undefined ? old.due_at : b.dueAt,
         b.pinned === undefined ? old.pinned : Number(b.pinned),

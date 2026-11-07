@@ -46,7 +46,7 @@ export function AvatarZoomProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const registerHover = (item: AvatarZoomItem, delayMs = 2000) => {
+  const registerHover = (item: AvatarZoomItem, delayMs = 1000) => {
     cancelHover();
     timerRef.current = setTimeout(() => {
       setZoomed(item);

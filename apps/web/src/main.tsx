@@ -13,6 +13,7 @@ import { FormSelect } from "./form-select";
 import { memberStatus, memberStatusLabel } from "./member-status";
 import { invalidateDirectory, subscribeDirectoryChanges } from "./member-live";
 import { Captcha } from "./captcha";
+import { AdminActivity } from "./admin-activity";
 import { PasswordField } from "./password-field";
 import { compactPatch } from "./image-upload";
 import {
@@ -50,6 +51,7 @@ import {
   Plus,
   Check,
   KeyRound,
+  Clock3,
 } from "lucide-react";
 import "@stardrop/ui/styles.css";
 import "./style.css";
@@ -636,6 +638,7 @@ function App() {
               ...(user.owner || permissions.some((p) => p.endsWith(".manage"))
                 ? [
                     { id: "members", name: "Üyeler", icon: Users },
+                    { id: "activity", name: "Erişim geçmişi", icon: Clock3 },
                     { id: "roles", name: "Roller ve izinler", icon: Shield },
                     { id: "application_management", name: "Uygulama yönetimi", icon: AppWindow },
                   ]
@@ -648,6 +651,7 @@ function App() {
                   !(
                     {
                       members: "users.manage",
+                      activity: "users.manage",
                       roles: "roles.manage",
                       application_management: "apps.manage",
                     } as Record<string, string>
@@ -845,6 +849,10 @@ function App() {
                     <span>{selected.avatar_url && !selected.disabled ? <img src={`/api/v1/directory/users/${encodeURIComponent(selected.id)}/photo?v=${selected.avatar_version}`} alt="" /> : <>{selected.first_name?.[0]}{selected.last_name?.[0]}</>}</span>
                     <div><strong>{selected.first_name} {selected.last_name}</strong><small>{selected.email}</small></div>
                   </div>
+                  <details className="member-security">
+                    <summary>Erişim geçmişi <span>STARBASE ve uygulamalar</span></summary>
+                    <AdminActivity key={selected.id} userId={selected.id} />
+                  </details>
                   <EditUser key={selected.id} user={selected} onUpdated={(updated) => {
                     setSelected(updated);
                     setRows((current) => current.map((item) => item.id === updated.id ? updated : item));
@@ -856,6 +864,7 @@ function App() {
               </Drawer>
             </>
           )}
+          {tab === "activity" && <AdminActivity />}
           {tab === "applications" && (
             selectedApplication ? <ApplicationDetail id={selectedApplication} onBack={() => setSelectedApplication(null)} /> : <>
               <span className="eyebrow">STARBASE SHOWROOM</span><h1>Uygulamalar</h1>

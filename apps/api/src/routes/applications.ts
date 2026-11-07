@@ -76,38 +76,71 @@ async function syncAppResource(
     .first();
   if (!application) return fail(404, "application_not_found");
   const userIds = [...new Set(item.starbaseUserIds)];
+  const existingUsers = await c.env.DB.prepare(
+    "SELECT user_id FROM app_resources WHERE app_id=? AND resource_id=?",
+  )
+    .bind(item.appId, item.resourceId)
+    .all<{ user_id: string }>();
+  const affectedUserIds = new Set<string>(
+    (existingUsers?.results ?? []).map((r) => r.user_id),
+  );
   if (item.deleted || userIds.length === 0) {
     await c.env.DB.prepare(
       "DELETE FROM app_resources WHERE app_id=? AND resource_id=?",
     )
       .bind(item.appId, item.resourceId)
       .run();
-    return;
-  }
-  if (!item.title || !item.date || !item.status || !item.createdAt)
-    return fail(400, "invalid_input");
-  const timestamp = now();
-  const placeholders = userIds.map(() => "?").join(",");
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      `DELETE FROM app_resources WHERE app_id=? AND resource_id=? AND user_id NOT IN (${placeholders})`,
-    ).bind(item.appId, item.resourceId, ...userIds),
-    ...userIds.map((userId) =>
+  } else {
+    if (!item.title || !item.date || !item.status || !item.createdAt)
+      return fail(400, "invalid_input");
+    for (const uid of userIds) affectedUserIds.add(uid);
+    const timestamp = now();
+    const placeholders = userIds.map(() => "?").join(",");
+    await c.env.DB.batch([
       c.env.DB.prepare(
-        "INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at) SELECT ?,u.id,?,?,?,?,?,?,? FROM users u WHERE u.id=? AND u.disabled=0 ON CONFLICT(app_id,user_id,resource_id) DO UPDATE SET title=excluded.title,date=excluded.date,status=excluded.status,url=excluded.url,updated_at=excluded.updated_at",
-      ).bind(
-        item.appId,
-        item.resourceId,
-        item.title,
-        item.date,
-        item.status,
-        item.url ?? "",
-        item.createdAt,
-        timestamp,
-        userId,
+        `DELETE FROM app_resources WHERE app_id=? AND resource_id=? AND user_id NOT IN (${placeholders})`,
+      ).bind(item.appId, item.resourceId, ...userIds),
+      ...userIds.map((userId) =>
+        c.env.DB.prepare(
+          "INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at) SELECT ?,u.id,?,?,?,?,?,?,? FROM users u WHERE u.id=? AND u.disabled=0 ON CONFLICT(app_id,user_id,resource_id) DO UPDATE SET title=excluded.title,date=excluded.date,status=excluded.status,url=excluded.url,updated_at=excluded.updated_at",
+        ).bind(
+          item.appId,
+          item.resourceId,
+          item.title,
+          item.date,
+          item.status,
+          item.url ?? "",
+          item.createdAt,
+          timestamp,
+          userId,
+        ),
       ),
-    ),
-  ]);
+    ]);
+  }
+  if (c.env.BOARD_HUB && affectedUserIds.size > 0) {
+    const notifyTasks = Array.from(affectedUserIds).map(async (userId) => {
+      try {
+        const hub = c.env.BOARD_HUB.get(
+          c.env.BOARD_HUB.idFromName("private:" + userId),
+        );
+        await hub.fetch("https://board.internal/notify", { method: "POST" });
+      } catch {
+        // non-blocking
+      }
+    });
+    let scheduled = false;
+    try {
+      if (c.executionCtx && typeof c.executionCtx.waitUntil === "function") {
+        c.executionCtx.waitUntil(Promise.allSettled(notifyTasks));
+        scheduled = true;
+      }
+    } catch {
+      scheduled = false;
+    }
+    if (!scheduled) {
+      await Promise.allSettled(notifyTasks);
+    }
+  }
 }
 export function register(app: App) {
   app.post("/api/v1/internal/app-resources", async (c) => {

@@ -45,7 +45,25 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
         </div>
         <div className="application-detail-hero__main">
           <div className="application-detail-hero__copy">
-            <span className="eyebrow">STARBASE UYGULAMASI</span>
+            <div className="application-detail-hero__top">
+              <span className="eyebrow">STARBASE UYGULAMASI</span>
+              <div className="application-detail-telemetry" aria-label="Uygulama özeti">
+                <span>
+                  <em>GİRİŞ</em>
+                  <strong>{overview.summary.totalVisits ?? 0}</strong>
+                </span>
+                <i aria-hidden="true" />
+                <span>
+                  <em>SON GİRİŞ</em>
+                  <strong>{dateTime(overview.summary.lastSignInAt)}</strong>
+                </span>
+                <i aria-hidden="true" />
+                <span>
+                  <em>KAYITLAR</em>
+                  <strong>{overview.resourceCount}</strong>
+                </span>
+              </div>
+            </div>
             <h1>{overview.application.name}</h1>
             <p>Yıldız Roket Takımı hesabınla bağlı uygulama.</p>
             <div className="application-detail-hero__actions">
@@ -61,20 +79,6 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
               )}
             </div>
           </div>
-          <dl className="application-detail-hero__stats" aria-label="Uygulama özeti">
-            <div className="application-detail-stat">
-              <dt>GİRİŞ SAYIN</dt>
-              <dd>{overview.summary.totalVisits ?? 0}</dd>
-            </div>
-            <div className="application-detail-stat">
-              <dt>SON GİRİŞİN</dt>
-              <dd>{dateTime(overview.summary.lastSignInAt)}</dd>
-            </div>
-            <div className="application-detail-stat">
-              <dt>KATKI VERDİĞİN KAYITLAR</dt>
-              <dd>{overview.resourceCount}</dd>
-            </div>
-          </dl>
         </div>
       </section>
 

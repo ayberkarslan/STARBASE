@@ -58,34 +58,42 @@
   gap: 8px;
   text-decoration: none;
 }
-.application-detail-hero__stats {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(128px, auto));
-  gap: 1px;
-  border: 1px solid #ffffff38;
-  border-radius: 4px;
-  background: #ffffff26;
-  overflow: hidden;
-}
-.application-detail-stat {
-  background: #000000e6;
-  padding: 11px 15px;
+.application-detail-hero__top {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
 }
-.application-detail-stat dt {
-  color: #ffffff8c;
-  font-size: 9px;
-  letter-spacing: 0.1em;
+.application-detail-telemetry {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  font-size: 9.5px;
+  line-height: 1.4;
 }
-.application-detail-stat dd {
-  margin: 0;
-  color: #ffffff;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
+.application-detail-telemetry > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
   white-space: nowrap;
+}
+.application-detail-telemetry em {
+  font-style: normal;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: #ffffff80;
+}
+.application-detail-telemetry strong {
+  font-weight: 400;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+.application-detail-telemetry > i {
+  width: 1px;
+  height: 11px;
+  background: #ffffff30;
 }
 .application-detail-logo {
   position: absolute;

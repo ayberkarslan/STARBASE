@@ -5,6 +5,8 @@ import { Check, Pencil, X } from "lucide-react";
 import { invalidateDirectory } from "./member-live";
 import { memberStatus, memberStatusOptions, type MemberStatus } from "./member-status";
 import { PasswordField } from "./password-field";
+import { Badge, BadgeAssigner, BadgeList, BadgesManager } from "./badges";
+export { BadgesManager };
 export async function request(path: string, body?: unknown, method?: string) {
   const r = await fetch("/api/v1" + path, {
     method: method ?? (body ? "POST" : "GET"),
@@ -55,7 +57,13 @@ export function Invitations({ run }: { run: Run }) {
 export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: any) => void }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<MemberStatus>(() => memberStatus(user));
+  const [availableBadges, setAvailableBadges] = useState<Badge[]>([]);
   useEffect(() => setStatus(memberStatus(user)), [user.id, user.disabled, user.verified]);
+  useEffect(() => {
+    request("/badges")
+      .then(setAvailableBadges)
+      .catch(() => {});
+  }, []);
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
   const save = async (path: string, data: unknown, method: string, success: string) => {
     setBusy(true);
@@ -71,7 +79,8 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
       return false;
     } finally { setBusy(false); }
   };
-  return <Panel title="Üye bilgileri" description="Kimlik ve erişim ayrı ayrı düzenlenir." className="member-edit-card">
+  const isAdmin = Boolean(user.roles?.some((r: any) => r.id === "admin"));
+  return <Panel title="Üye bilgileri" description="Kimlik, rol ve erişim ayrı ayrı düzenlenir." className="member-edit-card">
     <form key={`${user.id}:${user.first_name}:${user.last_name}`} className="member-edit-form" onSubmit={(event) => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
@@ -83,6 +92,62 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
       </div>
       <Button type="submit" disabled={busy}>İsmi kaydet</Button>
     </form>
+    <form key={`${user.id}:${user.custom_title}`} className="member-edit-form" onSubmit={(event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      void save("/admin/users/" + user.id + "/title", { title: String(form.get("customTitle") || "").trim() }, "PATCH", "Özel unvan kaydedildi.");
+    }}>
+      <TextField name="customTitle" label="Özel Başlık / Unvan (Örn. Geliştirici Hesabı)" defaultValue={user.custom_title || (user.username === "ayberkarslan" ? "Geliştirici Hesabı" : "")} maxLength={80} />
+      <Button type="submit" disabled={busy}>Unvanı kaydet</Button>
+    </form>
+    <div className="member-edit-form" style={{ borderTop: "1px solid #ffffff25", paddingTop: "14px", marginTop: "14px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+        <div>
+          <span className={`member-role-badge ${isAdmin ? "member-role-badge--admin" : ""}`}>
+            {isAdmin ? "YÖNETİCİ (Admin)" : "TAKIM ÜYESİ (Member)"}
+          </span>
+          <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#ffffffa0" }}>
+            {isAdmin ? "Kullanıcı, departman, uygulama ve pano yönetim yetkileri etkin." : "Standart takım üyesi yetkileri."}
+          </p>
+        </div>
+        <Button
+          type="button"
+          disabled={busy || user.owner}
+          onClick={() => {
+            if (isAdmin) {
+              void save("/admin/role-assignments", { userId: user.id, roleId: "admin" }, "DELETE", "Yönetici yetkisi kaldırıldı.");
+            } else {
+              void save("/admin/role-assignments", { userId: user.id, roleId: "admin" }, "POST", "Yönetici yetkisi verildi.");
+            }
+          }}
+        >
+          {isAdmin ? "Yönetici Yetkisini Kaldır" : "Yönetici Yetkisi Ver"}
+        </Button>
+      </div>
+    </div>
+    <div className="member-edit-form" style={{ borderTop: "1px solid #ffffff25", paddingTop: "14px", marginTop: "14px" }}>
+      <h4 style={{ margin: "0 0 8px", fontSize: "13px" }}>Üyenin Rozetleri</h4>
+      {user.badges?.length ? (
+        <div style={{ marginBottom: "12px" }}>
+          <BadgeList
+            badges={user.badges}
+            onRemove={(badgeId) => {
+              void save(`/admin/users/${user.id}/badges/${encodeURIComponent(badgeId)}`, undefined, "DELETE", "Rozet kaldırıldı.");
+            }}
+          />
+        </div>
+      ) : (
+        <p style={{ fontSize: "11px", color: "#ffffff80", margin: "0 0 10px" }}>Henüz atanmış rozet yok.</p>
+      )}
+      <BadgeAssigner
+        availableBadges={availableBadges}
+        assignedBadgeIds={(user.badges || []).map((b: any) => b.id)}
+        disabled={busy}
+        onAssign={async (badgeId) => {
+          await save(`/admin/users/${user.id}/badges`, { badgeId }, "POST", "Rozet atandı.");
+        }}
+      />
+    </div>
     <form className="member-edit-form member-status-form" onSubmit={(event) => {
       event.preventDefault();
       const form = event.currentTarget;

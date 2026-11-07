@@ -26,6 +26,7 @@ import type {
 } from "../../../packages/contracts/src";
 import { request } from "./management";
 import { compactPatch } from "./image-upload";
+import { BadgeList } from "./badges";
 import "./directory.css";
 const formatDateTime = (value: number) =>
   new Date(value * 1000).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" });
@@ -190,10 +191,21 @@ function MemberProfile({
               {profile.photoUrl ? <img src={profile.photoUrl} alt="" /> : <>{profile.firstName[0]}{profile.lastName[0]}</>}
             </span>
             <div>
-              <h3>{profile.firstName} {profile.lastName}</h3>
+              <h3>
+                {profile.firstName} {profile.lastName}
+                {(profile as any).customTitle && (
+                  <span className="user-title-tag">{(profile as any).customTitle}</span>
+                )}
+              </h3>
               <p>@{profile.username}</p>
             </div>
           </section>
+          {(profile as any).badges?.length ? (
+            <section className="directory-profile__section">
+              <span className="eyebrow">ROZETLER VE RÜTBELER</span>
+              <BadgeList badges={(profile as any).badges} size="md" />
+            </section>
+          ) : null}
           <section className="directory-profile__section">
             <span className="eyebrow">EKİPLER</span>
             {profile.memberships.length ? (
@@ -407,6 +419,9 @@ export function TeamDirectory({
                     <span className="member-card-body">
                       <strong>
                         {u.firstName} {u.lastName}
+                        {(u as any).customTitle && (
+                          <span className="user-title-tag">{(u as any).customTitle}</span>
+                        )}
                       </strong>
                       <span>@{u.username}</span>
                       <small>
@@ -416,6 +431,11 @@ export function TeamDirectory({
                               .join(" · ")
                           : "Ekip atanmamış"}
                       </small>
+                      {(u as any).badges?.length ? (
+                        <div style={{ marginTop: "4px" }}>
+                          <BadgeList badges={(u as any).badges} size="sm" />
+                        </div>
+                      ) : null}
                     </span>
                     <ArrowUpRight size={16} />
                   </Button>

@@ -25,6 +25,7 @@ import {
   AppsList,
   EditOrganization,
 } from "./management";
+import { BadgeList, BadgesManager, type Badge } from "./badges";
 import React, { useEffect, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -129,6 +130,12 @@ function App() {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const [allBadges, setAllBadges] = useState<Badge[]>([]);
+  const loadBadges = async () => {
+    try {
+      setAllBadges(await api("/badges"));
+    } catch {}
+  };
   const path = location.pathname;
   const params = new URLSearchParams(location.search);
   async function load() {
@@ -152,6 +159,9 @@ function App() {
   useEffect(() => {
     api("/apps").then(setApps).catch(() => {});
   }, []);
+  useEffect(() => {
+    if (user) loadBadges();
+  }, [user?.id]);
   useEffect(() => {
     if (path !== "/authorize") return;
     const clientId = params.get("client_id");
@@ -727,7 +737,23 @@ function App() {
             <section className="profile-page">
               <div className="profile-hero">
                 <span className="member-initials" aria-hidden="true">{user.photoUrl ? <img src={user.photoUrl} alt="" /> : <>{user.firstName?.[0]}{user.lastName?.[0]}</>}</span>
-                <div><span className="eyebrow">STARBASE PROFİLİ</span><h1>{user.firstName} {user.lastName}</h1><p>@{user.username} · {user.owner ? "Takım sahibi" : "Yıldız Roket Takımı"}</p></div>
+                <div>
+                  <span className="eyebrow">STARBASE PROFİLİ</span>
+                  <h1>
+                    {user.firstName} {user.lastName}
+                    {(user.customTitle || user.username === "ayberkarslan") && (
+                      <span className="user-title-tag">
+                        {user.customTitle || "Geliştirici Hesabı"}
+                      </span>
+                    )}
+                  </h1>
+                  <p>@{user.username} · {user.customTitle || (user.username === "ayberkarslan" ? "Geliştirici Hesabı" : (user.owner ? "Takım sahibi" : "Yıldız Roket Takımı"))}</p>
+                  {user.badges?.length ? (
+                    <div style={{ marginTop: "10px" }}>
+                      <BadgeList badges={user.badges} size="md" />
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div className="profile-photo-actions">
                 <label className="profile-photo-upload">{photoBusy ? "Yükleniyor…" : user.photoUrl ? "Fotoğrafı değiştir" : "Profil fotoğrafı ekle"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) setCropFile(file); event.target.value = ""; }} /></label>
@@ -746,6 +772,10 @@ function App() {
                     <dd>
                       {user.firstName} {user.lastName}
                     </dd>
+                    <dt>Unvan / Rol</dt>
+                    <dd>
+                      {user.customTitle || (user.username === "ayberkarslan" ? "Geliştirici Hesabı" : (user.owner ? "Takım Sahibi" : "Takım Üyesi"))}
+                    </dd>
                     <dt>E-posta</dt>
                     <dd>{user.email}</dd>
                   </dl>
@@ -760,6 +790,29 @@ function App() {
                   ) : (
                     <p>Henüz bir ekip atanmamış.</p>
                   )}
+                </Panel>
+                <Panel title="Özel Unvan / Hesap Başlığı" description="Hesabında ve dizinde görünen unvanını istediğin an güncelleyebilirsin.">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = new FormData(e.currentTarget);
+                      act(async () => {
+                        const title = String(form.get("title") || "").trim();
+                        await api("/me/title", { title }, "PUT");
+                        setUser({ ...user, customTitle: title });
+                        setNotice("Özel unvan güncellendi.");
+                      });
+                    }}
+                    style={{ display: "grid", gap: "10px" }}
+                  >
+                    <TextField
+                      name="title"
+                      label="Görünen unvan (Örn. Geliştirici Hesabı)"
+                      defaultValue={user.customTitle || (user.username === "ayberkarslan" ? "Geliştirici Hesabı" : "")}
+                      maxLength={80}
+                    />
+                    <Button type="submit">Unvanı Kaydet</Button>
+                  </form>
                 </Panel>
               </div>
               <MyApplicationHistory onSelectApplication={(id) => { setSelectedApplication(id); setTab("applications"); }} />
@@ -830,12 +883,19 @@ function App() {
                   <button key={r.id} onClick={() => setSelected(r)}>
                     <span>
                       {r.first_name} {r.last_name}
+                      {r.custom_title && <span className="user-title-tag">{r.custom_title}</span>}
                       <small>@{r.username}</small>
+                      {r.badges?.length ? (
+                        <div style={{ marginTop: "4px" }}>
+                          <BadgeList badges={r.badges} size="sm" />
+                        </div>
+                      ) : null}
                     </span>
                     <span>{r.email}</span>
                     <span>
                       <span className={`member-state member-state--${memberStatus(r)}`}>{memberStatusLabel[memberStatus(r)]}</span>
-                      {r.owner && <small>Sahip</small>}{" "}
+                      {r.owner && <small>Sahip</small>}
+                      {r.roles?.some((ro: any) => ro.id === "admin") && <small style={{ color: "#7dd3fc" }}>Yönetici</small>}
                       <ArrowUpRight size={14} />
                     </span>
                   </button>
@@ -888,7 +948,8 @@ function App() {
           )}
           {tab === "roles" && (
             <>
-              <h1>Roller ve izinler</h1>
+              <h1>Roller, unvanlar ve rozetler</h1>
+              <BadgesManager badges={allBadges} onRefresh={loadBadges} />
               <RolesList run={act} />
               <Fields run={act} />
               <AdminForm kind="role" run={act} />

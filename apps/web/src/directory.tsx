@@ -27,6 +27,8 @@ import type {
 import { request } from "./management";
 import { compactPatch } from "./image-upload";
 import "./directory.css";
+const formatDateTime = (value: number) =>
+  new Date(value * 1000).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" });
 export function ApplicationHistoryView({
   data,
   onPage: _onPage,
@@ -76,8 +78,10 @@ export function UserResourcesView({
       <h3><FileText size={17} /> Dahil olduğu dosyalar ve kayıtlar</h3>
       {resources.length ? (
         <div className="resource-list">
-          {resources.map((item) => {
-            const meta = [item.applicationName, item.date, item.status].filter(Boolean).join(" · ");
+          {resources.map((item, index) => {
+            const stamp = item.updatedAt || item.createdAt;
+            const timeLabel = stamp ? `Son düzenleme: ${formatDateTime(stamp)}` : item.date;
+            const meta = [index === 0 ? "Son çalışılan" : "", item.applicationName, timeLabel, item.status].filter(Boolean).join(" · ");
             if (item.url) {
               return (
                 <a

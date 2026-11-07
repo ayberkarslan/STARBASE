@@ -10,6 +10,11 @@
 .application-detail-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
 .application-detail-metrics .sd-panel { margin: 0; }
 .application-detail-metrics strong { display: block; margin-top: 20px; font-size: 16px; font-weight: 400; }
+.application-detail-resume { margin: 0; }
+.application-detail-resume__body { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 10px; }
+.application-detail-resume__body strong { display: block; margin: 6px 0 4px; font-size: 14px; font-weight: 400; }
+.application-detail-resume__body p { margin: 0; color: #ffffffa8; font-size: 11px; }
+.application-detail-resume__body .sd-button { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; white-space: nowrap; }
 .application-detail-list { margin: 0; }
 .application-detail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 15px 0; border-top: 1px solid #ffffff30; }
 .application-detail-row strong { font-size: 12px; font-weight: 400; }

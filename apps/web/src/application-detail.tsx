@@ -7,7 +7,7 @@ type Overview = {
   application: { id: string; name: string; logoUrl: string; launchUrl: string };
   summary: { totalVisits: number; lastSignInAt: number | null };
   visits: { signedInAt: number; endedAt: number | null; endReason: string | null }[];
-  resources: { resourceId: string; title: string; date: string; status: string; url?: string; createdAt: number }[];
+  resources: { resourceId: string; title: string; date: string; status: string; url?: string; createdAt: number; updatedAt?: number }[];
   resourceCount: number;
 };
 
@@ -50,9 +50,26 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
         <Panel title="Son girişin"><strong>{dateTime(overview.summary.lastSignInAt)}</strong></Panel>
         <Panel title="Katkı verdiğin kayıtlar"><strong>{overview.resourceCount}</strong></Panel>
       </div>
+      {overview.resources[0] && (
+        <Panel title="Kaldığın yerden devam et" className="application-detail-resume">
+          <div className="application-detail-resume__body">
+            <div>
+              <span className="eyebrow">EN SON ÜZERİNDE ÇALIŞTIĞIN KAYIT</span>
+              <strong>{overview.resources[0].title}</strong>
+              <p>Son düzenleme: {dateTime(overview.resources[0].updatedAt ?? overview.resources[0].createdAt)} · {overview.resources[0].status}</p>
+            </div>
+            {overview.resources[0].url && (
+              <a className="sd-button sd-button--primary sd-button--md" href={overview.resources[0].url}>
+                Kaldığın yerden devam et <ArrowUpRight size={16} />
+              </a>
+            )}
+          </div>
+        </Panel>
+      )}
       <Panel title="Dahil olduğum kayıtlar ve dosyalar" className="application-detail-list">
         {overview.resources.length ? overview.resources.map((item) => {
-          const meta = [item.date, item.status].filter(Boolean).join(" · ");
+          const editedLabel = `Son düzenleme: ${dateTime(item.updatedAt ?? item.createdAt)}`;
+          const meta = [editedLabel, item.status].filter(Boolean).join(" · ");
           return item.url ? (
             <a className="application-detail-row application-detail-row--link" key={item.resourceId} href={item.url}>
               <strong>{item.title}</strong>

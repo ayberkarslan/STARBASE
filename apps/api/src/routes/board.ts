@@ -51,7 +51,7 @@ async function writeLimit(c: any) {
   )
     .bind(key, now() + 120)
     .first();
-  if (r.count > 30) fail(429, "try_later");
+  if (r.count > 120) fail(429, "try_later");
 }
 async function team(env: Env, id: string | null) {
   if (

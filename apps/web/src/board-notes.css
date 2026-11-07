@@ -280,10 +280,70 @@
 .notes-tools {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .notes-tools > .sd-button {
   font-size: 10px;
+}
+.board-zoom-bar {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #ffffff38;
+  border-radius: 6px;
+  background: #000000;
+  overflow: hidden;
+}
+.board-zoom-bar > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-right: 1px solid #ffffff24;
+  background: #000000;
+  color: #ffffffc8;
+  font: 9px var(--sd-font);
+  cursor: pointer;
+}
+.board-zoom-bar > button:last-child {
+  border-right: 0;
+}
+.board-zoom-bar__value {
+  min-width: 52px !important;
+  letter-spacing: 0.04em;
+}
+.board-zoom-bar > button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+.board-zoom-bar > button:hover:not(:disabled),
+.board-zoom-bar > button:focus-visible:not(:disabled) {
+  color: #ffffff;
+  background: #000000;
+  outline: none;
+}
+.board-zoom-bar > button:hover:not(:disabled)::after,
+.board-zoom-bar > button:focus-visible:not(:disabled)::after {
+  opacity: 1;
+}
+.board-zoom-bar > button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.board-surface-scaler {
+  position: relative;
+  min-width: 100%;
 }
 .notes-filters {
   flex: none;
@@ -507,47 +567,15 @@
   border: 1px dashed transparent;
   transition: border-color 150ms ease;
 }
-.movable-note.is-type-drawing > .note-grip {
-  opacity: 0;
-  top: -12px;
-  background: #000000;
-  border: 1px solid #ffffff40;
-}
-.movable-note.is-type-drawing:hover > .note-grip,
-.movable-note.is-type-drawing:focus-within > .note-grip {
-  opacity: 1;
-}
 .movable-note.is-type-drawing:hover .board-drawing-item,
-.movable-note.is-type-drawing:focus-within .board-drawing-item {
+.movable-note.is-type-drawing:focus-within .board-drawing-item,
+.movable-note.is-type-drawing.is-menu-open .board-drawing-item {
   border-color: #ffffff40;
 }
 .board-drawing-item svg {
   display: block;
   overflow: visible;
   pointer-events: none;
-}
-.board-drawing-delete {
-  position: absolute;
-  top: -12px;
-  right: -12px;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border: 1px solid #ffffff45;
-  border-radius: 0;
-  background: #000000;
-  color: #ffffff;
-  opacity: 0;
-  cursor: pointer;
-}
-.movable-note.is-type-drawing:hover .board-drawing-delete,
-.movable-note.is-type-drawing:focus-within .board-drawing-delete,
-.board-drawing-delete:focus-visible {
-  opacity: 1;
-}
-.board-drawing-delete:hover {
-  border-color: #ffffff;
 }
 
 /* Free Canvas Text / Callout Widget */
@@ -730,33 +758,163 @@
 .board-checklist-items li.is-done button span {
   text-decoration: line-through;
 }
-.note-grip {
+.note-top-controls {
   position: absolute;
-  z-index: 2;
+  z-index: 6;
   top: 4px;
   left: 50%;
   transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  transition:
+    opacity 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+.movable-note:hover > .note-top-controls,
+.movable-note:focus-within > .note-top-controls,
+.movable-note.is-menu-open > .note-top-controls {
+  background: #000000;
+  border-color: #ffffff38;
+}
+.movable-note.is-type-drawing > .note-top-controls {
+  top: -30px;
+  opacity: 0;
+  background: #000000;
+  border-color: #ffffff45;
+}
+.movable-note.is-type-drawing:hover > .note-top-controls,
+.movable-note.is-type-drawing:focus-within > .note-top-controls,
+.movable-note.is-type-drawing.is-menu-open > .note-top-controls {
+  opacity: 1;
+}
+.note-grip {
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 26px;
+  width: 44px;
+  height: 24px;
   border: 0;
+  border-radius: 4px;
   background: transparent;
-  color: #ffffff70;
+  color: #ffffff78;
   cursor: grab;
   touch-action: none;
 }
 .note-grip:hover,
 .note-grip:focus-visible {
-  color: #fff;
-  background: #ffffff10;
+  color: #ffffff;
+  background: #000000;
+  outline: none;
 }
 .note-grip:active {
   cursor: grabbing;
 }
 .note-grip:disabled {
   cursor: default;
-  opacity: 0.2;
+  opacity: 0.25;
+}
+.note-settings-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.note-settings-trigger {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  border: 0;
+  border-left: 1px solid #ffffff24;
+  background: transparent;
+  color: #ffffff78;
+  cursor: pointer;
+}
+.note-settings-trigger:hover,
+.note-settings-trigger:focus-visible,
+.note-settings-dropdown.is-open .note-settings-trigger {
+  color: #ffffff;
+  background: #000000;
+  outline: none;
+}
+.note-settings-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  min-width: 184px;
+  padding: 5px;
+  background: #000000;
+  border: 1px solid #ffffff48;
+  border-radius: 6px;
+  box-shadow: 0 18px 48px #000000f0;
+  display: none;
+  gap: 2px;
+}
+/* Invisible hover bridge so moving the cursor from gear icon to menu never closes it */
+.note-settings-menu::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+.note-settings-dropdown:hover .note-settings-menu,
+.note-settings-dropdown.is-open .note-settings-menu {
+  display: grid;
+}
+.note-settings-menu hr {
+  width: 100%;
+  margin: 3px 0;
+  border: 0;
+  border-top: 1px solid #ffffff24;
+}
+.note-settings-menu button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 30px;
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 0;
+  background: #000000;
+  color: #ffffffd9;
+  font: 9px/1.4 var(--sd-font);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.note-settings-menu button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+.note-settings-menu button:hover,
+.note-settings-menu button:focus-visible {
+  color: #ffffff;
+  background: #000000;
+  outline: none;
+}
+.note-settings-menu button:hover::before,
+.note-settings-menu button:focus-visible::before {
+  opacity: 1;
+}
+.note-settings-menu button.is-danger {
+  color: #ffffff;
 }
 .sticky-note.sd-panel {
   padding: 36px 22px 20px;

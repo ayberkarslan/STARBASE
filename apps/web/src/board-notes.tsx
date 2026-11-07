@@ -47,6 +47,16 @@ import {
   Minus,
   BoxSelect,
   X,
+  Settings,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowDown,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { request } from "./management";
 
@@ -322,7 +332,7 @@ function BoardCanvas({
     [saving, setSaving] = useState(false),
     [deleteNote, setDeleteNote] = useState<Note | null>(null);
 
-  // Canvas drawing state
+  // Canvas drawing & zoom state
   const [drawMode, setDrawMode] = useState(false);
   const [drawTool, setDrawTool] = useState<DrawTool>("arrow");
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
@@ -331,6 +341,8 @@ function BoardCanvas({
     strokeStyle: StrokeStyle;
     points: DrawingPoint[];
   } | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
 
   const sequence = useRef(0),
@@ -541,12 +553,78 @@ function BoardCanvas({
     }
   }
 
-  function nextCanvasPosition() {
-    const count = feed.notes.length;
-    return {
-      x: 40 + (count % 3) * 340,
-      y: 40 + Math.floor(count / 3) * 320,
-    };
+  function getNoteZIndex(note: Note): number {
+    const raw = note.itemData?.zIndex;
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return Math.max(1, Math.min(900, Math.round(raw)));
+    }
+    return resolveItemType(note) === "drawing" ? 5 : 10;
+  }
+
+  async function changeLayer(
+    note: Note,
+    direction: "front" | "forward" | "backward" | "back",
+  ) {
+    const allZ = feed.notes.map(getNoteZIndex);
+    const maxZ = allZ.length ? Math.max(...allZ) : 10;
+    const minZ = allZ.length ? Math.min(...allZ) : 2;
+    const currentZ = getNoteZIndex(note);
+    const nextZ =
+      direction === "front"
+        ? Math.min(900, maxZ + 1)
+        : direction === "forward"
+          ? Math.min(900, currentZ + 1)
+          : direction === "backward"
+            ? Math.max(1, currentZ - 1)
+            : Math.max(1, minZ - 1);
+    await change(note, {
+      itemType: resolveItemType(note),
+      itemData: { ...(note.itemData ?? {}), zIndex: nextZ },
+    });
+  }
+
+  function nextCanvasPosition(itemType: BoardItemType = "note") {
+    const vp = viewportRef.current;
+    const halfW = itemType === "text" ? 120 : 150;
+    const halfH = itemType === "text" ? 45 : 125;
+    let x = vp
+      ? Math.round((vp.scrollLeft + vp.clientWidth / 2) / zoom - halfW)
+      : 160;
+    let y = vp
+      ? Math.round((vp.scrollTop + vp.clientHeight / 2) / zoom - halfH)
+      : 120;
+    x = Math.max(32, Math.min(19500, x));
+    y = Math.max(32, Math.min(19500, y));
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const collision = feed.notes.some(
+        (n) => Math.abs(n.x - x) < 28 && Math.abs(n.y - y) < 28,
+      );
+      if (!collision) break;
+      x = Math.min(19500, x + 28);
+      y = Math.min(19500, y + 28);
+    }
+    return { x, y };
+  }
+
+  function applyZoom(next: number) {
+    const clamped = Math.max(0.3, Math.min(1.8, Math.round(next * 100) / 100));
+    setZoom(clamped);
+  }
+
+  function fitBoardOverview() {
+    const vp = viewportRef.current;
+    if (!vp || !feed.notes.length) {
+      setZoom(1);
+      vp?.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+      return;
+    }
+    const maxX = Math.max(...feed.notes.map((n) => n.x + 340), 900);
+    const maxY = Math.max(...feed.notes.map((n) => n.y + 320), 600);
+    const scaleX = (vp.clientWidth - 64) / maxX;
+    const scaleY = (vp.clientHeight - 64) / maxY;
+    const fitted = Math.max(0.3, Math.min(1, Math.min(scaleX, scaleY)));
+    setZoom(Math.round(fitted * 100) / 100);
+    vp.scrollTo({ left: 0, top: 0, behavior: "smooth" });
   }
 
   async function submitEditorPayload(payload: {
@@ -563,12 +641,15 @@ function BoardCanvas({
     setEditorError("");
     try {
       if (editor.mode === "create") {
-        const pos = nextCanvasPosition();
+        const pos = nextCanvasPosition(payload.itemType);
+        const allZ = feed.notes.map(getNoteZIndex);
+        const topZ = allZ.length ? Math.min(900, Math.max(...allZ) + 1) : 10;
         await request("/board/notes", {
           scope,
           x: pos.x,
           y: pos.y,
           ...payload,
+          itemData: { ...(payload.itemData ?? {}), zIndex: topZ },
         });
         setArchived("0");
         setKind("");
@@ -576,7 +657,14 @@ function BoardCanvas({
       } else {
         await request(
           "/board/notes/" + editor.note.id,
-          { ...payload, version: editor.note.version },
+          {
+            ...payload,
+            itemData: {
+              ...(editor.note.itemData ?? {}),
+              ...(payload.itemData ?? {}),
+            },
+            version: editor.note.version,
+          },
           "PATCH",
         );
       }
@@ -686,10 +774,13 @@ function BoardCanvas({
   function surfaceCoordinates(e: ReactPointerEvent<HTMLDivElement>): DrawingPoint {
     const rect = e.currentTarget.getBoundingClientRect();
     return {
-      x: Math.max(0, Math.min(20000, Math.round(e.clientX - rect.left))),
-      y: Math.max(0, Math.min(20000, Math.round(e.clientY - rect.top))),
+      x: Math.max(0, Math.min(20000, Math.round((e.clientX - rect.left) / zoom))),
+      y: Math.max(0, Math.min(20000, Math.round((e.clientY - rect.top) / zoom))),
     };
   }
+
+  const surfaceWidth = Math.max(2200, ...feed.notes.map((n) => n.x + 480));
+  const surfaceHeight = Math.max(1400, ...feed.notes.map((n) => n.y + 540));
 
   const editingNote = editor?.mode === "edit" ? editor.note : null;
   const activeModalType: Exclude<BoardItemType, "drawing"> =
@@ -730,6 +821,42 @@ function BoardCanvas({
           </span>
         </div>
         <div className="notes-tools">
+          <div className="board-zoom-bar" role="group" aria-label="Pano ölçeği">
+            <button
+              type="button"
+              title="Panoyu küçült (uzaklaştır)"
+              aria-label="Panoyu küçült"
+              disabled={zoom <= 0.35}
+              onClick={() => applyZoom(zoom - 0.15)}
+            >
+              <ZoomOut size={14} />
+            </button>
+            <button
+              type="button"
+              className="board-zoom-bar__value"
+              title="Ölçeği %100 yap"
+              onClick={() => applyZoom(1)}
+            >
+              %{Math.round(zoom * 100)}
+            </button>
+            <button
+              type="button"
+              title="Panoyu büyüt (yakınlaştır)"
+              aria-label="Panoyu büyüt"
+              disabled={zoom >= 1.75}
+              onClick={() => applyZoom(zoom + 0.15)}
+            >
+              <ZoomIn size={14} />
+            </button>
+            <button
+              type="button"
+              title="Tüm panoyu ekrana sığdır (genel görünüm)"
+              aria-label="Genel görünüm"
+              onClick={fitBoardOverview}
+            >
+              <Maximize2 size={13} />
+            </button>
+          </div>
           <Button
             variant={drawMode ? "primary" : "bare"}
             aria-pressed={drawMode}
@@ -955,139 +1082,192 @@ function BoardCanvas({
         </p>
       )}
       <div
+        ref={viewportRef}
         className={"board-viewport" + (drawMode ? " is-drawing" : "")}
         aria-label="Serbest pano alanı"
         tabIndex={0}
+        onWheel={(e) => {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            applyZoom(zoom + (e.deltaY < 0 ? 0.1 : -0.1));
+          }
+        }}
       >
         <div
-          ref={surfaceRef}
-          className="board-surface"
+          className="board-surface-scaler"
           style={{
-            width: Math.max(2200, ...feed.notes.map((n) => n.x + 480)),
-            height: Math.max(1400, ...feed.notes.map((n) => n.y + 540)),
+            width: Math.round(surfaceWidth * zoom),
+            height: Math.round(surfaceHeight * zoom),
           }}
         >
-          {drawMode && (
-            <div
-              className="board-draw-capture"
-              onPointerDown={(e) => {
-                if (e.button !== 0) return;
-                e.preventDefault();
-                e.currentTarget.setPointerCapture(e.pointerId);
-                const pt = surfaceCoordinates(e);
-                setActiveDraft({
-                  tool: drawTool,
-                  strokeStyle,
-                  points: [pt, pt],
-                });
-              }}
-              onPointerMove={(e) => {
-                if (!activeDraft) return;
-                const pt = surfaceCoordinates(e);
-                setActiveDraft((current) => {
-                  if (!current) return null;
-                  if (current.tool === "pen") {
-                    const last = current.points[current.points.length - 1];
-                    if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < 4) {
-                      return current;
-                    }
-                    return { ...current, points: [...current.points, pt] };
-                  }
-                  return {
-                    ...current,
-                    points: [current.points[0], pt],
-                  };
-                });
-              }}
-              onPointerUp={(e) => {
-                if (!activeDraft) return;
-                const finished = activeDraft;
-                setActiveDraft(null);
-                if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-                  e.currentTarget.releasePointerCapture(e.pointerId);
-                }
-                void commitDrawing(finished);
-              }}
-              onPointerCancel={() => setActiveDraft(null)}
-            >
-              {activeDraft && (
-                <svg className="board-draw-live-svg" aria-hidden="true">
-                  <BoardVectorShape
-                    tool={activeDraft.tool}
-                    strokeStyle={activeDraft.strokeStyle}
-                    points={activeDraft.points}
-                  />
-                </svg>
-              )}
-            </div>
-          )}
-
-          {feed.notes.length ? (
-            <div className="sticky-grid" aria-busy={busy}>
-              {feed.notes.map((n) => {
-                const own = n.authorId === currentUserId,
-                  canEdit = own || feed.canModerate;
-                const itemType = resolveItemType(n);
-                return (
-                  <MovableNote
-                    key={n.id}
-                    note={n}
-                    itemType={itemType}
-                    canMove={canEdit && !drawMode}
-                    onMove={async (x, y, layoutVersion) => {
-                      try {
-                        await request(
-                          "/board/notes/" + n.id + "/position",
-                          { x, y, layoutVersion },
-                          "PATCH",
-                        );
-                        await reload.current();
-                      } catch (e) {
-                        setError(
-                          (e as Error).message === "note_position_conflict"
-                            ? "Öğe başka bir yerde taşındı. Güncel konumu yüklendi."
-                            : "Konum kaydedilemedi. Tekrar dene.",
-                        );
-                        await reload.current();
-                        throw e;
+          <div
+            ref={surfaceRef}
+            className="board-surface"
+            style={{
+              width: surfaceWidth,
+              height: surfaceHeight,
+              transform: `scale(${zoom})`,
+              transformOrigin: "0 0",
+            }}
+          >
+            {drawMode && (
+              <div
+                className="board-draw-capture"
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return;
+                  e.preventDefault();
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  const pt = surfaceCoordinates(e);
+                  setActiveDraft({
+                    tool: drawTool,
+                    strokeStyle,
+                    points: [pt, pt],
+                  });
+                }}
+                onPointerMove={(e) => {
+                  if (!activeDraft) return;
+                  const pt = surfaceCoordinates(e);
+                  setActiveDraft((current) => {
+                    if (!current) return null;
+                    if (current.tool === "pen") {
+                      const last = current.points[current.points.length - 1];
+                      if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < 4) {
+                        return current;
                       }
-                    }}
-                  >
-                    <BoardItemRenderer
+                      return { ...current, points: [...current.points, pt] };
+                    }
+                    return {
+                      ...current,
+                      points: [current.points[0], pt],
+                    };
+                  });
+                }}
+                onPointerUp={(e) => {
+                  if (!activeDraft) return;
+                  const finished = activeDraft;
+                  setActiveDraft(null);
+                  if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                  }
+                  void commitDrawing(finished);
+                }}
+                onPointerCancel={() => setActiveDraft(null)}
+              >
+                {activeDraft && (
+                  <svg className="board-draw-live-svg" aria-hidden="true">
+                    <BoardVectorShape
+                      tool={activeDraft.tool}
+                      strokeStyle={activeDraft.strokeStyle}
+                      points={activeDraft.points}
+                    />
+                  </svg>
+                )}
+              </div>
+            )}
+
+            {feed.notes.length ? (
+              <div className="sticky-grid" aria-busy={busy}>
+                {feed.notes.map((n) => {
+                  const own = n.authorId === currentUserId,
+                    canEdit = own || feed.canModerate;
+                  const itemType = resolveItemType(n);
+                  const zIndex = getNoteZIndex(n);
+                  return (
+                    <MovableNote
+                      key={n.id}
                       note={n}
                       itemType={itemType}
-                      apps={apps}
-                      canEdit={canEdit}
+                      zoom={zoom}
+                      zIndex={zIndex}
+                      canMove={canEdit && !drawMode}
+                      canEdit={canEdit && !drawMode}
                       canModerate={feed.canModerate}
-                      onChange={(patch) => change(n, patch)}
-                      onEdit={() => {
-                        setEditorError("");
-                        setEditor({ mode: "edit", note: n });
-                      }}
+                      onEdit={
+                        itemType !== "drawing"
+                          ? () => {
+                              setEditorError("");
+                              setEditor({ mode: "edit", note: n });
+                            }
+                          : undefined
+                      }
                       onDelete={() => {
                         setEditorError("");
                         setDeleteNote(n);
                       }}
-                    />
-                  </MovableNote>
-                );
-              })}
-            </div>
-          ) : (
-            !busy &&
-            !error && (
-              <EmptyState
-                title={
-                  archived === "1" ? "Arşivde öğe yok" : "İlk öğeyi sen bırak"
-                }
-                description={
-                  scope === "private"
-                    ? "Not, uygulama kısayolu, serbest yazı veya ok çizimi ekle; başlığından tutup istediğin yere taşı."
-                    : "Ekip notları, uygulama kısayolları, yönlendirme yazıları ve ok çizimleri için ortak çalışma panosu."
-                }
-              />
-            )
-          )}
+                      onLayer={(direction) => {
+                        void changeLayer(n, direction);
+                      }}
+                      onTogglePin={
+                        feed.canModerate &&
+                        itemType !== "drawing" &&
+                        itemType !== "text"
+                          ? () => {
+                              void change(n, { pinned: !n.pinned });
+                            }
+                          : undefined
+                      }
+                      onToggleArchive={
+                        itemType === "note" || itemType === "announcement"
+                          ? () => {
+                              void change(n, { archived: !n.archived });
+                            }
+                          : undefined
+                      }
+                      onMove={async (x, y, layoutVersion) => {
+                        try {
+                          await request(
+                            "/board/notes/" + n.id + "/position",
+                            { x, y, layoutVersion },
+                            "PATCH",
+                          );
+                          await reload.current();
+                        } catch (e) {
+                          setError(
+                            (e as Error).message === "note_position_conflict"
+                              ? "Öğe başka bir yerde taşındı. Güncel konumu yüklendi."
+                              : "Konum kaydedilemedi. Tekrar dene.",
+                          );
+                          await reload.current();
+                          throw e;
+                        }
+                      }}
+                    >
+                      <BoardItemRenderer
+                        note={n}
+                        itemType={itemType}
+                        apps={apps}
+                        canEdit={canEdit}
+                        canModerate={feed.canModerate}
+                        onChange={(patch) => change(n, patch)}
+                        onEdit={() => {
+                          setEditorError("");
+                          setEditor({ mode: "edit", note: n });
+                        }}
+                        onDelete={() => {
+                          setEditorError("");
+                          setDeleteNote(n);
+                        }}
+                      />
+                    </MovableNote>
+                  );
+                })}
+              </div>
+            ) : (
+              !busy &&
+              !error && (
+                <EmptyState
+                  title={
+                    archived === "1" ? "Arşivde öğe yok" : "İlk öğeyi sen bırak"
+                  }
+                  description={
+                    scope === "private"
+                      ? "Not, uygulama kısayolu, serbest yazı veya ok çizimi ekle; başlığından tutup istediğin yere taşı."
+                      : "Ekip notları, uygulama kısayolları, yönlendirme yazıları ve ok çizimleri için ortak çalışma panosu."
+                  }
+                />
+              )
+            )}
+          </div>
         </div>
       </div>
       {(feed.hasMore || page > 1) && (
@@ -1305,17 +1485,6 @@ function BoardItemRenderer({
             points={points}
           />
         </svg>
-        {canEdit && (
-          <button
-            type="button"
-            className="board-drawing-delete"
-            title="Çizimi sil"
-            aria-label="Çizimi sil"
-            onClick={onDelete}
-          >
-            <Trash2 size={13} />
-          </button>
-        )}
       </div>
     );
   }
@@ -1974,19 +2143,39 @@ function BoardItemForm({
 function MovableNote({
   note,
   itemType,
+  zoom,
+  zIndex,
   canMove,
+  canEdit,
+  canModerate,
+  onEdit,
+  onDelete,
+  onLayer,
+  onTogglePin,
+  onToggleArchive,
   onMove,
   children,
 }: {
   note: Note;
   itemType: BoardItemType;
+  zoom: number;
+  zIndex: number;
   canMove: boolean;
+  canEdit: boolean;
+  canModerate: boolean;
+  onEdit?: () => void;
+  onDelete: () => void;
+  onLayer: (direction: "front" | "forward" | "backward" | "back") => void;
+  onTogglePin?: () => void;
+  onToggleArchive?: () => void;
   onMove: (x: number, y: number, layoutVersion: number) => Promise<void>;
   children: ReactNode;
 }) {
   const [position, setPosition] = useState({ x: note.x, y: note.y });
   const [moving, setMoving] = useState(false);
   const [pending, setPending] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{
     clientX: number;
     clientY: number;
@@ -2003,6 +2192,18 @@ function MovableNote({
   useEffect(() => {
     if (!drag.current) move({ x: note.x, y: note.y });
   }, [note.x, note.y, note.layoutVersion]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    window.addEventListener("mousedown", onDocDown);
+    return () => window.removeEventListener("mousedown", onDocDown);
+  }, [menuOpen]);
+
   const commit = async (layoutVersion = note.layoutVersion) => {
     const p = positionRef.current;
     setPending(true);
@@ -2017,91 +2218,237 @@ function MovableNote({
   return (
     <div
       className={
-        `movable-note is-type-${itemType}` + (moving ? " is-moving" : "")
+        `movable-note is-type-${itemType}` +
+        (moving ? " is-moving" : "") +
+        (menuOpen ? " is-menu-open" : "")
       }
       style={{
         transform: `translate(${position.x}px,${position.y}px)`,
-        zIndex: moving ? 100 : itemType === "drawing" ? 2 : undefined,
+        zIndex: moving ? 950 : menuOpen ? 920 : zIndex,
       }}
     >
-      <button
-        className="note-grip"
-        aria-label={note.title + " öğesini taşı"}
-        title="Sürükle veya yön tuşlarıyla taşı (Shift: büyük adım)"
-        disabled={!canMove || pending}
-        onPointerDown={(e) => {
-          if (e.button !== 0) return;
-          e.preventDefault();
-          e.currentTarget.setPointerCapture(e.pointerId);
-          drag.current = {
-            clientX: e.clientX,
-            clientY: e.clientY,
-            ...position,
-            pointerId: e.pointerId,
-            layoutVersion: note.layoutVersion,
-          };
-          setMoving(true);
-        }}
-        onPointerMove={(e) => {
-          const d = drag.current;
-          if (!d || d.pointerId !== e.pointerId) return;
-          move({
-            x: Math.round(
-              Math.max(0, Math.min(20000, d.x + e.clientX - d.clientX)),
-            ),
-            y: Math.round(
-              Math.max(0, Math.min(20000, d.y + e.clientY - d.clientY)),
-            ),
-          });
-        }}
-        onPointerUp={(e) => {
-          if (!drag.current) return;
-          const d = drag.current;
-          drag.current = null;
-          setMoving(false);
-          if (e.currentTarget.hasPointerCapture(e.pointerId))
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          if (d.x !== positionRef.current.x || d.y !== positionRef.current.y)
-            void commit(d.layoutVersion);
-        }}
-        onPointerCancel={() => {
-          drag.current = null;
-          setMoving(false);
-          move({ x: note.x, y: note.y });
-        }}
-        onLostPointerCapture={() => {
-          if (drag.current) {
+      <div className="note-top-controls">
+        <button
+          type="button"
+          className="note-grip"
+          aria-label={note.title + " öğesini taşı"}
+          title="Sürükle veya yön tuşlarıyla taşı (Shift: büyük adım)"
+          disabled={!canMove || pending}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            drag.current = {
+              clientX: e.clientX,
+              clientY: e.clientY,
+              ...position,
+              pointerId: e.pointerId,
+              layoutVersion: note.layoutVersion,
+            };
+            setMoving(true);
+          }}
+          onPointerMove={(e) => {
+            const d = drag.current;
+            if (!d || d.pointerId !== e.pointerId) return;
+            move({
+              x: Math.round(
+                Math.max(
+                  0,
+                  Math.min(20000, d.x + (e.clientX - d.clientX) / zoom),
+                ),
+              ),
+              y: Math.round(
+                Math.max(
+                  0,
+                  Math.min(20000, d.y + (e.clientY - d.clientY) / zoom),
+                ),
+              ),
+            });
+          }}
+          onPointerUp={(e) => {
+            if (!drag.current) return;
+            const d = drag.current;
+            drag.current = null;
+            setMoving(false);
+            if (e.currentTarget.hasPointerCapture(e.pointerId))
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            if (d.x !== positionRef.current.x || d.y !== positionRef.current.y)
+              void commit(d.layoutVersion);
+          }}
+          onPointerCancel={() => {
             drag.current = null;
             setMoving(false);
             move({ x: note.x, y: note.y });
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            drag.current = null;
-            setMoving(false);
-            move({ x: note.x, y: note.y });
-            return;
-          }
-          const directions: Record<string, [number, number]> = {
-            ArrowLeft: [-1, 0],
-            ArrowRight: [1, 0],
-            ArrowUp: [0, -1],
-            ArrowDown: [0, 1],
-          };
-          const d = directions[e.key];
-          if (!d || e.repeat) return;
-          e.preventDefault();
-          const step = e.shiftKey ? 40 : 10;
-          move({
-            x: Math.max(0, Math.min(20000, position.x + d[0] * step)),
-            y: Math.max(0, Math.min(20000, position.y + d[1] * step)),
-          });
-          void commit();
-        }}
-      >
-        <GripHorizontal size={18} />
-      </button>
+          }}
+          onLostPointerCapture={() => {
+            if (drag.current) {
+              drag.current = null;
+              setMoving(false);
+              move({ x: note.x, y: note.y });
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              drag.current = null;
+              setMoving(false);
+              move({ x: note.x, y: note.y });
+              return;
+            }
+            const directions: Record<string, [number, number]> = {
+              ArrowLeft: [-1, 0],
+              ArrowRight: [1, 0],
+              ArrowUp: [0, -1],
+              ArrowDown: [0, 1],
+            };
+            const d = directions[e.key];
+            if (!d || e.repeat) return;
+            e.preventDefault();
+            const step = e.shiftKey ? 40 : 10;
+            move({
+              x: Math.max(0, Math.min(20000, position.x + d[0] * step)),
+              y: Math.max(0, Math.min(20000, position.y + d[1] * step)),
+            });
+            void commit();
+          }}
+        >
+          <GripHorizontal size={16} />
+        </button>
+
+        {canEdit && (
+          <div
+            ref={menuRef}
+            className={
+              "note-settings-dropdown" + (menuOpen ? " is-open" : "")
+            }
+            onMouseEnter={() => setMenuOpen(true)}
+            onMouseLeave={() => setMenuOpen(false)}
+          >
+            <button
+              type="button"
+              className="note-settings-trigger"
+              aria-label={note.title + " öğe seçenekleri ve katman sırası"}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              title="Öğe ayarları, katman sırası ve silme"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <Settings size={13} />
+            </button>
+
+            <div
+              className="note-settings-menu"
+              role="menu"
+              aria-label={note.title + " öğe menüsü"}
+            >
+              {onEdit && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEdit();
+                  }}
+                >
+                  <Pencil size={13} />
+                  <span>Öğeyi düzenle</span>
+                </button>
+              )}
+              {canModerate && onTogglePin && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onTogglePin();
+                  }}
+                >
+                  <Pin size={13} />
+                  <span>
+                    {note.pinned ? "Sabitlemeyi kaldır" : "Panoya sabitle"}
+                  </span>
+                </button>
+              )}
+              {onToggleArchive && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onToggleArchive();
+                  }}
+                >
+                  {note.archived ? (
+                    <ArchiveRestore size={13} />
+                  ) : (
+                    <Archive size={13} />
+                  )}
+                  <span>{note.archived ? "Arşivden çıkar" : "Arşivle"}</span>
+                </button>
+              )}
+              {(onEdit || (canModerate && onTogglePin) || onToggleArchive) && (
+                <hr />
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLayer("front");
+                }}
+              >
+                <ArrowUpToLine size={13} />
+                <span>En öne al</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLayer("forward");
+                }}
+              >
+                <ArrowUp size={13} />
+                <span>Bir öne al</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLayer("backward");
+                }}
+              >
+                <ArrowDown size={13} />
+                <span>Bir arkaya al</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLayer("back");
+                }}
+              >
+                <ArrowDownToLine size={13} />
+                <span>En arkaya al</span>
+              </button>
+              <hr />
+              <button
+                type="button"
+                role="menuitem"
+                className="is-danger"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+              >
+                <Trash2 size={13} />
+                <span>Öğeyi sil</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       {children}
     </div>
   );

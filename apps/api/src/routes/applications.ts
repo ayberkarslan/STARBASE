@@ -43,13 +43,17 @@ function validResourceUrl(value: string) {
   }
 }
 function checkSyncSecret(c: any) {
-  const expected = c.env.APP_SYNC_SECRET ?? c.env.TEST_FORMU_SYNC_SECRET;
+  const candidates = [c.env.APP_SYNC_SECRET, c.env.TEST_FORMU_SYNC_SECRET].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
   const supplied = c.req.header("x-app-sync-key") ?? "";
-  if (!expected || supplied.length !== expected.length) return false;
-  let difference = 0;
-  for (let i = 0; i < expected.length; i++)
-    difference |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
-  return difference === 0;
+  return candidates.some((expected) => {
+    if (supplied.length !== expected.length) return false;
+    let difference = 0;
+    for (let i = 0; i < expected.length; i++)
+      difference |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
+    return difference === 0;
+  });
 }
 async function syncAppResource(
   c: any,

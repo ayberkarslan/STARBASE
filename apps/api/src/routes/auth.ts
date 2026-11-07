@@ -118,7 +118,7 @@ export function register(app: App) {
       .run();
     const family = crypto.randomUUID();
     const value = await issue(c, u.id, "central", null, [], family);
-    await startCentralVisit(c.env, family);
+    await startCentralVisit(c.env, family, c.req.raw.headers);
     setCookie(c, "starbase", value, {
       httpOnly: true,
       secure: new URL(c.env.PUBLIC_ORIGIN).protocol === "https:",
@@ -218,7 +218,7 @@ export function register(app: App) {
       JSON.parse(code.scopes),
       family,
     );
-    await startVisit(c.env, family);
+    await startVisit(c.env, family, c.req.raw.headers);
     return c.json({ accessToken, refreshToken, expiresIn: 600 });
   });
   app.post("/api/v1/auth/refresh", async (c) => {

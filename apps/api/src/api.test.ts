@@ -45,6 +45,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0016_profile_photos.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0017_avatar_versions.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0018_central_visits.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0019_visit_devices.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -234,13 +235,19 @@ describe("identity boundaries", () => {
       if (path.includes("lookup")) return Response.json({ users: [{ emailVerified: true }] });
       return Response.json({});
     }));
-    const login = await call("/auth/login", { username: "alice", password: "long-test-password" }, "");
+    const login = await app.request("https://base.test/api/v1/auth/login", {
+      method: "POST",
+      headers: { Origin: "https://base.test", "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.8", "User-Agent": "TestBrowser/1.0" },
+      body: JSON.stringify({ username: "alice", password: "long-test-password" }),
+    }, env);
     expect(login.status).toBe(200);
     const cookie = login.headers.get("set-cookie")?.split(";")[0];
     expect(cookie).toMatch(/^starbase=/);
-    const visit = db.prepare("SELECT id,signed_in_at,ended_at FROM central_visits WHERE user_id='u1'").get() as any;
+    const visit = db.prepare("SELECT id,signed_in_at,ended_at,ip_address,user_agent FROM central_visits WHERE user_id='u1'").get() as any;
     expect(visit.signed_in_at).toBeGreaterThan(0);
     expect(visit.ended_at).toBeNull();
+    expect(visit.ip_address).toBe("203.0.113.8");
+    expect(visit.user_agent).toBe("TestBrowser/1.0");
     const logout = await app.request("https://base.test/api/v1/auth/logout", {
       method: "POST", headers: { Origin: "https://base.test", Cookie: cookie! },
     }, env);
@@ -270,6 +277,21 @@ describe("identity boundaries", () => {
     expect(((await applications.json()) as any).events[0].endReason).toBe("logout");
     await call("/auth/logout", {});
     expect(db.prepare("SELECT end_reason FROM central_visits WHERE id='f'").get()).toEqual({ end_reason: "logout" });
+  });
+  it("records application client details without exposing them to app tokens", async () => {
+    const exchange = await app.request("https://base.test/api/v1/auth/exchange", {
+      method: "POST",
+      headers: { Origin: "https://base.test", "Content-Type": "application/json", "CF-Connecting-IP": "2001:db8::1", "User-Agent": "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0" },
+      body: JSON.stringify(await loginCode()),
+    }, env);
+    expect(exchange.status).toBe(200);
+    const { accessToken } = await exchange.json() as { accessToken: string };
+    expect(db.prepare("SELECT ip_address,user_agent FROM application_visits").get()).toEqual({
+      ip_address: "2001:db8::1", user_agent: "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0",
+    });
+    const history = await call("/admin/activity?source=application");
+    expect((await history.json() as any).events[0].ipAddress).toBe("2001:db8::1");
+    expect((await call("/admin/activity", undefined, accessToken)).status).toBe(403);
   });
   it("labels revoked central sessions without inventing a logout", async () => {
     await startCentralVisit(env, "f");

@@ -1,17 +1,25 @@
 import { type Env, fail } from "./common";
 import { now } from "./security";
-export async function startVisit(env: Env, family: string) {
+export function visitDetails(headers: Headers) {
+  const candidate = headers.get("cf-connecting-ip")?.trim() ?? "";
+  const ipAddress = /^[0-9a-fA-F:.]{2,45}$/.test(candidate) ? candidate : null;
+  const userAgent = headers.get("user-agent")?.replace(/[\x00-\x1f\x7f]/g, "").slice(0, 300) || null;
+  return { ipAddress, userAgent };
+}
+export async function startVisit(env: Env, family: string, headers?: Headers) {
+  const { ipAddress, userAgent } = headers ? visitDetails(headers) : { ipAddress: null, userAgent: null };
   const recorded = await env.DB.prepare(
-    "INSERT INTO application_visits(id,user_id,app_id,signed_in_at,expires_at) SELECT id,user_id,app_id,?,expires FROM families WHERE id=? AND app_id IS NOT NULL AND revoked=0 RETURNING id",
+    "INSERT INTO application_visits(id,user_id,app_id,signed_in_at,expires_at,ip_address,user_agent) SELECT id,user_id,app_id,?,expires,?,? FROM families WHERE id=? AND app_id IS NOT NULL AND revoked=0 RETURNING id",
   )
-    .bind(now(), family)
+    .bind(now(), ipAddress, userAgent, family)
     .first();
   if (!recorded) fail(401, "session_revoked");
 }
-export async function startCentralVisit(env: Env, family: string) {
+export async function startCentralVisit(env: Env, family: string, headers?: Headers) {
+  const { ipAddress, userAgent } = headers ? visitDetails(headers) : { ipAddress: null, userAgent: null };
   const recorded = await env.DB.prepare(
-    "INSERT INTO central_visits(id,user_id,signed_in_at,last_seen_at,expires_at) SELECT id,user_id,?,?,expires FROM families WHERE id=? AND app_id IS NULL AND revoked=0 RETURNING id",
-  ).bind(now(), now(), family).first();
+    "INSERT INTO central_visits(id,user_id,signed_in_at,last_seen_at,expires_at,ip_address,user_agent) SELECT id,user_id,?,?,expires,?,? FROM families WHERE id=? AND app_id IS NULL AND revoked=0 RETURNING id",
+  ).bind(now(), now(), ipAddress, userAgent, family).first();
   if (!recorded) fail(401, "session_revoked");
 }
 export function logoutCentralVisit(env: Env, userId: string, family?: string) {

@@ -147,6 +147,10 @@ export function DeveloperDocs() {
             dakikada bir güncellenir; çıkış yalnız gerçek oturum olayından kaydedilir.
             Merkezi ziyaret geçmişi bu özelliğin kurulduğu tarihten itibaren
             tutulur; önceden açık olan geçerli oturumlar aktarılır.
+            Yeni girişlerde Cloudflare bağlantı IP'si ve istemcinin bildirdiği
+            tarayıcı bilgisi de kaydedilir. Bunlar yalnız üye yönetimi yetkisiyle
+            görünür, 90 gün sonra silinir; VPN ve istemci bilgisi gerçek cihazı
+            kesin olarak doğrulamaz.
           </p>
         </>
       )}

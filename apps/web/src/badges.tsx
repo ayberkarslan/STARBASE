@@ -73,10 +73,19 @@ export function BadgePill({
     ? "badge-pill--developer"
     : `badge-pill--tier-${Math.max(1, Math.min(6, badge.tier || 1))}`;
 
+  const customColor = badge.color || (isDev ? "#0bde0e" : undefined);
+  const customStyle: React.CSSProperties = customColor && customColor !== "#ffffff"
+    ? {
+        borderColor: isDev ? customColor : `${customColor}70`,
+        color: customColor,
+        ...(isDev ? ({ "--badge-dev-color": customColor } as any) : {}),
+      }
+    : {};
+
   return (
     <span
       className={`badge-pill ${tierClass} ${size === "sm" ? "badge-pill--sm" : ""}`}
-      style={!isDev && badge.color && badge.color !== "#ffffff" ? { borderColor: `${badge.color}70`, color: badge.color } : undefined}
+      style={customStyle}
       title={badge.description || badge.name}
     >
       {getBadgeIcon(badge.icon, size === "sm" ? 10 : 11)}
@@ -319,7 +328,70 @@ export function BadgesManager({
               <option value="cpu">İşlemci (Cpu)</option>
             </FormSelect>
           </label>
-          <TextField name="color" label="Renk Kodu (HEX)" defaultValue={editing?.color || "#ffffff"} />
+          <div style={{ display: "grid", gap: "6px" }}>
+            <label style={{ fontSize: "11px", color: "#ffffffa6" }}>
+              Rozet Rengi (Kenarlık ve Metin Rengi)
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <input
+                type="color"
+                name="colorPicker"
+                defaultValue={editing?.color || "#ffffff"}
+                onChange={(e) => {
+                  const input = e.currentTarget.form?.elements.namedItem("color") as HTMLInputElement;
+                  if (input) input.value = e.target.value;
+                }}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  padding: "2px",
+                  background: "#000000",
+                  border: "1px solid #ffffff40",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              />
+              <div style={{ width: "140px" }}>
+                <TextField
+                  name="color"
+                  defaultValue={editing?.color || "#ffffff"}
+                  placeholder="#0bde0e"
+                />
+              </div>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                {[
+                  { label: "Matrix Yeşil", color: "#0bde0e" },
+                  { label: "Siber Camgöbeği", color: "#00f0ff" },
+                  { label: "Açık Mavi", color: "#38bdf8" },
+                  { label: "Mor", color: "#a855f7" },
+                  { label: "Altın", color: "#eab308" },
+                  { label: "Gül Kırmızı", color: "#f43f5e" },
+                  { label: "Beyaz", color: "#ffffff" },
+                ].map((s) => (
+                  <button
+                    key={s.color}
+                    type="button"
+                    title={s.label}
+                    onClick={(e) => {
+                      const form = (e.currentTarget as HTMLElement).closest("form");
+                      const textInput = form?.elements.namedItem("color") as HTMLInputElement;
+                      const colorInput = form?.elements.namedItem("colorPicker") as HTMLInputElement;
+                      if (textInput) textInput.value = s.color;
+                      if (colorInput) colorInput.value = s.color;
+                    }}
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "3px",
+                      background: s.color,
+                      border: "1px solid #00000088",
+                      cursor: "pointer",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
             <Button type="submit" disabled={busy}>Kaydet</Button>
             <Button variant="bare" type="button" onClick={() => { setEditing(null); setCreating(false); }}>Vazgeç</Button>

@@ -59,12 +59,12 @@
   color: #d8b4fe;
 }
 
-/* Tier 6: Geliştirici Hesabı (#0bde0e clean crisp B4 matrix border) */
+/* Tier 6: Geliştirici Hesabı (dynamic crisp B4 matrix border) */
 .badge-pill--tier-6,
 .badge-pill--developer {
-  border: 1px solid #0bde0e !important;
-  color: #0bde0e !important;
-  background: #000000 !important;
+  border: 1px solid var(--badge-dev-color, #0bde0e);
+  color: var(--badge-dev-color, #0bde0e);
+  background: #000000;
   letter-spacing: 0.05em;
   font-weight: 500;
 }

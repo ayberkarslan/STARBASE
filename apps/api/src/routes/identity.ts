@@ -114,6 +114,19 @@ export function register(app: App) {
     await notifyDirectory(c.env);
     return c.json({ ok: true, customTitle: b.title });
   });
+  app.put("/api/v1/me/developer-color", async (c) => {
+    if (c.get("session").kind !== "central") fail(403, "central_session_required");
+    const u = c.get("user");
+    if (!u.owner && u.username !== "ayberkarslan") {
+      fail(403, "forbidden");
+    }
+    const b = await body(c, z.object({ color: z.string().trim().regex(/^#[0-9a-fA-F]{3,8}$/) }));
+    await c.env.DB.prepare("UPDATE badges SET color=? WHERE id='developer'")
+      .bind(b.color)
+      .run();
+    await notifyDirectory(c.env);
+    return c.json({ ok: true, color: b.color });
+  });
   app.get("/api/v1/sessions", async (c) => {
     if (c.get("session").kind !== "central")
       fail(403, "central_session_required");

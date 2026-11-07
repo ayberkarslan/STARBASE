@@ -1363,7 +1363,7 @@ describe("shared board notes", () => {
     expect(badges.some((b) => b.id === "developer" && b.tier === 6)).toBe(true);
     expect(badges.some((b) => b.id === "lead-avionics" && b.tier === 4)).toBe(true);
 
-    // 2. Custom title on /me and /directory
+    // 2. Custom title and developer badge color on /me and /directory
     const initialMe: any = await (await call("/me")).json();
     expect(initialMe.customTitle).toBe("Takım Sahibi");
 
@@ -1371,6 +1371,11 @@ describe("shared board notes", () => {
     expect(updateTitleRes.status).toBe(200);
     const updatedMe: any = await (await call("/me")).json();
     expect(updatedMe.customTitle).toBe("Baş Geliştirici");
+
+    const updateDevColorRes = await call("/me/developer-color", { color: "#00f0ff" }, "central", "PUT");
+    expect(updateDevColorRes.status).toBe(200);
+    const badgesAfterColor: any[] = await (await call("/badges")).json();
+    expect(badgesAfterColor.find((b) => b.id === "developer")?.color).toBe("#00f0ff");
 
     // 3. Assign admin role to user u2
     const assignAdminRes = await call("/admin/role-assignments", {

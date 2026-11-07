@@ -784,19 +784,30 @@ function App() {
                     <p>Henüz bir ekip atanmamış.</p>
                   )}
                 </Panel>
-                <Panel title="Özel Unvan / Hesap Başlığı" description="Hesabında ve dizinde görünen unvanını istediğin an güncelleyebilirsin.">
+                <Panel title="Özel Unvan ve Rozet Ayarları" description="Hesabında ve dizinde görünen unvanını ve geliştirici rozeti rengini istediğin an güncelleyebilirsin.">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
                       const form = new FormData(e.currentTarget);
                       act(async () => {
                         const title = String(form.get("title") || "").trim();
+                        const devColor = String(form.get("devColor") || "").trim();
                         await api("/me/title", { title }, "PUT");
-                        setUser({ ...user, customTitle: title });
-                        setNotice("Özel unvan güncellendi.");
+                        if (devColor && (user.owner || user.username === "ayberkarslan")) {
+                          await api("/me/developer-color", { color: devColor }, "PUT");
+                          await loadBadges();
+                        }
+                        setUser({
+                          ...user,
+                          customTitle: title,
+                          badges: (user.badges || []).map((b: any) =>
+                            b.id === "developer" || b.tier === 6 ? { ...b, color: devColor } : b
+                          ),
+                        });
+                        setNotice("Hesap ayarları ve rozet rengi kaydedildi.");
                       });
                     }}
-                    style={{ display: "grid", gap: "10px" }}
+                    style={{ display: "grid", gap: "12px" }}
                   >
                     <TextField
                       name="title"
@@ -804,7 +815,81 @@ function App() {
                       defaultValue={user.customTitle || (user.username === "ayberkarslan" ? "Geliştirici Hesabı" : "")}
                       maxLength={80}
                     />
-                    <Button type="submit">Unvanı Kaydet</Button>
+                    {(user.owner || user.username === "ayberkarslan") && (
+                      <div style={{ display: "grid", gap: "6px" }}>
+                        <label style={{ fontSize: "11px", color: "#ffffffa6" }}>
+                          Geliştirici Hesabı Rozeti Rengi
+                        </label>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                          <input
+                            type="color"
+                            name="devColorPicker"
+                            defaultValue={
+                              user.badges?.find((b: any) => b.id === "developer" || b.tier === 6)?.color ||
+                              allBadges.find((b) => b.id === "developer" || b.tier === 6)?.color ||
+                              "#0bde0e"
+                            }
+                            onChange={(e) => {
+                              const input = e.currentTarget.form?.elements.namedItem("devColor") as HTMLInputElement;
+                              if (input) input.value = e.target.value;
+                            }}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              padding: "2px",
+                              background: "#000000",
+                              border: "1px solid #ffffff40",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                            }}
+                          />
+                          <div style={{ width: "140px" }}>
+                            <TextField
+                              name="devColor"
+                              defaultValue={
+                                user.badges?.find((b: any) => b.id === "developer" || b.tier === 6)?.color ||
+                                allBadges.find((b) => b.id === "developer" || b.tier === 6)?.color ||
+                                "#0bde0e"
+                              }
+                              placeholder="#0bde0e"
+                            />
+                          </div>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            {[
+                              { label: "Matrix Yeşil", color: "#0bde0e" },
+                              { label: "Siber Camgöbeği", color: "#00f0ff" },
+                              { label: "Açık Mavi", color: "#38bdf8" },
+                              { label: "Mor", color: "#a855f7" },
+                              { label: "Altın", color: "#eab308" },
+                              { label: "Gül Kırmızı", color: "#f43f5e" },
+                              { label: "Saf Beyaz", color: "#ffffff" },
+                            ].map((s) => (
+                              <button
+                                key={s.color}
+                                type="button"
+                                title={s.label}
+                                onClick={(e) => {
+                                  const form = (e.currentTarget as HTMLElement).closest("form");
+                                  const textInput = form?.elements.namedItem("devColor") as HTMLInputElement;
+                                  const colorInput = form?.elements.namedItem("devColorPicker") as HTMLInputElement;
+                                  if (textInput) textInput.value = s.color;
+                                  if (colorInput) colorInput.value = s.color;
+                                }}
+                                style={{
+                                  width: "20px",
+                                  height: "20px",
+                                  borderRadius: "3px",
+                                  background: s.color,
+                                  border: "1px solid #00000088",
+                                  cursor: "pointer",
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Button type="submit">Ayarları Kaydet</Button>
                   </form>
                 </Panel>
               </div>

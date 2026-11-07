@@ -75,8 +75,20 @@ export interface ProfileApplication {
   applicationName: string;
   logoUrl: string;
 }
+export interface ApplicationResource {
+  applicationId: string;
+  applicationName: string;
+  resourceId: string;
+  title: string;
+  date: string;
+  status: string;
+  url: string;
+  createdAt: number;
+  updatedAt: number;
+}
 export interface DirectoryProfile extends DirectoryUser {
   applications: ProfileApplication[];
+  resources?: ApplicationResource[];
 }
 export interface DirectoryTeams {
   departments: { id: string; name: string; memberCount: number; logoUrl: string }[];

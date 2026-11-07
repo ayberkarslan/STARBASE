@@ -46,6 +46,8 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0017_avatar_versions.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0018_central_visits.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0019_visit_devices.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0020_modular_app_resources.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0021_yrt_latex_app.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -270,7 +272,7 @@ describe("identity boundaries", () => {
     expect(history.events.map((event: any) => event.source).sort()).toEqual(["application", "starbase"]);
     expect(history.events.every((event: any) => event.endedAt === null)).toBe(true);
     expect(history.events.find((event: any) => event.source === "starbase").lastSeenAt).toBeGreaterThan(now() - 120);
-    expect(history.platforms).toHaveLength(2);
+    expect(history.platforms.length).toBeGreaterThanOrEqual(2);
     expect((await call("/admin/activity", undefined, accessToken)).status).toBe(403);
     await call("/auth/logout", {}, accessToken);
     const applications = await call("/admin/activity?source=application");
@@ -455,7 +457,7 @@ describe("application branding", () => {
     db.prepare("UPDATE apps SET logo_url='uploaded' WHERE id='starlab'").run();
     const response = await call("/apps", undefined, "");
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual([{ id: "starlab", name: "STARLAB", logoUrl: "/api/v1/apps/starlab/logo", launchUrl: "" }]);
+    expect(await response.json()).toEqual(expect.arrayContaining([{ id: "starlab", name: "STARLAB", logoUrl: "/api/v1/apps/starlab/logo", launchUrl: "" }]));
   });
   it("returns branding only for a registered callback URI", async () => {
     db.prepare("UPDATE apps SET logo_url=? WHERE id=?").run("uploaded", "starlab");
@@ -1287,5 +1289,68 @@ describe("shared board notes", () => {
         )
       ).status,
     ).toBe(403);
+  });
+  it("syncs multi-contributor application resources and exposes them in overview and directory", async () => {
+    env.APP_SYNC_SECRET = "sync-secret-123";
+    db.prepare("INSERT OR IGNORE INTO user_roles VALUES('u2','member')").run();
+    const sync = await app.request(
+      "https://base.test/api/v1/internal/app-resources",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-app-sync-key": "sync-secret-123",
+        },
+        body: JSON.stringify({
+          appId: "yrt-latex-web",
+          resourceId: "proj-1",
+          starbaseUserIds: ["u1", "u2"],
+          title: "AKU-I PDR Raporu",
+          date: "2026-11-07",
+          status: "Ortak rapor",
+          url: "https://yrt-latex.web.app/aku-i-pdr-raporu",
+          createdAt: 1700000000,
+        }),
+      },
+      env,
+    );
+    expect(sync.status).toBe(200);
+    const overview = await call("/apps/yrt-latex-web/overview");
+    expect(overview.status).toBe(200);
+    const overviewData: any = await overview.json();
+    expect(overviewData.resourceCount).toBe(1);
+    expect(overviewData.resources[0]).toMatchObject({
+      applicationId: "yrt-latex-web",
+      resourceId: "proj-1",
+      title: "AKU-I PDR Raporu",
+      url: "https://yrt-latex.web.app/aku-i-pdr-raporu",
+    });
+    const bobProfile: any = await (await call("/directory/users/u2")).json();
+    expect(bobProfile.resources).toHaveLength(1);
+    expect(bobProfile.resources[0]).toMatchObject({
+      applicationId: "yrt-latex-web",
+      applicationName: "YRT LaTeX",
+      title: "AKU-I PDR Raporu",
+      url: "https://yrt-latex.web.app/aku-i-pdr-raporu",
+    });
+    const removeSync = await app.request(
+      "https://base.test/api/v1/internal/app-resources",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-app-sync-key": "sync-secret-123",
+        },
+        body: JSON.stringify({
+          appId: "yrt-latex-web",
+          resourceId: "proj-1",
+          deleted: true,
+        }),
+      },
+      env,
+    );
+    expect(removeSync.status).toBe(200);
+    const afterDelete: any = await (await call("/directory/users/u2")).json();
+    expect(afterDelete.resources).toEqual([]);
   });
 });

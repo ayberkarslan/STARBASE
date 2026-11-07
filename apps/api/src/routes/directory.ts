@@ -24,6 +24,24 @@ async function usedApplications(env: Env, userId: string) {
     logoUrl: row.logoUrl ? `/api/v1/apps/${encodeURIComponent(row.applicationId)}/logo` : "",
   }));
 }
+async function userResources(env: Env, userId: string) {
+  const rows = await env.DB.prepare(
+    "SELECT r.app_id applicationId,a.name applicationName,r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r JOIN apps a ON a.id=r.app_id WHERE r.user_id=? AND a.disabled=0 ORDER BY r.updated_at DESC,r.created_at DESC LIMIT 30",
+  )
+    .bind(userId)
+    .all<{
+      applicationId: string;
+      applicationName: string;
+      resourceId: string;
+      title: string;
+      date: string;
+      status: string;
+      url: string;
+      createdAt: number;
+      updatedAt: number;
+    }>();
+  return rows.results;
+}
 async function target(c: C) {
   const u = await c.env.DB.prepare(
     `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl,u.avatar_version avatarVersion FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
@@ -195,12 +213,21 @@ export function register(app: App) {
         .all()
     ).results;
     const { avatarUrl, avatarVersion, ...profile } = user;
+    const [applications, resources] = await Promise.all([
+      usedApplications(c.env, c.req.param("id")),
+      userResources(c.env, c.req.param("id")),
+    ]);
     return c.json({
       ...profile,
       photoUrl: avatarUrl ? userPhotoUrl(user.id, avatarVersion) : "",
       memberships,
-      applications: await usedApplications(c.env, c.req.param("id")),
+      applications,
+      resources,
     });
+  });
+  app.get("/api/v1/me/resources", async (c) => {
+    const s = c.get("session");
+    return c.json(await userResources(c.env, s.user_id));
   });
   app.get("/api/v1/directory/users/:id/activity", async (c) => {
     await requireDirectory(c);

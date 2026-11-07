@@ -27,30 +27,151 @@ import {
 import { imageResponse } from "../image-assets";
 const logoUrl = (id: string, stored: string) =>
   stored ? `/api/v1/apps/${encodeURIComponent(id)}/logo` : "";
+function validResourceUrl(value: string) {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return (
+      !!url.hostname &&
+      !url.username &&
+      !url.password &&
+      (url.protocol === "https:" ||
+        (url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname)))
+    );
+  } catch {
+    return false;
+  }
+}
+function checkSyncSecret(c: any) {
+  const expected = c.env.APP_SYNC_SECRET ?? c.env.TEST_FORMU_SYNC_SECRET;
+  const supplied = c.req.header("x-app-sync-key") ?? "";
+  if (!expected || supplied.length !== expected.length) return false;
+  let difference = 0;
+  for (let i = 0; i < expected.length; i++)
+    difference |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
+  return difference === 0;
+}
+async function syncAppResource(
+  c: any,
+  item: {
+    appId: string;
+    resourceId: string;
+    starbaseUserIds: string[];
+    deleted: boolean;
+    title?: string;
+    date?: string;
+    status?: string;
+    url?: string;
+    createdAt?: number;
+  },
+) {
+  const application = await c.env.DB.prepare(
+    "SELECT id FROM apps WHERE id=? AND disabled=0",
+  )
+    .bind(item.appId)
+    .first<{ id: string }>();
+  if (!application) return fail(404, "application_not_found");
+  const userIds = [...new Set(item.starbaseUserIds)];
+  if (item.deleted || userIds.length === 0) {
+    await c.env.DB.prepare(
+      "DELETE FROM app_resources WHERE app_id=? AND resource_id=?",
+    )
+      .bind(item.appId, item.resourceId)
+      .run();
+    return;
+  }
+  if (!item.title || !item.date || !item.status || !item.createdAt)
+    return fail(400, "invalid_input");
+  const timestamp = now();
+  const placeholders = userIds.map(() => "?").join(",");
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      `DELETE FROM app_resources WHERE app_id=? AND resource_id=? AND user_id NOT IN (${placeholders})`,
+    ).bind(item.appId, item.resourceId, ...userIds),
+    ...userIds.map((userId) =>
+      c.env.DB.prepare(
+        "INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at) SELECT ?,u.id,?,?,?,?,?,?,? FROM users u WHERE u.id=? AND u.disabled=0 ON CONFLICT(app_id,user_id,resource_id) DO UPDATE SET title=excluded.title,date=excluded.date,status=excluded.status,url=excluded.url,updated_at=excluded.updated_at",
+      ).bind(
+        item.appId,
+        item.resourceId,
+        item.title,
+        item.date,
+        item.status,
+        item.url ?? "",
+        item.createdAt,
+        timestamp,
+        userId,
+      ),
+    ),
+  ]);
+}
 export function register(app: App) {
+  app.post("/api/v1/internal/app-resources", async (c) => {
+    if (!checkSyncSecret(c)) return fail(403, "permission_denied");
+    const item = await body(
+      c,
+      z.object({
+        appId: z.string().regex(/^[a-z0-9-]{3,40}$/),
+        resourceId: z.string().min(1).max(150),
+        starbaseUserId: z
+          .string()
+          .regex(/^[a-zA-Z0-9-]{1,100}$/)
+          .optional(),
+        starbaseUserIds: z
+          .array(z.string().regex(/^[a-zA-Z0-9-]{1,100}$/))
+          .max(100)
+          .optional(),
+        deleted: z.boolean().default(false),
+        title: z.string().trim().min(1).max(180).optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        status: z.string().max(40).optional(),
+        url: z
+          .string()
+          .trim()
+          .max(400)
+          .refine(validResourceUrl)
+          .optional(),
+        createdAt: z.number().int().positive().optional(),
+      }),
+    );
+    const starbaseUserIds = item.starbaseUserIds ?? (item.starbaseUserId ? [item.starbaseUserId] : []);
+    if (!item.deleted && starbaseUserIds.length === 0)
+      return fail(400, "invalid_input");
+    await syncAppResource(c, { ...item, starbaseUserIds });
+    return c.json({ ok: true });
+  });
   app.post("/api/v1/internal/test-formu-resources", async (c) => {
-    const expected = c.env.TEST_FORMU_SYNC_SECRET;
-    const supplied = c.req.header("x-app-sync-key") ?? "";
-    if (!expected || supplied.length !== expected.length) return fail(403, "permission_denied");
-    let difference = 0;
-    for (let i = 0; i < expected.length; i++) difference |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
-    if (difference) return fail(403, "permission_denied");
-    const item = await body(c, z.object({
-      resourceId: z.string().min(1).max(150),
-      starbaseUserId: z.string().regex(/^[a-zA-Z0-9-]{1,100}$/),
-      deleted: z.boolean().default(false),
-      title: z.string().trim().min(1).max(180).optional(),
-      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-      status: z.string().max(40).optional(),
-      createdAt: z.number().int().positive().optional(),
-    }));
+    if (!checkSyncSecret(c)) return fail(403, "permission_denied");
+    const item = await body(
+      c,
+      z.object({
+        resourceId: z.string().min(1).max(150),
+        starbaseUserId: z.string().regex(/^[a-zA-Z0-9-]{1,100}$/),
+        deleted: z.boolean().default(false),
+        title: z.string().trim().min(1).max(180).optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        status: z.string().max(40).optional(),
+        url: z
+          .string()
+          .trim()
+          .max(400)
+          .refine(validResourceUrl)
+          .optional(),
+        createdAt: z.number().int().positive().optional(),
+      }),
+    );
     if (item.deleted) {
-      await c.env.DB.prepare("DELETE FROM app_resources WHERE app_id='test-formu-web' AND resource_id=? AND user_id=?")
-        .bind(item.resourceId, item.starbaseUserId).run();
+      await c.env.DB.prepare(
+        "DELETE FROM app_resources WHERE app_id='test-formu-web' AND resource_id=? AND user_id=?",
+      )
+        .bind(item.resourceId, item.starbaseUserId)
+        .run();
     } else {
-      if (!item.title || !item.date || !item.status || !item.createdAt) return fail(400, "invalid_input");
-      await c.env.DB.prepare("INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,created_at,updated_at) SELECT 'test-formu-web',u.id,?,?,?,?,?,? FROM users u WHERE u.id=? AND u.disabled=0 ON CONFLICT(app_id,resource_id) DO UPDATE SET title=excluded.title,date=excluded.date,status=excluded.status,updated_at=excluded.updated_at")
-        .bind(item.resourceId, item.title, item.date, item.status, item.createdAt, now(), item.starbaseUserId).run();
+      await syncAppResource(c, {
+        ...item,
+        appId: "test-formu-web",
+        starbaseUserIds: [item.starbaseUserId],
+      });
     }
     return c.json({ ok: true });
   });
@@ -72,7 +193,7 @@ export function register(app: App) {
     const [summary, visits, resources, resourceCount] = await Promise.all([
       c.env.DB.prepare("SELECT COUNT(*) totalVisits,MAX(signed_in_at) lastSignInAt FROM application_visits WHERE app_id=? AND user_id=?").bind(id, userId).first(),
       c.env.DB.prepare("SELECT signed_in_at signedInAt,ended_at endedAt,end_reason endReason FROM application_visits WHERE app_id=? AND user_id=? ORDER BY signed_in_at DESC LIMIT 8").bind(id, userId).all(),
-      c.env.DB.prepare("SELECT resource_id resourceId,title,date,status,created_at createdAt FROM app_resources WHERE app_id=? AND user_id=? ORDER BY created_at DESC LIMIT 30").bind(id, userId).all(),
+      c.env.DB.prepare("SELECT r.app_id applicationId,a.name applicationName,r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r JOIN apps a ON a.id=r.app_id WHERE r.app_id=? AND r.user_id=? ORDER BY r.updated_at DESC,r.created_at DESC LIMIT 30").bind(id, userId).all(),
       c.env.DB.prepare("SELECT COUNT(*) count FROM app_resources WHERE app_id=? AND user_id=?").bind(id, userId).first<{ count: number }>(),
     ]);
     return c.json({ application: { ...application, logoUrl: logoUrl(id, application.logoUrl) }, summary, visits: visits.results, resources: resources.results, resourceCount: resourceCount?.count ?? 0 });

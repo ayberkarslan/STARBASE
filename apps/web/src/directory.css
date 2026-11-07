@@ -69,11 +69,20 @@
   flex: none;
   overflow: hidden;
   background: #000000;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .member-initials img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.member-initials:hover img {
+  transform: scale(1.25);
+}
+.member-initials:hover {
+  border-color: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.18);
 }
 .member-card__title {
   display: flex;

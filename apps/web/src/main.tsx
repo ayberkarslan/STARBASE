@@ -53,6 +53,8 @@ import {
   Check,
   KeyRound,
   Clock3,
+  Camera,
+  Trash2,
 } from "lucide-react";
 import "@stardrop/ui/styles.css";
 import "./style.css";
@@ -736,7 +738,46 @@ function App() {
           {tab === "account" && (
             <section className="profile-page">
               <div className="profile-hero">
-                <span className="member-initials" aria-hidden="true">{user.photoUrl ? <img src={user.photoUrl} alt="" /> : <>{user.firstName?.[0]}{user.lastName?.[0]}</>}</span>
+                <div className="profile-avatar-wrap">
+                  <label
+                    className="profile-avatar-interactive"
+                    title={user.photoUrl ? "Fotoğrafı değiştirmek için tıkla" : "Profil fotoğrafı ekle"}
+                  >
+                    <span className="member-initials" aria-hidden="true">
+                      {user.photoUrl ? <img src={user.photoUrl} alt="" /> : <>{user.firstName?.[0]}{user.lastName?.[0]}</>}
+                    </span>
+                    <span className="profile-avatar-overlay">
+                      <Camera size={18} />
+                      <small>{photoBusy ? "…" : "Değiştir"}</small>
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      disabled={photoBusy}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) setCropFile(file);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {user.photoUrl && (
+                    <button
+                      type="button"
+                      className="profile-avatar-delete"
+                      disabled={photoBusy}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void updatePhoto();
+                      }}
+                      title="Profil fotoğrafını kaldır"
+                      aria-label="Profil fotoğrafını kaldır"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
                 <div>
                   <span className="eyebrow">STARBASE PROFİLİ</span>
                   <h1>{user.firstName} {user.lastName}</h1>
@@ -746,12 +787,12 @@ function App() {
                       <BadgeList badges={user.badges} size="md" />
                     </div>
                   ) : null}
+                  {photoError && (
+                    <span className="member-form-feedback is-error" style={{ display: "inline-block", marginTop: "6px" }} role="alert">
+                      {photoError}
+                    </span>
+                  )}
                 </div>
-              </div>
-              <div className="profile-photo-actions">
-                <label className="profile-photo-upload">{photoBusy ? "Yükleniyor…" : user.photoUrl ? "Fotoğrafı değiştir" : "Profil fotoğrafı ekle"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) setCropFile(file); event.target.value = ""; }} /></label>
-                {user.photoUrl && <Button variant="bare" disabled={photoBusy} onClick={() => void updatePhoto()}>Fotoğrafı kaldır</Button>}
-                {photoError && <span className="member-form-feedback is-error" role="alert">{photoError}</span>}
               </div>
               {cropFile && <PhotoCrop file={cropFile} onClose={() => setCropFile(null)} onSave={async (image) => {
                 if (!(await updatePhoto(image))) throw new Error("Fotoğraf kaydedilemedi.");

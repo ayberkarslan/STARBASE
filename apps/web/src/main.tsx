@@ -739,14 +739,7 @@ function App() {
                 <span className="member-initials" aria-hidden="true">{user.photoUrl ? <img src={user.photoUrl} alt="" /> : <>{user.firstName?.[0]}{user.lastName?.[0]}</>}</span>
                 <div>
                   <span className="eyebrow">STARBASE PROFİLİ</span>
-                  <h1>
-                    {user.firstName} {user.lastName}
-                    {(user.customTitle || user.username === "ayberkarslan") && (
-                      <span className="user-title-tag">
-                        {user.customTitle || "Geliştirici Hesabı"}
-                      </span>
-                    )}
-                  </h1>
+                  <h1>{user.firstName} {user.lastName}</h1>
                   <p>@{user.username} · {user.customTitle || (user.username === "ayberkarslan" ? "Geliştirici Hesabı" : (user.owner ? "Takım sahibi" : "Yıldız Roket Takımı"))}</p>
                   {user.badges?.length ? (
                     <div style={{ marginTop: "10px" }}>
@@ -883,12 +876,13 @@ function App() {
                   <button key={r.id} onClick={() => setSelected(r)}>
                     <span>
                       {r.first_name} {r.last_name}
-                      {r.custom_title && <span className="user-title-tag">{r.custom_title}</span>}
                       <small>@{r.username}</small>
                       {r.badges?.length ? (
                         <div style={{ marginTop: "4px" }}>
                           <BadgeList badges={r.badges} size="sm" />
                         </div>
+                      ) : r.custom_title ? (
+                        <small style={{ color: "#ffffffa0" }}>{r.custom_title}</small>
                       ) : null}
                     </span>
                     <span>{r.email}</span>

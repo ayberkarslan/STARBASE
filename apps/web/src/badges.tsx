@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import {
   Shield,
   Crown,
@@ -16,7 +16,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { Button, Panel, TextField } from "@stardrop/ui";
+import { Button, Panel, TextField, SelectMenu } from "@stardrop/ui";
 import { FormSelect } from "./form-select";
 import { request } from "./management";
 import "./badges.css";
@@ -76,7 +76,7 @@ export function BadgePill({
   return (
     <span
       className={`badge-pill ${tierClass} ${size === "sm" ? "badge-pill--sm" : ""}`}
-      style={!isDev && badge.color && badge.color !== "#ffffff" ? { borderColor: `${badge.color}60`, color: badge.color } : undefined}
+      style={!isDev && badge.color && badge.color !== "#ffffff" ? { borderColor: `${badge.color}70`, color: badge.color } : undefined}
       title={badge.description || badge.name}
     >
       {getBadgeIcon(badge.icon, size === "sm" ? 10 : 11)}
@@ -141,44 +141,80 @@ export function BadgeAssigner({
     (b) => !assignedBadgeIds.includes(b.id),
   );
 
-  if (!unassigned.length) return null;
+  if (!unassigned.length) {
+    return (
+      <small style={{ color: "#ffffff60", fontSize: "11px" }}>
+        Tüm rozetler atanmış durumda.
+      </small>
+    );
+  }
+
+  const selectOptions = [
+    { value: "", label: "Rozet seç…" },
+    ...unassigned.map((b) => ({ value: b.id, label: b.name })),
+  ];
+
+  const handleAssign = async (badgeId: string) => {
+    if (!badgeId || busy || disabled) return;
+    setBusy(true);
+    try {
+      await onAssign(badgeId);
+      setSelectedBadgeId("");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <form
-      className="badge-assign-form"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (!selectedBadgeId) return;
-        setBusy(true);
-        try {
-          await onAssign(selectedBadgeId);
-          setSelectedBadgeId("");
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <FormSelect
-          value={selectedBadgeId}
-          onChange={(e) => setSelectedBadgeId(e.target.value)}
-          disabled={disabled || busy}
-        >
-          <option value="">Rozet seç…</option>
+    <div className="badge-assigner" style={{ display: "grid", gap: "10px" }}>
+      <form
+        className="badge-assign-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleAssign(selectedBadgeId);
+        }}
+      >
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ minWidth: "220px", flex: "1" }}>
+            <SelectMenu
+              label="Rozet seç"
+              value={selectedBadgeId}
+              options={selectOptions}
+              onChange={(val) => setSelectedBadgeId(val)}
+              disabled={disabled || busy}
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={disabled || busy || !selectedBadgeId}
+          >
+            <Plus size={13} /> Rozet Ata
+          </Button>
+        </div>
+      </form>
+
+      {/* Quick 1-click assign picker */}
+      <div className="badge-quick-picker">
+        <span style={{ fontSize: "10px", color: "#ffffff70", display: "block", marginBottom: "6px" }}>
+          Hızlı ata (tıkla):
+        </span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
           {unassigned.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.tier === 6 ? "★ " : `[R${b.tier}] `} {b.name}
-            </option>
+            <button
+              key={b.id}
+              type="button"
+              className="badge-quick-btn"
+              disabled={disabled || busy}
+              onClick={() => void handleAssign(b.id)}
+              title={`${b.name} rozetini ata`}
+            >
+              <Plus size={10} />
+              <span>{b.name}</span>
+            </button>
           ))}
-        </FormSelect>
-        <Button
-          type="submit"
-          disabled={disabled || busy || !selectedBadgeId}
-        >
-          <Plus size={13} /> Rozet Ata
-        </Button>
+        </div>
       </div>
-    </form>
+    </div>
   );
 }
 
@@ -194,7 +230,7 @@ export function BadgesManager({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const saveBadge = async (e: React.FormEvent<HTMLFormElement>) => {
+  const saveBadge = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const data = {
@@ -238,8 +274,8 @@ export function BadgesManager({
 
   return (
     <Panel
-      title="Rozet ve Rütbe Yönetimi"
-      description="Takım üyelerine atanabilir 1-6 kademe rozetler. Rank 6 yeşil çerçeveli özel Geliştirici rozetidir."
+      title="Rozet Yönetimi"
+      description="Takım üyelerine atanabilir unvan ve departman rozetleri."
       className="badges-admin-card"
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
@@ -254,19 +290,19 @@ export function BadgesManager({
       {error && <p className="member-form-feedback is-error" role="alert">{error}</p>}
 
       {(creating || editing) && (
-        <form onSubmit={saveBadge} style={{ border: "1px solid #ffffff40", padding: "16px", borderRadius: "6px", marginBottom: "16px", display: "grid", gap: "10px" }}>
+        <form onSubmit={saveBadge} style={{ border: "1px solid #ffffff40", padding: "16px", borderRadius: "4px", marginBottom: "16px", display: "grid", gap: "10px" }}>
           <h4>{editing ? `Rozeti Düzenle: ${editing.name}` : "Yeni Rozet Oluştur"}</h4>
           <TextField name="name" label="Rozet Adı" defaultValue={editing?.name || ""} required />
           <TextField name="description" label="Açıklama" defaultValue={editing?.description || ""} />
           <label>
-            Kategori / Rütbe (Rank 1-6)
+            Kategori / Rütbe
             <FormSelect name="tier" defaultValue={String(editing?.tier || 1)}>
-              <option value="1">Rank 1: Ekip Üyesi (Beyaz sade)</option>
-              <option value="2">Rank 2: Kıdemli Üye (Gümüş parlak)</option>
-              <option value="3">Rank 3: Ekip Lideri (Kehribar sarı)</option>
-              <option value="4">Rank 4: Departman Lideri (Gök mavisi)</option>
-              <option value="5">Rank 5: Yönetim Kurulu (Mor yıldız)</option>
-              <option value="6">Rank 6: Geliştirici Hesabı (#0bde0e Neon Yeşil)</option>
+              <option value="1">Ekip Üyesi</option>
+              <option value="2">Kıdemli Üye</option>
+              <option value="3">Ekip Lideri</option>
+              <option value="4">Departman Lideri</option>
+              <option value="5">Yönetim Kurulu</option>
+              <option value="6">Geliştirici Hesabı (#0bde0e)</option>
             </FormSelect>
           </label>
           <label>
@@ -296,7 +332,6 @@ export function BadgesManager({
           <div className="badge-card" key={b.id}>
             <div className="badge-card__top">
               <BadgePill badge={b} />
-              <small style={{ color: "#ffffff70", fontFamily: "monospace" }}>Rank {b.tier}</small>
             </div>
             <p>{b.description || "Açıklama yok"}</p>
             <div className="badge-card__actions">

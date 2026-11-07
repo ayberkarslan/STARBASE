@@ -9,77 +9,67 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2.5px 8px;
-  border-radius: 4px;
-  font-size: 9.5px;
-  line-height: 1.35;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 1.3;
   white-space: nowrap;
-  letter-spacing: 0.03em;
-  transition: all 0.15s ease;
+  letter-spacing: 0.04em;
+  font-family: inherit;
+  background: #000000;
+  border: 1px solid #ffffff30;
+  color: #ffffff;
   user-select: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.badge-pill--sm {
+  padding: 2px 6px;
+  font-size: 9px;
+  gap: 4px;
 }
 
 .badge-pill svg {
   flex-shrink: 0;
 }
 
-/* Tier 1: Ekip Üyesi */
+/* Elite B4 Tier hierarchy - pure black background, precise surgical 1px borders */
 .badge-pill--tier-1 {
-  border: 1px solid #ffffff30;
-  background: rgba(255, 255, 255, 0.04);
-  color: #e2e8f0;
+  border: 1px solid #ffffff25;
+  color: #cbd5e1;
 }
 
-/* Tier 2: Kıdemli */
 .badge-pill--tier-2 {
-  border: 1px solid #ffffff60;
-  background: rgba(255, 255, 255, 0.09);
-  color: #ffffff;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.10);
+  border: 1px solid #ffffff55;
+  color: #f8fafc;
 }
 
-/* Tier 3: Ekip Lideri (Warm Amber) */
 .badge-pill--tier-3 {
-  border: 1px solid rgba(234, 179, 8, 0.55);
-  background: rgba(234, 179, 8, 0.08);
-  color: #fde047;
-  box-shadow: 0 0 8px rgba(234, 179, 8, 0.18);
+  border: 1px solid rgba(234, 179, 8, 0.50);
+  color: #facc15;
 }
 
-/* Tier 4: Departman Lideri (Cyan Command) */
 .badge-pill--tier-4 {
-  border: 1px solid rgba(56, 189, 248, 0.65);
-  background: rgba(56, 189, 248, 0.10);
+  border: 1px solid rgba(56, 189, 248, 0.50);
   color: #7dd3fc;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.22);
 }
 
-/* Tier 5: Yönetim Kurulu / Kaptan (Violet / Neon Star) */
 .badge-pill--tier-5 {
-  border: 1px solid rgba(192, 132, 252, 0.75);
-  background: rgba(192, 132, 252, 0.12);
-  color: #e9d5ff;
-  box-shadow: 0 0 12px rgba(192, 132, 252, 0.28);
+  border: 1px solid rgba(192, 132, 252, 0.50);
+  color: #d8b4fe;
 }
 
-/* Tier 6: Geliştirici Hesabı (#0bde0e Neon Cyber Green) */
+/* Tier 6: Geliştirici Hesabı (#0bde0e clean crisp B4 matrix border) */
 .badge-pill--tier-6,
 .badge-pill--developer {
   border: 1px solid #0bde0e !important;
-  background: rgba(11, 222, 14, 0.08) !important;
   color: #0bde0e !important;
-  box-shadow: 0 0 12px rgba(11, 222, 14, 0.40), inset 0 0 6px rgba(11, 222, 14, 0.15) !important;
-  font-weight: 600;
-  text-shadow: 0 0 5px rgba(11, 222, 14, 0.6);
+  background: #000000 !important;
+  letter-spacing: 0.05em;
+  font-weight: 500;
 }
 
-/* Badge Manager in Admin / Drawers */
-.badge-item-removable {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
+/* Badge remove button */
 .badge-remove-btn {
   display: inline-flex;
   align-items: center;
@@ -87,17 +77,48 @@
   width: 14px;
   height: 14px;
   padding: 0;
+  margin-left: 2px;
   background: transparent;
   border: none;
   color: inherit;
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: pointer;
   border-radius: 2px;
+  transition: opacity 0.15s ease, background 0.15s ease;
 }
 
 .badge-remove-btn:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Quick 1-click assign picker chips */
+.badge-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: #000000;
+  border: 1px dashed #ffffff30;
+  border-radius: 3px;
+  color: #ffffffa6;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.badge-quick-btn:hover:not(:disabled) {
+  border-color: #ffffff90;
+  border-style: solid;
+  color: #ffffff;
+  background: #ffffff0a;
+}
+
+.badge-quick-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* Badges admin table */
@@ -115,8 +136,8 @@
 .badge-card {
   padding: 14px 16px;
   border: 1px solid #ffffff25;
-  border-radius: 6px;
-  background: #080808;
+  border-radius: 4px;
+  background: #050505;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -151,13 +172,12 @@
   border-radius: 3px;
   font-size: 9.5px;
   border: 1px solid #ffffff40;
-  background: #ffffff10;
+  background: #000000;
   color: #ffffff;
 }
 
 .member-role-badge--admin {
-  border-color: #38bdf888;
-  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.6);
   color: #7dd3fc;
 }
 
@@ -165,9 +185,10 @@
   display: inline-block;
   margin-left: 8px;
   font-size: 10px;
-  padding: 1px 7px;
+  padding: 2px 7px;
   border-radius: 3px;
-  border: 1px solid #0bde0e60;
+  border: 1px solid #0bde0e80;
   color: #0bde0e;
-  background: rgba(11, 222, 14, 0.08);
+  background: #000000;
+  letter-spacing: 0.04em;
 }

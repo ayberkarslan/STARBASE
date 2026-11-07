@@ -191,18 +191,13 @@ function MemberProfile({
               {profile.photoUrl ? <img src={profile.photoUrl} alt="" /> : <>{profile.firstName[0]}{profile.lastName[0]}</>}
             </span>
             <div>
-              <h3>
-                {profile.firstName} {profile.lastName}
-                {(profile as any).customTitle && (
-                  <span className="user-title-tag">{(profile as any).customTitle}</span>
-                )}
-              </h3>
-              <p>@{profile.username}</p>
+              <h3>{profile.firstName} {profile.lastName}</h3>
+              <p>@{profile.username}{(profile as any).customTitle && !(profile as any).badges?.length ? ` · ${(profile as any).customTitle}` : ""}</p>
             </div>
           </section>
           {(profile as any).badges?.length ? (
             <section className="directory-profile__section">
-              <span className="eyebrow">ROZETLER VE RÜTBELER</span>
+              <span className="eyebrow">ROZETLER</span>
               <BadgeList badges={(profile as any).badges} size="md" />
             </section>
           ) : null}
@@ -419,9 +414,6 @@ export function TeamDirectory({
                     <span className="member-card-body">
                       <strong>
                         {u.firstName} {u.lastName}
-                        {(u as any).customTitle && (
-                          <span className="user-title-tag">{(u as any).customTitle}</span>
-                        )}
                       </strong>
                       <span>@{u.username}</span>
                       <small>

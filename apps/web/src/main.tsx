@@ -26,6 +26,7 @@ import {
   EditOrganization,
 } from "./management";
 import { BadgeList, BadgesManager, type Badge } from "./badges";
+import { AvatarZoomProvider, useAvatarZoom } from "./avatar-zoom";
 import React, { useEffect, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -94,6 +95,7 @@ const messages: Record<string, string> = {
   try_later: "Çok fazla deneme. Biraz sonra tekrar dene.",
 };
 function App() {
+  const { registerHover, cancelHover } = useAvatarZoom();
   const [user, setUser] = useState<any>(null),
     [loading, setLoading] = useState(true),
     [tab, setTab] = useState(
@@ -738,7 +740,25 @@ function App() {
           {tab === "account" && (
             <section className="profile-page">
               <div className="profile-hero">
-                <div className="profile-avatar-wrap">
+                <div
+                  className="profile-avatar-wrap"
+                  onPointerEnter={() => {
+                    registerHover({
+                      name: `${user.firstName} ${user.lastName}`,
+                      username: user.username,
+                      photoUrl: user.photoUrl,
+                      badges: user.badges,
+                      subtitle:
+                        user.customTitle ||
+                        (user.username === "ayberkarslan"
+                          ? "Geliştirici Hesabı"
+                          : user.owner
+                          ? "Takım sahibi"
+                          : "Yıldız Roket Takımı"),
+                    });
+                  }}
+                  onPointerLeave={cancelHover}
+                >
                   <label
                     className="profile-avatar-interactive"
                     title={user.photoUrl ? "Fotoğrafı değiştirmek için tıkla" : "Profil fotoğrafı ekle"}
@@ -1292,7 +1312,9 @@ createRoot(document.getElementById("root")!).render(
       logo="/brand/yrt.png"
       prepare={() => startupReady}
     >
-      <App />
+      <AvatarZoomProvider>
+        <App />
+      </AvatarZoomProvider>
     </StartupScreen>
   </React.StrictMode>,
 );

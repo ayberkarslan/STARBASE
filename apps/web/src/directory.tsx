@@ -27,6 +27,7 @@ import type {
 import { request } from "./management";
 import { compactPatch } from "./image-upload";
 import { BadgeList } from "./badges";
+import { useAvatarZoom } from "./avatar-zoom";
 import "./directory.css";
 const formatDateTime = (value: number) =>
   new Date(value * 1000).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" });
@@ -146,6 +147,7 @@ function MemberProfile({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [attempt, setAttempt] = useState(0);
+  const { registerHover, cancelHover } = useAvatarZoom();
   useEffect(() => {
     let live = true;
     setProfile(null);
@@ -187,7 +189,18 @@ function MemberProfile({
       {profile && (
         <div className="directory-profile">
           <section className="directory-profile__hero">
-            <span className="directory-profile__avatar" aria-hidden="true">
+            <span
+              className="directory-profile__avatar"
+              aria-hidden="true"
+              onPointerEnter={() => registerHover({
+                name: `${profile.firstName} ${profile.lastName}`,
+                username: profile.username,
+                photoUrl: profile.photoUrl,
+                badges: (profile as any).badges,
+                subtitle: profile.memberships.length ? profile.memberships.map((m) => m.team ?? m.department).join(" · ") : "",
+              })}
+              onPointerLeave={cancelHover}
+            >
               {profile.photoUrl ? <img src={profile.photoUrl} alt="" /> : <>{profile.firstName[0]}{profile.lastName[0]}</>}
             </span>
             <div>
@@ -244,6 +257,7 @@ export function TeamDirectory({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0);
+  const { registerHover, cancelHover } = useAvatarZoom();
   useEffect(() => {
     let live = true;
     request("/directory/teams")
@@ -409,7 +423,23 @@ export function TeamDirectory({
                     onClick={() => setSelected(u.id)}
                   >
                     <div className="member-card__top">
-                      <span className="member-initials" aria-hidden="true">
+                      <span
+                        className="member-initials"
+                        aria-hidden="true"
+                        onPointerEnter={(e) => {
+                          e.stopPropagation();
+                          registerHover({
+                            name: `${u.firstName} ${u.lastName}`,
+                            username: u.username,
+                            photoUrl: u.photoUrl,
+                            badges: (u as any).badges,
+                            subtitle: u.memberships?.length
+                              ? u.memberships.map((m) => m.team ?? m.department).join(" · ")
+                              : "Ekip atanmamış",
+                          });
+                        }}
+                        onPointerLeave={cancelHover}
+                      >
                         {u.photoUrl ? <img src={u.photoUrl} alt="" /> : <>{u.firstName[0]}{u.lastName[0]}</>}
                       </span>
                       <div className="member-card__title">

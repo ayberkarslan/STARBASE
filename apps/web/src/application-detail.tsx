@@ -7,7 +7,7 @@ type Overview = {
   application: { id: string; name: string; logoUrl: string; launchUrl: string };
   summary: { totalVisits: number; lastSignInAt: number | null };
   visits: { signedInAt: number; endedAt: number | null; endReason: string | null }[];
-  resources: { resourceId: string; title: string; date: string; status: string; createdAt: number }[];
+  resources: { resourceId: string; title: string; date: string; status: string; url?: string; createdAt: number }[];
   resourceCount: number;
 };
 
@@ -48,13 +48,24 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
       <div className="application-detail-metrics">
         <Panel title="Giriş sayın"><strong>{overview.summary.totalVisits ?? 0}</strong></Panel>
         <Panel title="Son girişin"><strong>{dateTime(overview.summary.lastSignInAt)}</strong></Panel>
-        {id === "test-formu-web" && <Panel title="Eklediğin testler"><strong>{overview.resourceCount}</strong></Panel>}
+        <Panel title="Katkı verdiğin kayıtlar"><strong>{overview.resourceCount}</strong></Panel>
       </div>
-      {id === "test-formu-web" && <Panel title="Eklediğim testler" className="application-detail-list">
-        {overview.resources.length ? overview.resources.map((item) => <div className="application-detail-row" key={item.resourceId}>
-          <strong>{item.title}</strong><span>{item.date} · {item.status}</span>
-        </div>) : <p>STARBASE hesabınla eklediğin testler burada görünecek.</p>}
-      </Panel>}
+      <Panel title="Dahil olduğum kayıtlar ve dosyalar" className="application-detail-list">
+        {overview.resources.length ? overview.resources.map((item) => {
+          const meta = [item.date, item.status].filter(Boolean).join(" · ");
+          return item.url ? (
+            <a className="application-detail-row application-detail-row--link" key={item.resourceId} href={item.url}>
+              <strong>{item.title}</strong>
+              <span>{meta} <ArrowUpRight size={14} aria-hidden="true" /></span>
+            </a>
+          ) : (
+            <div className="application-detail-row" key={item.resourceId}>
+              <strong>{item.title}</strong>
+              <span>{meta}</span>
+            </div>
+          );
+        }) : <p>STARBASE hesabınla oluşturduğun veya katkı verdiğin içerikler burada görünecek.</p>}
+      </Panel>
       <Panel title="Son girişlerim" className="application-detail-list">
         {overview.visits.length ? overview.visits.map((visit, index) => <div className="application-detail-row" key={`${visit.signedInAt}-${index}`}>
           <strong>{dateTime(visit.signedInAt)}</strong>

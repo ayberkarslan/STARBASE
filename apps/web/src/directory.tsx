@@ -13,6 +13,7 @@ import {
   Users,
   Layers,
   AppWindow,
+  FileText,
   ChevronRight,
   RefreshCw,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import type {
   DirectoryTeams,
   DirectoryProfile,
   ApplicationHistory,
+  ApplicationResource,
 } from "../../../packages/contracts/src";
 import { request } from "./management";
 import { compactPatch } from "./image-upload";
@@ -57,6 +59,70 @@ export function ApplicationHistoryView({
         <EmptyState
           title="Henüz uygulama girişi yok"
           description="STARBASE ile kullandığın uygulamalar burada görünecek."
+        />
+      )}
+    </section>
+  );
+}
+export function UserResourcesView({
+  resources = [],
+  onSelectApplication,
+}: {
+  resources?: ApplicationResource[];
+  onSelectApplication?: (id: string) => void;
+}) {
+  return (
+    <section className="profile-activity">
+      <h3><FileText size={17} /> Dahil olduğu dosyalar ve kayıtlar</h3>
+      {resources.length ? (
+        <div className="resource-list">
+          {resources.map((item) => {
+            const meta = [item.applicationName, item.date, item.status].filter(Boolean).join(" · ");
+            if (item.url) {
+              return (
+                <a
+                  className="resource-item resource-item--link"
+                  key={`${item.applicationId}:${item.resourceId}`}
+                  href={item.url}
+                >
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{meta}</small>
+                  </div>
+                  <ArrowUpRight size={15} aria-hidden="true" />
+                </a>
+              );
+            }
+            if (onSelectApplication) {
+              return (
+                <button
+                  type="button"
+                  className="resource-item resource-item--link"
+                  key={`${item.applicationId}:${item.resourceId}`}
+                  onClick={() => onSelectApplication(item.applicationId)}
+                >
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{meta}</small>
+                  </div>
+                  <ArrowUpRight size={15} aria-hidden="true" />
+                </button>
+              );
+            }
+            return (
+              <div className="resource-item" key={`${item.applicationId}:${item.resourceId}`}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{meta}</small>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          title="Henüz ortak kayıt yok"
+          description="Üyenin STARBASE uygulamalarında oluşturduğu veya katkı verdiği dosyalar burada görünecek."
         />
       )}
     </section>
@@ -139,6 +205,7 @@ function MemberProfile({
             )}
           </section>
           <ApplicationHistoryView data={profile as unknown as ApplicationHistory} onPage={() => {}} busy={busy} />
+          <UserResourcesView resources={profile.resources} />
         </div>
       )}
     </Drawer>
@@ -418,13 +485,19 @@ export function TeamDirectory({
 }
 export function MyApplicationHistory({ onSelectApplication }: { onSelectApplication: (id: string) => void }) {
   const [data, setData] = useState<ApplicationHistory | null>(null),
+    [resources, setResources] = useState<ApplicationResource[]>([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   async function load(page = 1) {
     setBusy(true);
     setError("");
     try {
-      setData(await request("/me/applications?page=" + page));
+      const [historyData, resourcesData] = await Promise.all([
+        request("/me/applications?page=" + page),
+        request("/me/resources").catch(() => ({ resources: [] })),
+      ]);
+      setData(historyData);
+      setResources(Array.isArray(resourcesData?.resources) ? resourcesData.resources : []);
     } catch {
       setError("Uygulama geçmişi yüklenemedi.");
     } finally {
@@ -445,7 +518,10 @@ export function MyApplicationHistory({ onSelectApplication }: { onSelectApplicat
         </p>
       )}
       {data ? (
-        <ApplicationHistoryView data={data} onPage={load} busy={busy} onSelectApplication={onSelectApplication} />
+        <>
+          <ApplicationHistoryView data={data} onPage={load} busy={busy} onSelectApplication={onSelectApplication} />
+          <UserResourcesView resources={resources} onSelectApplication={onSelectApplication} />
+        </>
       ) : (
         !error && <p role="status">Uygulama geçmişi yükleniyor…</p>
       )}

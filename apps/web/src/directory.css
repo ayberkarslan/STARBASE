@@ -348,4 +348,12 @@
 .usage-app--link { background: #000; color: #fff; font: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease; }
 .usage-app--link:hover, .usage-app--link:focus-visible { border-color: #fff; box-shadow: inset 2px 0 #fff; }
 .usage-app--link > svg:last-child { margin-left: auto; flex: 0 0 auto; }
+.resource-list { display: grid; gap: 10px; margin-top: 12px; }
+.resource-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 14px 16px; border: 1px solid var(--ui-border, #303030); border-radius: 6px; background: #000; color: #fff; text-align: left; }
+.resource-item > div { display: grid; gap: 4px; min-width: 0; }
+.resource-item strong { font-size: 12px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.resource-item small { color: #ffffffa8; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+.resource-item--link { font: inherit; text-decoration: none; cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.resource-item--link:hover, .resource-item--link:focus-visible { border-color: #fff; box-shadow: inset 2px 0 #fff; }
+.resource-item--link > svg { flex: 0 0 auto; }
 @media (max-width: 700px) { .directory-departments { grid-template-columns: 1fr; grid-template-rows: none; height: auto; } .directory-departments > .sd-panel { min-height: 220px; } }

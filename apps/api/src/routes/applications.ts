@@ -69,7 +69,7 @@ async function syncAppResource(
     "SELECT id FROM apps WHERE id=? AND disabled=0",
   )
     .bind(item.appId)
-    .first<{ id: string }>();
+    .first();
   if (!application) return fail(404, "application_not_found");
   const userIds = [...new Set(item.starbaseUserIds)];
   if (item.deleted || userIds.length === 0) {

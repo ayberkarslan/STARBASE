@@ -13,5 +13,8 @@
 .application-detail-list { margin: 0; }
 .application-detail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 15px 0; border-top: 1px solid #ffffff30; }
 .application-detail-row strong { font-size: 12px; font-weight: 400; }
-.application-detail-row span { color: #ffffffa8; font-size: 11px; text-align: right; }
+.application-detail-row span { color: #ffffffa8; font-size: 11px; text-align: right; display: inline-flex; align-items: center; gap: 8px; }
+.application-detail-row--link { color: inherit; text-decoration: none; transition: padding-left 160ms ease, box-shadow 160ms ease; }
+.application-detail-row--link:hover, .application-detail-row--link:focus-visible { padding-left: 10px; box-shadow: inset 2px 0 #fff; }
+.application-detail-row--link:hover span, .application-detail-row--link:focus-visible span { color: #fff; }
 @media(max-width:650px) { .application-detail-row { flex-direction: column; gap: 6px; } .application-detail-row span { text-align: left; } .application-detail-hero { padding: 22px; } .application-detail-logo { width: 75%; right: -20%; } }

@@ -8,6 +8,18 @@ export async function startVisit(env: Env, family: string) {
     .first();
   if (!recorded) fail(401, "session_revoked");
 }
+export async function startCentralVisit(env: Env, family: string) {
+  const recorded = await env.DB.prepare(
+    "INSERT INTO central_visits(id,user_id,signed_in_at,last_seen_at,expires_at) SELECT id,user_id,?,?,expires FROM families WHERE id=? AND app_id IS NULL AND revoked=0 RETURNING id",
+  ).bind(now(), now(), family).first();
+  if (!recorded) fail(401, "session_revoked");
+}
+export function logoutCentralVisit(env: Env, userId: string, family?: string) {
+  const timestamp = now();
+  return env.DB.prepare(
+    `UPDATE central_visits SET ended_at=MIN(?,expires_at),end_reason=CASE WHEN expires_at<=? THEN 'expired' ELSE 'logout' END WHERE user_id=? AND ended_at IS NULL${family ? " AND id=?" : ""}`,
+  ).bind(timestamp, timestamp, userId, ...(family ? [family] : []));
+}
 export function logoutVisit(env: Env, userId: string, family?: string) {
   const timestamp = now();
   return env.DB.prepare(

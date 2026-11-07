@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { app } from "./index";
 import { hash, challenge, now } from "./security";
+import { startCentralVisit } from "./activity";
 let db: DatabaseSync;
 let env: any;
 class Statement {
@@ -43,6 +44,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0015_recent_admin_auth.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0016_profile_photos.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0017_avatar_versions.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0018_central_visits.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -225,6 +227,56 @@ async function loginCode(scopes = ["profile"]) {
   };
 }
 describe("identity boundaries", () => {
+  it("records actual central login and explicit logout times", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path.includes("signInWithPassword")) return Response.json({ localId: "u1", idToken: "firebase-token" });
+      if (path.includes("lookup")) return Response.json({ users: [{ emailVerified: true }] });
+      return Response.json({});
+    }));
+    const login = await call("/auth/login", { username: "alice", password: "long-test-password" }, "");
+    expect(login.status).toBe(200);
+    const cookie = login.headers.get("set-cookie")?.split(";")[0];
+    expect(cookie).toMatch(/^starbase=/);
+    const visit = db.prepare("SELECT id,signed_in_at,ended_at FROM central_visits WHERE user_id='u1'").get() as any;
+    expect(visit.signed_in_at).toBeGreaterThan(0);
+    expect(visit.ended_at).toBeNull();
+    const logout = await app.request("https://base.test/api/v1/auth/logout", {
+      method: "POST", headers: { Origin: "https://base.test", Cookie: cookie! },
+    }, env);
+    expect(logout.status).toBe(200);
+    expect(db.prepare("SELECT end_reason,ended_at FROM central_visits WHERE id=?").get(visit.id))
+      .toMatchObject({ end_reason: "logout", ended_at: expect.any(Number) });
+    vi.unstubAllGlobals();
+  });
+  it("keeps central and application visits separate for administrators", async () => {
+    await startCentralVisit(env, "f");
+    db.prepare("UPDATE central_visits SET last_seen_at=? WHERE id='f'").run(now() - 120);
+    await call("/me");
+    expect((db.prepare("SELECT last_seen_at FROM central_visits WHERE id='f'").get() as any).last_seen_at)
+      .toBeGreaterThan(now() - 120);
+    const exchange = await call("/auth/exchange", await loginCode(), "");
+    const { accessToken } = await exchange.json() as { accessToken: string };
+    const before = await call("/admin/activity?userId=u1");
+    expect(before.status).toBe(200);
+    const history = await before.json() as any;
+    expect(history.events.map((event: any) => event.source).sort()).toEqual(["application", "starbase"]);
+    expect(history.events.every((event: any) => event.endedAt === null)).toBe(true);
+    expect(history.events.find((event: any) => event.source === "starbase").lastSeenAt).toBeGreaterThan(now() - 120);
+    expect(history.platforms).toHaveLength(2);
+    expect((await call("/admin/activity", undefined, accessToken)).status).toBe(403);
+    await call("/auth/logout", {}, accessToken);
+    const applications = await call("/admin/activity?source=application");
+    expect(((await applications.json()) as any).events[0].endReason).toBe("logout");
+    await call("/auth/logout", {});
+    expect(db.prepare("SELECT end_reason FROM central_visits WHERE id='f'").get()).toEqual({ end_reason: "logout" });
+  });
+  it("labels revoked central sessions without inventing a logout", async () => {
+    await startCentralVisit(env, "f");
+    db.prepare("UPDATE families SET revoked=1 WHERE id='f'").run();
+    expect(db.prepare("SELECT end_reason,ended_at FROM central_visits WHERE id='f'").get())
+      .toMatchObject({ end_reason: "revoked", ended_at: expect.any(Number) });
+  });
   it("reuses recent admin verification for ten minutes", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
     db.prepare("UPDATE families SET reauthenticated_at=? WHERE id='f'").run(now());

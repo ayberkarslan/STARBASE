@@ -1,4 +1,4 @@
-import { startVisit, logoutVisit } from "../activity";
+import { startVisit, logoutVisit, startCentralVisit, logoutCentralVisit } from "../activity";
 import { localVerificationUrl } from "../local-actions";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -116,7 +116,9 @@ export function register(app: App) {
     await c.env.DB.prepare("UPDATE users SET verified=? WHERE id=?")
       .bind(lookup.users?.[0]?.emailVerified ? 1 : 0, u.id)
       .run();
-    const value = await issue(c, u.id, "central");
+    const family = crypto.randomUUID();
+    const value = await issue(c, u.id, "central", null, [], family);
+    await startCentralVisit(c.env, family);
     setCookie(c, "starbase", value, {
       httpOnly: true,
       secure: new URL(c.env.PUBLIC_ORIGIN).protocol === "https:",
@@ -144,6 +146,7 @@ export function register(app: App) {
   app.post("/api/v1/auth/logout", async (c) => {
     await c.env.DB.batch([
       logoutVisit(c.env, c.get("user").id, c.get("session").family),
+      logoutCentralVisit(c.env, c.get("user").id, c.get("session").family),
       c.env.DB.prepare("UPDATE families SET revoked=1 WHERE id=?").bind(
         c.get("session").family,
       ),
@@ -156,6 +159,7 @@ export function register(app: App) {
       fail(403, "central_session_required");
     await c.env.DB.batch([
       logoutVisit(c.env, c.get("user").id),
+      logoutCentralVisit(c.env, c.get("user").id),
       c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?").bind(
         c.get("user").id,
       ),

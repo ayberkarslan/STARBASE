@@ -34,6 +34,7 @@ import { register as identity } from "./routes/identity";
 import { register as organization } from "./routes/organization";
 import { register as management } from "./routes/management";
 import { register as applications } from "./routes/applications";
+import { register as activityAdmin } from "./routes/activity-admin";
 import { MAX_IMAGE_BYTES } from "./image-assets";
 const app: App = new Hono();
 app.onError((e, c) =>
@@ -139,6 +140,11 @@ app.use("/api/v1/*", async (c, next) => {
   if (!user) fail(401, "account_unavailable");
   c.set("session", session!);
   c.set("user", user);
+  if (session!.kind === "central") {
+    const timestamp = now();
+    await c.env.DB.prepare("UPDATE central_visits SET last_seen_at=? WHERE id=? AND ended_at IS NULL AND last_seen_at<?")
+      .bind(timestamp, session!.family, timestamp - 60).run();
+  }
   if (
     user.must_change_password &&
     !["/api/v1/auth/password", "/api/v1/auth/logout"].includes(c.req.path)
@@ -155,6 +161,7 @@ members(app);
 directory(app);
 board(app);
 applications(app);
+activityAdmin(app);
 app.notFound((c) =>
   c.req.path.startsWith("/api/")
     ? c.json({ error: { code: "not_found" } }, 404)
@@ -170,9 +177,15 @@ export default {
     )
       .bind(timestamp)
       .run();
+    await env.DB.prepare(
+      "UPDATE central_visits SET ended_at=expires_at,end_reason='expired' WHERE ended_at IS NULL AND expires_at<=?",
+    ).bind(timestamp).run();
     await env.DB.batch([
       env.DB.prepare(
         "DELETE FROM application_visits WHERE ended_at IS NOT NULL AND ended_at<?",
+      ).bind(timestamp - 90 * 86400),
+      env.DB.prepare(
+        "DELETE FROM central_visits WHERE ended_at IS NOT NULL AND ended_at<?",
       ).bind(timestamp - 90 * 86400),
       env.DB.prepare("DELETE FROM sessions WHERE expires<?").bind(timestamp),
       env.DB.prepare("DELETE FROM families WHERE expires<?").bind(timestamp),

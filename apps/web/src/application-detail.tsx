@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, AppWindow } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, AppWindow, FileText, FolderOpen } from "lucide-react";
 import { Button, Panel } from "@stardrop/ui";
 import "./application-detail.css";
 
@@ -31,6 +31,9 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
       .catch((cause) => { if (active) setError(String(cause.message ?? cause)); });
     return () => { active = false; };
   }, [id]);
+
+  const latestResource = overview?.resources[0];
+
   return <div className="application-detail">
     <Button variant="bare" onClick={onBack}><ArrowLeft size={16} /> Uygulamalara dön</Button>
     {error && <p role="alert">{error}</p>}
@@ -38,56 +41,121 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
     {overview && <>
       <section className="application-detail-hero">
         <div className="application-detail-logo" aria-hidden="true">
-          {overview.application.logoUrl ? <img src={overview.application.logoUrl} alt="" /> : <AppWindow size={160} />}
+          {overview.application.logoUrl ? <img src={overview.application.logoUrl} alt="" /> : <AppWindow size={140} />}
         </div>
-        <span className="eyebrow">STARBASE UYGULAMASI</span>
-        <h1>{overview.application.name}</h1>
-        <p>Yıldız Roket Takımı hesabınla bağlı uygulama.</p>
-        {overview.application.launchUrl && <a className="sd-button sd-button--primary sd-button--md" href={overview.application.launchUrl}>{overview.application.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={16} /></a>}
-      </section>
-      <div className="application-detail-metrics">
-        <Panel title="Giriş sayın"><strong>{overview.summary.totalVisits ?? 0}</strong></Panel>
-        <Panel title="Son girişin"><strong>{dateTime(overview.summary.lastSignInAt)}</strong></Panel>
-        <Panel title="Katkı verdiğin kayıtlar"><strong>{overview.resourceCount}</strong></Panel>
-      </div>
-      {overview.resources[0] && (
-        <Panel title="Kaldığın yerden devam et" className="application-detail-resume">
-          <div className="application-detail-resume__body">
-            <div>
-              <span className="eyebrow">EN SON ÜZERİNDE ÇALIŞTIĞIN KAYIT</span>
-              <strong>{overview.resources[0].title}</strong>
-              <p>Son düzenleme: {dateTime(overview.resources[0].updatedAt ?? overview.resources[0].createdAt)} · {overview.resources[0].status}</p>
+        <div className="application-detail-hero__main">
+          <div className="application-detail-hero__copy">
+            <span className="eyebrow">STARBASE UYGULAMASI</span>
+            <h1>{overview.application.name}</h1>
+            <p>Yıldız Roket Takımı hesabınla bağlı uygulama.</p>
+            <div className="application-detail-hero__actions">
+              {overview.application.launchUrl && (
+                <a className="sd-button sd-button--primary sd-button--sm" href={overview.application.launchUrl}>
+                  {overview.application.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={14} />
+                </a>
+              )}
+              {latestResource?.url && (
+                <a className="sd-button sd-button--sm" href={latestResource.url}>
+                  Son dosyadan devam et ({latestResource.title}) <ArrowUpRight size={14} />
+                </a>
+              )}
             </div>
-            {overview.resources[0].url && (
-              <a className="sd-button sd-button--primary sd-button--md" href={overview.resources[0].url}>
-                Kaldığın yerden devam et <ArrowUpRight size={16} />
-              </a>
-            )}
           </div>
-        </Panel>
-      )}
-      <Panel title="Dahil olduğum kayıtlar ve dosyalar" className="application-detail-list">
-        {overview.resources.length ? overview.resources.map((item) => {
-          const editedLabel = `Son düzenleme: ${dateTime(item.updatedAt ?? item.createdAt)}`;
-          const meta = [editedLabel, item.status].filter(Boolean).join(" · ");
-          return item.url ? (
-            <a className="application-detail-row application-detail-row--link" key={item.resourceId} href={item.url}>
-              <strong>{item.title}</strong>
-              <span>{meta} <ArrowUpRight size={14} aria-hidden="true" /></span>
-            </a>
-          ) : (
-            <div className="application-detail-row" key={item.resourceId}>
-              <strong>{item.title}</strong>
-              <span>{meta}</span>
+          <dl className="application-detail-hero__stats" aria-label="Uygulama özeti">
+            <div className="application-detail-stat">
+              <dt>GİRİŞ SAYIN</dt>
+              <dd>{overview.summary.totalVisits ?? 0}</dd>
             </div>
-          );
-        }) : <p>STARBASE hesabınla oluşturduğun veya katkı verdiğin içerikler burada görünecek.</p>}
+            <div className="application-detail-stat">
+              <dt>SON GİRİŞİN</dt>
+              <dd>{dateTime(overview.summary.lastSignInAt)}</dd>
+            </div>
+            <div className="application-detail-stat">
+              <dt>KATKI VERDİĞİN KAYITLAR</dt>
+              <dd>{overview.resourceCount}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <Panel
+        title="Dahil olduğum kayıtlar ve dosyalar"
+        description="Uygulama içindeki çalışmaların ve belgelerin. En son uğraştığın dosya ilk sırada işaretlidir."
+        className="application-detail-files"
+      >
+        {overview.resources.length ? (
+          <div className="application-file-grid" role="list">
+            {overview.resources.map((item, index) => {
+              const isLatest = index === 0;
+              const editedTime = dateTime(item.updatedAt ?? item.createdAt);
+              const content = (
+                <>
+                  <div className="application-file-card__preview" aria-hidden="true">
+                    {isLatest && <span className="application-file-card__badge">EN SON UĞRAŞILAN · KALDIĞIN YER</span>}
+                    <div className="application-file-sheet">
+                      <div className="application-file-sheet__head">
+                        <span className="application-file-sheet__org">YILDIZ ROKET TAKIMI</span>
+                        <span className="application-file-sheet__kind">{item.status || "Belge"}</span>
+                      </div>
+                      <strong className="application-file-sheet__title">{item.title}</strong>
+                      <div className="application-file-sheet__lines">
+                        <i /><i /><i /><i />
+                      </div>
+                      <div className="application-file-sheet__foot">
+                        <span>{item.date}</span>
+                        <span>TEX / PDF</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="application-file-card__meta">
+                    <div className="application-file-card__title-row">
+                      {isLatest ? <FolderOpen size={14} className="application-file-card__icon" /> : <FileText size={14} className="application-file-card__icon" />}
+                      <strong title={item.title}>{item.title}</strong>
+                      {item.url && <ArrowUpRight size={14} className="application-file-card__arrow" aria-hidden="true" />}
+                    </div>
+                    <div className="application-file-card__sub">
+                      <span>{item.status || "Kayıt"}</span>
+                      <span>Son düzenleme: {editedTime}</span>
+                    </div>
+                  </div>
+                </>
+              );
+              return item.url ? (
+                <a
+                  key={item.resourceId}
+                  role="listitem"
+                  className={`application-file-card ${isLatest ? "application-file-card--latest" : ""}`}
+                  href={item.url}
+                >
+                  {content}
+                </a>
+              ) : (
+                <div
+                  key={item.resourceId}
+                  role="listitem"
+                  className={`application-file-card ${isLatest ? "application-file-card--latest" : ""}`}
+                >
+                  {content}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="application-file-empty">STARBASE hesabınla oluşturduğun veya katkı verdiğin içerikler burada klasör/dosya görünümünde listelenecek.</p>
+        )}
       </Panel>
+
       <Panel title="Son girişlerim" className="application-detail-list">
-        {overview.visits.length ? overview.visits.map((visit, index) => <div className="application-detail-row" key={`${visit.signedInAt}-${index}`}>
-          <strong>{dateTime(visit.signedInAt)}</strong>
-          <span>{visit.endReason === "logout" ? `Çıkış: ${dateTime(visit.endedAt)}` : visit.endReason === "revoked" ? "Oturum sonlandırıldı" : visit.endReason === "expired" ? "Oturum süresi doldu" : "Çıkış kaydı yok"}</span>
-        </div>) : <p>Henüz giriş kaydı yok.</p>}
+        {overview.visits.length ? (
+          <div className="application-visits-compact">
+            {overview.visits.slice(0, 6).map((visit, index) => (
+              <div className="application-detail-row" key={`${visit.signedInAt}-${index}`}>
+                <strong>{dateTime(visit.signedInAt)}</strong>
+                <span>{visit.endReason === "logout" ? `Çıkış: ${dateTime(visit.endedAt)}` : visit.endReason === "revoked" ? "Oturum sonlandırıldı" : visit.endReason === "expired" ? "Oturum süresi doldu" : "Çıkış kaydı yok"}</span>
+              </div>
+            ))}
+          </div>
+        ) : <p>Henüz giriş kaydı yok.</p>}
       </Panel>
     </>}
   </div>;

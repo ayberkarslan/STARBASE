@@ -307,9 +307,21 @@
   outline-offset: -2px;
   background: transparent;
 }
+.board-viewport.is-drawing {
+  cursor: crosshair;
+  user-select: none;
+}
 .board-surface {
   position: relative;
   min-width: 100%;
+  background-image:
+    radial-gradient(circle, #ffffff22 0.75px, transparent 1px),
+    linear-gradient(to right, #ffffff08 1px, transparent 1px),
+    linear-gradient(to bottom, #ffffff08 1px, transparent 1px);
+  background-size:
+    24px 24px,
+    120px 120px,
+    120px 120px;
 }
 .sticky-grid {
   display: block;
@@ -321,8 +333,402 @@
   width: 300px;
   transition: box-shadow 0.15s;
 }
+.movable-note.is-type-text {
+  width: auto;
+  min-width: 220px;
+  max-width: 480px;
+}
+.movable-note.is-type-drawing {
+  width: auto;
+}
 .movable-note.is-moving {
   box-shadow: 0 18px 50px #000;
+}
+
+/* "+ Panoya ekle" B4 Dropdown Menu */
+.board-add-dropdown {
+  position: relative;
+}
+.board-add-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 120;
+  width: 296px;
+  padding: 6px;
+  background: #000000;
+  border: 1px solid #ffffff45;
+  border-radius: 6px;
+  box-shadow: 0 20px 60px #000000e6;
+  display: grid;
+  gap: 2px;
+}
+.board-add-menu hr {
+  width: 100%;
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid #ffffff26;
+}
+.board-add-menu button {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 13px;
+  border: 0;
+  border-radius: 0;
+  background: #000000;
+  color: #ffffff;
+  text-align: left;
+  font-family: var(--sd-font);
+  cursor: pointer;
+}
+.board-add-menu button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+.board-add-menu button:hover,
+.board-add-menu button:focus-visible {
+  background: #000000;
+  color: #ffffff;
+  outline: none;
+}
+.board-add-menu button:hover::before,
+.board-add-menu button:focus-visible::before {
+  opacity: 1;
+}
+.board-add-menu button > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.board-add-menu button > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.board-add-menu button strong {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.board-add-menu button small {
+  font-size: 8px;
+  line-height: 1.5;
+  color: #ffffff99;
+}
+
+/* Floating B4 Drawing & Arrow Toolbar */
+.board-draw-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 40px 14px;
+  padding: 8px 14px;
+  background: #000000;
+  border: 1px solid #ffffff45;
+  border-radius: 6px;
+}
+.board-draw-toolbar__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  color: #ffffffb8;
+}
+.board-draw-toolbar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-left: 1px solid #ffffff26;
+  padding-left: 10px;
+}
+.board-draw-toolbar button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 0;
+  background: #000000;
+  color: #ffffffa8;
+  font: 9px var(--sd-font);
+  cursor: pointer;
+}
+.board-draw-toolbar button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+.board-draw-toolbar button:hover,
+.board-draw-toolbar button[aria-pressed="true"] {
+  color: #ffffff;
+  background: #000000;
+}
+.board-draw-toolbar button:hover::after,
+.board-draw-toolbar button[aria-pressed="true"]::after {
+  opacity: 1;
+}
+
+/* Drawing Canvas Overlay & Persisted Vector Items */
+.board-draw-capture {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  cursor: crosshair;
+  touch-action: none;
+}
+.board-draw-live-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  overflow: visible;
+}
+.board-drawing-item {
+  position: relative;
+  border: 1px dashed transparent;
+  transition: border-color 150ms ease;
+}
+.movable-note.is-type-drawing > .note-grip {
+  opacity: 0;
+  top: -12px;
+  background: #000000;
+  border: 1px solid #ffffff40;
+}
+.movable-note.is-type-drawing:hover > .note-grip,
+.movable-note.is-type-drawing:focus-within > .note-grip {
+  opacity: 1;
+}
+.movable-note.is-type-drawing:hover .board-drawing-item,
+.movable-note.is-type-drawing:focus-within .board-drawing-item {
+  border-color: #ffffff40;
+}
+.board-drawing-item svg {
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+.board-drawing-delete {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ffffff45;
+  border-radius: 0;
+  background: #000000;
+  color: #ffffff;
+  opacity: 0;
+  cursor: pointer;
+}
+.movable-note.is-type-drawing:hover .board-drawing-delete,
+.movable-note.is-type-drawing:focus-within .board-drawing-delete,
+.board-drawing-delete:focus-visible {
+  opacity: 1;
+}
+.board-drawing-delete:hover {
+  border-color: #ffffff;
+}
+
+/* Free Canvas Text / Callout Widget */
+.board-canvas-text {
+  position: relative;
+  padding: 28px 18px 14px;
+  background: #000000d9;
+  border: 1px solid transparent;
+  border-left: 2px solid #ffffff;
+  color: #ffffff;
+  transition: border-color 150ms ease;
+}
+.board-canvas-text.is-framed {
+  border: 1px solid #ffffff45;
+  border-left: 2px solid #ffffff;
+  border-radius: 6px;
+  background: #000000;
+}
+.board-canvas-text:hover,
+.board-canvas-text:focus-within {
+  border-color: #ffffff40;
+  border-left: 2px solid #ffffff;
+}
+.board-canvas-text__body strong {
+  display: block;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0.03em;
+  overflow-wrap: anywhere;
+}
+.board-canvas-text.size-lg .board-canvas-text__body strong {
+  font-size: 19px;
+}
+.board-canvas-text.size-md .board-canvas-text__body strong {
+  font-size: 14px;
+}
+.board-canvas-text.size-sm .board-canvas-text__body strong {
+  font-size: 11px;
+}
+.board-canvas-text__body p {
+  margin: 8px 0 0;
+  font-size: 10px;
+  line-height: 1.75;
+  color: #ffffffb0;
+  overflow-wrap: anywhere;
+}
+.board-canvas-text__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 8px;
+  color: #ffffff78;
+}
+.board-canvas-text__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.board-canvas-text:hover .board-canvas-text__actions,
+.board-canvas-text:focus-within .board-canvas-text__actions {
+  opacity: 1;
+}
+.board-canvas-text__actions button {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ffffff30;
+  background: #000000;
+  color: #ffffff;
+  cursor: pointer;
+}
+.board-canvas-text__actions button:hover {
+  border-color: #ffffff;
+}
+
+/* App Shortcut Card on Board */
+.board-shortcut-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.board-shortcut-card__logo {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ffffff40;
+  border-radius: 6px;
+  background: #000000;
+  padding: 6px;
+  box-sizing: border-box;
+}
+.board-shortcut-card__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.board-shortcut-card__identity h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.board-shortcut-card__identity small {
+  display: block;
+  font-size: 9px;
+  color: #ffffff99;
+}
+.board-shortcut-card__launch {
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: space-between;
+  margin: 4px 0 18px;
+  text-decoration: none;
+}
+
+/* Interactive Checklist Card on Board */
+.board-checklist-progress {
+  height: 3px;
+  background: #ffffff26;
+  margin: 0 0 14px;
+  overflow: hidden;
+}
+.board-checklist-progress i {
+  display: block;
+  height: 100%;
+  background: #ffffff;
+  transition: width 180ms ease;
+}
+.board-checklist-items {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 190px;
+  overflow: auto;
+}
+.board-checklist-items li button {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid #ffffff20;
+  border-radius: 0;
+  background: #000000;
+  color: #ffffff;
+  text-align: left;
+  font: 10px/1.6 var(--sd-font);
+  cursor: pointer;
+}
+.board-checklist-items li button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+.board-checklist-items li button:hover:not(:disabled)::before {
+  opacity: 1;
+}
+.board-checklist-items li button > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.board-checklist-items li.is-done button {
+  color: #ffffff78;
+}
+.board-checklist-items li.is-done button span {
+  text-decoration: line-through;
 }
 .note-grip {
   position: absolute;

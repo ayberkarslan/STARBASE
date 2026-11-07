@@ -1,10 +1,12 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
   type ReactNode,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   Button,
@@ -34,8 +36,49 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  AppWindow,
+  Type,
+  MoveUpRight,
+  PenTool,
+  CheckSquare,
+  Square,
+  ArrowUpRight,
+  Minus,
+  BoxSelect,
+  X,
 } from "lucide-react";
 import { request } from "./management";
+
+type BoardItemType =
+  | "note"
+  | "announcement"
+  | "shortcut"
+  | "text"
+  | "drawing"
+  | "checklist";
+
+type DrawTool = "arrow" | "line" | "rect" | "pen";
+type StrokeStyle = "solid" | "dashed";
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+interface DrawingPoint {
+  x: number;
+  y: number;
+}
+
+interface BoardApp {
+  id: string;
+  name: string;
+  logoUrl: string;
+  launchUrl: string;
+}
+
 interface Note {
   id: string;
   scope: "private" | "shared";
@@ -49,6 +92,8 @@ interface Note {
   title: string;
   content: string;
   kind: "note" | "announcement";
+  itemType?: BoardItemType;
+  itemData?: Record<string, unknown>;
   teamId: string | null;
   team: string | null;
   dueAt: number | null;
@@ -58,6 +103,7 @@ interface Note {
   createdAt: number;
   updatedAt: number;
 }
+
 interface Feed {
   notes: Note[];
   canModerate: boolean;
@@ -65,22 +111,56 @@ interface Feed {
   total: number;
   hasMore: boolean;
 }
+
 const messages: Record<string, string> = {
   note_conflict:
-    "Bu not başka bir yerde değiştirildi. Taslağını koruyup pencereyi kapat ve güncel notu yeniden aç.",
-  permission_denied: "Bu notu değiştirme yetkin yok.",
-  note_not_found: "Not artık bulunmuyor. Panoyu yenile.",
-  invalid_input: "Başlık ve not metnini kontrol et.",
+    "Bu öğe başka bir yerde değiştirildi. Pencereyi kapatıp güncel panoyu kontrol et.",
+  permission_denied: "Bu öğeyi değiştirme yetkin yok.",
+  note_not_found: "Öğe artık bulunmuyor. Panoyu yenile.",
+  invalid_input: "Başlık ve içerik alanlarını kontrol et.",
   invalid_team: "Bu ekip artık kullanılamıyor.",
   try_later: "Çok hızlı işlem yapıyorsun. Biraz bekleyip tekrar dene.",
   team_membership_required: "Panoyu kullanmak için takım üyesi olmalısın.",
   session_expired: "Oturumun sona erdi. Yeniden giriş yap.",
 };
+
 const time = (n: number) =>
   new Date(n * 1000).toLocaleString("tr-TR", {
     dateStyle: "medium",
     timeStyle: "short",
   });
+
+function resolveItemType(note: Note): BoardItemType {
+  if (
+    note.itemType &&
+    [
+      "note",
+      "announcement",
+      "shortcut",
+      "text",
+      "drawing",
+      "checklist",
+    ].includes(note.itemType)
+  ) {
+    return note.itemType;
+  }
+  return note.kind === "announcement" ? "announcement" : "note";
+}
+
+function buildPersonalLaunchUrl(rawUrl: string): string {
+  if (!rawUrl) return "";
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      parsed.searchParams.set("starbase_login", "1");
+      return parsed.href;
+    }
+    return rawUrl;
+  } catch {
+    return rawUrl;
+  }
+}
+
 export function BoardNotes(props: {
   currentUserId: string;
   teams: { id: string; name: string; departmentId: string }[];
@@ -88,8 +168,14 @@ export function BoardNotes(props: {
   onScopeChange: (scope: "home" | "private" | "shared") => void;
 }) {
   const { scope, onScopeChange } = props;
-  const [defaultScope, setDefaultScope] = useState<"home" | "private" | "shared">(
-    () => (localStorage.getItem("starbase.board.default") as "home" | "private" | "shared") || "home",
+  const [defaultScope, setDefaultScope] = useState<
+    "home" | "private" | "shared"
+  >(
+    () =>
+      (localStorage.getItem("starbase.board.default") as
+        | "home"
+        | "private"
+        | "shared") || "home",
   );
   function makeDefault(next: "home" | "private" | "shared") {
     localStorage.setItem("starbase.board.default", next);
@@ -98,34 +184,79 @@ export function BoardNotes(props: {
   return (
     <div className="board-desktop">
       <nav className="board-switcher" aria-label="Pano seçimi">
-        {([
-          ["private", "Kendi panom", LockKeyhole],
-          ["home", "Yıldız Roket Takımı", Users],
-          ["shared", "Ortak pano", Users],
-        ] as const).map(([value, label, Icon]) => (
+        {(
+          [
+            ["private", "Kendi panom", LockKeyhole],
+            ["home", "Yıldız Roket Takımı", Users],
+            ["shared", "Ortak pano", Users],
+          ] as const
+        ).map(([value, label, Icon]) => (
           <div className="board-switcher__item" key={value}>
-            <button className={scope === value ? "active" : ""} onClick={() => onScopeChange(value)}>
-              {value === "home" ? <img src="/brand/yrt.png" alt="" /> : <Icon size={14} />}<span>{label}</span>
+            <button
+              className={scope === value ? "active" : ""}
+              onClick={() => onScopeChange(value)}
+            >
+              {value === "home" ? (
+                <img src="/brand/yrt.png" alt="" />
+              ) : (
+                <Icon size={14} />
+              )}
+              <span>{label}</span>
             </button>
             <button
-              className={defaultScope === value ? "board-default locked" : "board-default"}
+              className={
+                defaultScope === value
+                  ? "board-default locked"
+                  : "board-default"
+              }
               aria-label={`${label} varsayılan sayfa yap`}
-              title={defaultScope === value ? "Varsayılan görünüm" : "Varsayılan yap"}
+              title={
+                defaultScope === value ? "Varsayılan görünüm" : "Varsayılan yap"
+              }
               onClick={() => makeDefault(value)}
-            >{defaultScope === value ? <LockKeyhole size={12} /> : <LockKeyholeOpen size={12} />}</button>
+            >
+              {defaultScope === value ? (
+                <LockKeyhole size={12} />
+              ) : (
+                <LockKeyholeOpen size={12} />
+              )}
+            </button>
           </div>
         ))}
       </nav>
       {scope === "home" ? (
-        <div className="blank-board star-burst" aria-label="Yıldız Roket Takımı">
-          <div className="burst-stars" aria-hidden="true">{Array.from({ length: 700 }, (_, index) => {
-            const random = (seed: number) => (Math.sin(seed * 12.9898) * 43758.5453) % 1;
-            const value = (seed: number) => Math.abs(random(seed));
-            return <i key={index} style={{ "--x": `${value(index + 1) * 100}%`, "--y": `${value(index + 701) * 100}%`, "--d": `-${value(index + 311) * 10}s`, "--s": `${0.55 + value(index + 97) * 1.05}px`, "--t": `${7 + value(index + 509) * 5}s` } as CSSProperties} />;
-          })}</div>
+        <div
+          className="blank-board star-burst"
+          aria-label="Yıldız Roket Takımı"
+        >
+          <div className="burst-stars" aria-hidden="true">
+            {Array.from({ length: 700 }, (_, index) => {
+              const random = (seed: number) =>
+                (Math.sin(seed * 12.9898) * 43758.5453) % 1;
+              const value = (seed: number) => Math.abs(random(seed));
+              return (
+                <i
+                  key={index}
+                  style={
+                    {
+                      "--x": `${value(index + 1) * 100}%`,
+                      "--y": `${value(index + 701) * 100}%`,
+                      "--d": `-${value(index + 311) * 10}s`,
+                      "--s": `${0.55 + value(index + 97) * 1.05}px`,
+                      "--t": `${7 + value(index + 509) * 5}s`,
+                    } as CSSProperties
+                  }
+                />
+              );
+            })}
+          </div>
           <div className="launch-mark">
             <img src="/brand/yrt.png" alt="Yıldız Roket Takımı" />
-            <svg className="launch-engine" viewBox="0 0 80 120" aria-hidden="true">
+            <svg
+              className="launch-engine"
+              viewBox="0 0 80 120"
+              aria-hidden="true"
+            >
               <defs>
                 <linearGradient id="exhaust-core" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stopColor="#fff" stopOpacity=".96" />
@@ -133,9 +264,18 @@ export function BoardNotes(props: {
                   <stop offset="1" stopColor="#fff" stopOpacity="0" />
                 </linearGradient>
               </defs>
-              <path className="engine-plume outer" d="M26 4h28c-1 25-13 47-14 82C39 51 27 29 26 4z" />
-              <path className="engine-plume core" d="M34 4h12c-1 20-5 39-6 66-1-27-5-46-6-66z" />
-              <path className="engine-wave" d="M30 25c6 4 14 4 20 0M27 46c8 5 18 5 26 0" />
+              <path
+                className="engine-plume outer"
+                d="M26 4h28c-1 25-13 47-14 82C39 51 27 29 26 4z"
+              />
+              <path
+                className="engine-plume core"
+                d="M34 4h12c-1 20-5 39-6 66-1-27-5-46-6-66z"
+              />
+              <path
+                className="engine-wave"
+                d="M30 25c6 4 14 4 20 0M27 46c8 5 18 5 26 0"
+              />
             </svg>
           </div>
         </div>
@@ -145,6 +285,12 @@ export function BoardNotes(props: {
     </div>
   );
 }
+
+type EditorModalState =
+  | { mode: "create"; itemType: Exclude<BoardItemType, "drawing"> }
+  | { mode: "edit"; note: Note }
+  | null;
+
 function BoardCanvas({
   currentUserId,
   teams,
@@ -154,6 +300,9 @@ function BoardCanvas({
   teams: { id: string; name: string; departmentId: string }[];
 } & { scope: "private" | "shared" }) {
   const [filters, setFilters] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
+  const [apps, setApps] = useState<BoardApp[]>([]);
   const [feed, setFeed] = useState<Feed>({
       notes: [],
       canModerate: false,
@@ -168,15 +317,71 @@ function BoardCanvas({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [live, setLive] = useState(false),
-    [editor, setEditor] = useState<Note | "new" | null>(null),
+    [editor, setEditor] = useState<EditorModalState>(null),
     [editorError, setEditorError] = useState(""),
     [saving, setSaving] = useState(false),
     [deleteNote, setDeleteNote] = useState<Note | null>(null);
+
+  // Canvas drawing state
+  const [drawMode, setDrawMode] = useState(false);
+  const [drawTool, setDrawTool] = useState<DrawTool>("arrow");
+  const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
+  const [activeDraft, setActiveDraft] = useState<{
+    tool: DrawTool;
+    strokeStyle: StrokeStyle;
+    points: DrawingPoint[];
+  } | null>(null);
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+
   const sequence = useRef(0),
     socket = useRef<WebSocket | null>(null),
     denied = useRef(false),
     reload = useRef<() => Promise<void>>(async () => {}),
     alive = useRef(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/v1/apps")
+      .then((res) => (res.ok ? (res.json() as Promise<BoardApp[]>) : []))
+      .then((list) => {
+        if (active && Array.isArray(list)) setApps(list);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAddMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [addMenuOpen]);
+
+  useEffect(() => {
+    if (!drawMode) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveDraft(null);
+        setDrawMode(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [drawMode]);
+
   async function load() {
     const id = ++sequence.current;
     setBusy(true);
@@ -200,7 +405,7 @@ function BoardCanvas({
       const code = (e as Error).message;
       setError(
         messages[code] ??
-          "Notlar yüklenemedi. Bağlantını kontrol edip tekrar dene.",
+          "Pano öğeleri yüklenemedi. Bağlantını kontrol edip tekrar dene.",
       );
       if (
         [
@@ -226,6 +431,7 @@ function BoardCanvas({
     }
   }
   reload.current = load;
+
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -233,9 +439,11 @@ function BoardCanvas({
       sequence.current++;
     };
   }, []);
+
   useEffect(() => {
     load();
   }, [page, kind, team, archived]);
+
   useEffect(() => {
     let disposed = false,
       attempts = 0;
@@ -295,7 +503,6 @@ function BoardCanvas({
     }
     document.addEventListener("visibilitychange", visibility);
     connect();
-    // Repair a missed invalidation occasionally; disconnected sessions refresh faster.
     let lastRepair = Date.now();
     repair = setInterval(() => {
       if (document.hidden || denied.current) return;
@@ -316,6 +523,7 @@ function BoardCanvas({
       socket.current?.close();
     };
   }, []);
+
   async function change(note: Note, patch: Record<string, unknown>) {
     setError("");
     try {
@@ -332,40 +540,45 @@ function BoardCanvas({
       setError(message);
     }
   }
-  async function save(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
+
+  function nextCanvasPosition() {
+    const count = feed.notes.length;
+    return {
+      x: 40 + (count % 3) * 340,
+      y: 40 + Math.floor(count / 3) * 320,
+    };
+  }
+
+  async function submitEditorPayload(payload: {
+    title: string;
+    content: string;
+    kind: "note" | "announcement";
+    itemType: BoardItemType;
+    itemData?: Record<string, unknown>;
+    teamId: string | null;
+    dueAt: number | null;
+  }) {
+    if (!editor) return;
     setSaving(true);
     setEditorError("");
-    const date = String(f.get("dueAt") ?? "");
-    const payload = {
-      ...(editor === "new"
-        ? {
-            scope,
-            x: 40 + (feed.notes.length % 3) * 340,
-            y: 40 + Math.floor(feed.notes.length / 3) * 390,
-          }
-        : {}),
-      title: f.get("title"),
-      content: f.get("content"),
-      kind: f.get("kind"),
-      teamId: f.get("teamId") || null,
-      dueAt: date
-        ? Math.floor(new Date(date + "T23:59:59").getTime() / 1000)
-        : null,
-    };
     try {
-      if (editor === "new") await request("/board/notes", payload);
-      else if (editor)
-        await request(
-          "/board/notes/" + editor.id,
-          { ...payload, version: editor.version },
-          "PATCH",
-        );
-      if (editor === "new") {
+      if (editor.mode === "create") {
+        const pos = nextCanvasPosition();
+        await request("/board/notes", {
+          scope,
+          x: pos.x,
+          y: pos.y,
+          ...payload,
+        });
         setArchived("0");
         setKind("");
         setTeam("");
+      } else {
+        await request(
+          "/board/notes/" + editor.note.id,
+          { ...payload, version: editor.note.version },
+          "PATCH",
+        );
       }
       setEditor(null);
       setPage(1);
@@ -373,12 +586,72 @@ function BoardCanvas({
     } catch (e) {
       setEditorError(
         messages[(e as Error).message] ??
-          "Not kaydedilemedi. Tekrar denemeden önce panoyu kontrol et.",
+          "Öğe kaydedilemedi. Tekrar denemeden önce panoyu kontrol et.",
       );
     } finally {
       setSaving(false);
     }
   }
+
+  async function commitDrawing(draft: {
+    tool: DrawTool;
+    strokeStyle: StrokeStyle;
+    points: DrawingPoint[];
+  }) {
+    if (draft.points.length < 2) return;
+    const xs = draft.points.map((p) => p.x);
+    const ys = draft.points.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const span = Math.hypot(maxX - minX, maxY - minY);
+    if (span < 12) return;
+
+    const pad = 20;
+    const boxX = Math.max(0, Math.round(minX - pad));
+    const boxY = Math.max(0, Math.round(minY - pad));
+    const width = Math.max(48, Math.round(maxX - minX + pad * 2));
+    const height = Math.max(48, Math.round(maxY - minY + pad * 2));
+    const relativePoints = draft.points.map((p) => ({
+      x: Math.round(p.x - boxX),
+      y: Math.round(p.y - boxY),
+    }));
+
+    const labelMap: Record<DrawTool, string> = {
+      arrow: "Pano oku",
+      line: "Pano çizgisi",
+      rect: "Vurgu çerçevesi",
+      pen: "Serbest çizim",
+    };
+
+    try {
+      await request("/board/notes", {
+        scope,
+        x: boxX,
+        y: boxY,
+        title: labelMap[draft.tool],
+        content: labelMap[draft.tool],
+        kind: "note",
+        itemType: "drawing",
+        itemData: {
+          tool: draft.tool,
+          strokeStyle: draft.strokeStyle,
+          width,
+          height,
+          points: relativePoints,
+        },
+        teamId: null,
+        dueAt: null,
+      });
+      await load();
+    } catch (e) {
+      setError(
+        messages[(e as Error).message] ?? "Çizim kaydedilemedi. Tekrar dene.",
+      );
+    }
+  }
+
   async function remove() {
     if (!deleteNote) return;
     setSaving(true);
@@ -391,15 +664,54 @@ function BoardCanvas({
       setDeleteNote(null);
       await load();
     } catch (e) {
-      setEditorError(messages[(e as Error).message] ?? "Not silinemedi.");
+      setEditorError(messages[(e as Error).message] ?? "Öğe silinemedi.");
     } finally {
       setSaving(false);
     }
   }
-  const editing = editor && editor !== "new" ? editor : null;
-  const dateValue = editing?.dueAt
-    ? new Date(editing.dueAt * 1000).toLocaleDateString("en-CA")
-    : "";
+
+  function openCreate(itemType: Exclude<BoardItemType, "drawing">) {
+    setAddMenuOpen(false);
+    setDrawMode(false);
+    setEditorError("");
+    setEditor({ mode: "create", itemType });
+  }
+
+  function startDrawingMode(tool: DrawTool) {
+    setAddMenuOpen(false);
+    setDrawTool(tool);
+    setDrawMode(true);
+  }
+
+  function surfaceCoordinates(e: ReactPointerEvent<HTMLDivElement>): DrawingPoint {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(20000, Math.round(e.clientX - rect.left))),
+      y: Math.max(0, Math.min(20000, Math.round(e.clientY - rect.top))),
+    };
+  }
+
+  const editingNote = editor?.mode === "edit" ? editor.note : null;
+  const activeModalType: Exclude<BoardItemType, "drawing"> =
+    editor?.mode === "create"
+      ? editor.itemType
+      : editingNote
+        ? (resolveItemType(editingNote) as Exclude<BoardItemType, "drawing">)
+        : "note";
+
+  const modalTitle =
+    editor?.mode === "edit"
+      ? "Pano öğesini düzenle"
+      : activeModalType === "shortcut"
+        ? "Uygulama kısayolu ekle"
+        : activeModalType === "text"
+          ? "Panoya serbest yazı ekle"
+          : activeModalType === "checklist"
+            ? "Kontrol listesi ekle"
+            : activeModalType === "announcement"
+              ? "Ekip duyurusu ekle"
+              : "Panoya yapışkan not ekle";
+
   return (
     <section
       className="board-notes"
@@ -418,6 +730,16 @@ function BoardCanvas({
           </span>
         </div>
         <div className="notes-tools">
+          <Button
+            variant={drawMode ? "primary" : "bare"}
+            aria-pressed={drawMode}
+            onClick={() => {
+              setActiveDraft(null);
+              setDrawMode((v) => !v);
+            }}
+          >
+            <MoveUpRight size={15} /> {drawMode ? "Çizim açık" : "Çizim & Ok"}
+          </Button>
           <IconButton
             label="Pano filtreleri"
             variant="bare"
@@ -426,34 +748,175 @@ function BoardCanvas({
           >
             <SlidersHorizontal size={16} />
           </IconButton>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setEditorError("");
-              setEditor("new");
-            }}
-          >
-            <Plus size={16} /> Not ekle
-          </Button>
+          <div className="board-add-dropdown" ref={addMenuRef}>
+            <Button
+              variant="primary"
+              aria-expanded={addMenuOpen}
+              aria-haspopup="menu"
+              onClick={() => setAddMenuOpen((v) => !v)}
+            >
+              <Plus size={16} /> Panoya ekle <ChevronDown size={14} />
+            </Button>
+            {addMenuOpen && (
+              <div className="board-add-menu" role="menu" aria-label="Panoya öğe ekle">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => openCreate("note")}
+                >
+                  <StickyNote size={15} />
+                  <div>
+                    <strong>Yapışkan not</strong>
+                    <small>Başlıklı not, ekip etiketi ve son tarih</small>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => openCreate("announcement")}
+                >
+                  <Megaphone size={15} />
+                  <div>
+                    <strong>Ekip duyurusu</strong>
+                    <small>Önemli bildirim ve takım duyuru kartı</small>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => openCreate("shortcut")}
+                >
+                  <AppWindow size={15} />
+                  <div>
+                    <strong>Uygulama kısayolu</strong>
+                    <small>Tıklayan kendi STARBASE hesabıyla bağlanır</small>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => openCreate("text")}
+                >
+                  <Type size={15} />
+                  <div>
+                    <strong>Serbest pano yazısı</strong>
+                    <small>Panoya doğrudan başlık veya yönlendirme yaz</small>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => openCreate("checklist")}
+                >
+                  <CheckSquare size={15} />
+                  <div>
+                    <strong>Kontrol listesi</strong>
+                    <small>İşaretlenebilir görev maddeleri ve ilerleme</small>
+                  </div>
+                </button>
+                <hr />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => startDrawingMode("arrow")}
+                >
+                  <MoveUpRight size={15} />
+                  <div>
+                    <strong>Ok çiz</strong>
+                    <small>Yazıdan kısayola veya nota ok çek</small>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => startDrawingMode("pen")}
+                >
+                  <PenTool size={15} />
+                  <div>
+                    <strong>Serbest çizim & çerçeve</strong>
+                    <small>Pano üzerinde serbest el veya vurgu çizimi</small>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {drawMode && (
+        <div className="board-draw-toolbar" role="toolbar" aria-label="Pano çizim araçları">
+          <span className="board-draw-toolbar__hint">
+            <MoveUpRight size={14} /> Panoda basılı tutup sürükleyerek çiz
+          </span>
+          <div className="board-draw-toolbar__group">
+            {(
+              [
+                ["arrow", "Ok", MoveUpRight],
+                ["line", "Çizgi", Minus],
+                ["rect", "Çerçeve", BoxSelect],
+                ["pen", "Kalem", PenTool],
+              ] as const
+            ).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={drawTool === id}
+                onClick={() => setDrawTool(id)}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
+          <div className="board-draw-toolbar__group">
+            <button
+              type="button"
+              aria-pressed={strokeStyle === "solid"}
+              onClick={() => setStrokeStyle("solid")}
+            >
+              Düz çizgi
+            </button>
+            <button
+              type="button"
+              aria-pressed={strokeStyle === "dashed"}
+              onClick={() => setStrokeStyle("dashed")}
+            >
+              Kesikli
+            </button>
+          </div>
+          <button
+            type="button"
+            className="board-draw-toolbar__close"
+            onClick={() => {
+              setActiveDraft(null);
+              setDrawMode(false);
+            }}
+          >
+            <X size={14} /> Bitti
+          </button>
+        </div>
+      )}
+
       {filters && (
         <div className="notes-filters">
           <SelectMenu
-            label="Not türü"
+            label="Öğe türü"
             value={kind}
             onChange={(v) => {
               setKind(v);
               setPage(1);
             }}
             options={[
-              { value: "", label: "Notlar ve duyurular" },
+              { value: "", label: "Tüm pano öğeleri" },
               { value: "note", label: "Notlar" },
               { value: "announcement", label: "Duyurular" },
+              { value: "shortcut", label: "Uygulama kısayolları" },
+              { value: "text", label: "Serbest yazılar" },
+              { value: "checklist", label: "Kontrol listeleri" },
+              { value: "drawing", label: "Çizimler ve oklar" },
             ]}
           />
           <SelectMenu
-            label="Notların ekibi"
+            label="İlgili ekip"
             value={team}
             onChange={(v) => {
               setTeam(v);
@@ -465,19 +928,19 @@ function BoardCanvas({
             ]}
           />
           <SelectMenu
-            label="Not durumu"
+            label="Durum"
             value={archived}
             onChange={(v) => {
               setArchived(v);
               setPage(1);
             }}
             options={[
-              { value: "0", label: "Aktif notlar" },
+              { value: "0", label: "Aktif öğeler" },
               { value: "1", label: "Arşiv" },
             ]}
           />
           <IconButton
-            label="Notları yenile"
+            label="Panoyu yenile"
             variant="bare"
             disabled={busy}
             onClick={() => load()}
@@ -492,28 +955,85 @@ function BoardCanvas({
         </p>
       )}
       <div
-        className="board-viewport"
-        aria-label="Serbest not alanı"
+        className={"board-viewport" + (drawMode ? " is-drawing" : "")}
+        aria-label="Serbest pano alanı"
         tabIndex={0}
       >
         <div
+          ref={surfaceRef}
           className="board-surface"
           style={{
-            width: Math.max(1400, ...feed.notes.map((n) => n.x + 370)),
-            height: Math.max(1000, ...feed.notes.map((n) => n.y + 500)),
+            width: Math.max(2200, ...feed.notes.map((n) => n.x + 480)),
+            height: Math.max(1400, ...feed.notes.map((n) => n.y + 540)),
           }}
         >
+          {drawMode && (
+            <div
+              className="board-draw-capture"
+              onPointerDown={(e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                e.currentTarget.setPointerCapture(e.pointerId);
+                const pt = surfaceCoordinates(e);
+                setActiveDraft({
+                  tool: drawTool,
+                  strokeStyle,
+                  points: [pt, pt],
+                });
+              }}
+              onPointerMove={(e) => {
+                if (!activeDraft) return;
+                const pt = surfaceCoordinates(e);
+                setActiveDraft((current) => {
+                  if (!current) return null;
+                  if (current.tool === "pen") {
+                    const last = current.points[current.points.length - 1];
+                    if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < 4) {
+                      return current;
+                    }
+                    return { ...current, points: [...current.points, pt] };
+                  }
+                  return {
+                    ...current,
+                    points: [current.points[0], pt],
+                  };
+                });
+              }}
+              onPointerUp={(e) => {
+                if (!activeDraft) return;
+                const finished = activeDraft;
+                setActiveDraft(null);
+                if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                }
+                void commitDrawing(finished);
+              }}
+              onPointerCancel={() => setActiveDraft(null)}
+            >
+              {activeDraft && (
+                <svg className="board-draw-live-svg" aria-hidden="true">
+                  <BoardVectorShape
+                    tool={activeDraft.tool}
+                    strokeStyle={activeDraft.strokeStyle}
+                    points={activeDraft.points}
+                  />
+                </svg>
+              )}
+            </div>
+          )}
+
           {feed.notes.length ? (
             <div className="sticky-grid" aria-busy={busy}>
               {feed.notes.map((n) => {
                 const own = n.authorId === currentUserId,
                   canEdit = own || feed.canModerate;
-                const overdue = n.dueAt !== null && n.dueAt < Date.now() / 1000;
+                const itemType = resolveItemType(n);
                 return (
                   <MovableNote
                     key={n.id}
                     note={n}
-                    canMove={canEdit}
+                    itemType={itemType}
+                    canMove={canEdit && !drawMode}
                     onMove={async (x, y, layoutVersion) => {
                       try {
                         await request(
@@ -525,7 +1045,7 @@ function BoardCanvas({
                       } catch (e) {
                         setError(
                           (e as Error).message === "note_position_conflict"
-                            ? "Not başka bir yerde taşındı. Güncel konumu yüklendi."
+                            ? "Öğe başka bir yerde taşındı. Güncel konumu yüklendi."
                             : "Konum kaydedilemedi. Tekrar dene.",
                         );
                         await reload.current();
@@ -533,106 +1053,22 @@ function BoardCanvas({
                       }
                     }}
                   >
-                    <Panel
-                      className={"sticky-note" + (n.pinned ? " is-pinned" : "")}
-                      data-note-id={n.id}
-                    >
-                      <div className="sticky-kicker">
-                        <span>
-                          {n.kind === "announcement" ? (
-                            <Megaphone size={14} />
-                          ) : (
-                            <StickyNote size={14} />
-                          )}{" "}
-                          {n.kind === "announcement" ? "Duyuru" : "Not"}
-                        </span>
-                        {n.pinned > 0 && (
-                          <span>
-                            <Pin size={13} /> Sabit
-                          </span>
-                        )}
-                      </div>
-                      <h3>{n.title}</h3>
-                      <p className="sticky-content">{n.content}</p>
-                      {n.team && <span className="sticky-team">{n.team}</span>}
-                      {n.dueAt !== null && (
-                        <span
-                          className={
-                            "sticky-deadline" + (overdue ? " overdue" : "")
-                          }
-                        >
-                          <Calendar size={13} />
-                          {new Date(n.dueAt * 1000).toLocaleDateString("tr-TR")}
-                          {overdue ? " · Tarihi geçti" : ""}
-                        </span>
-                      )}
-                      <div className="sticky-author">
-                        <span>
-                          {n.authorFirstName
-                            ? [n.authorFirstName, n.authorLastName].join(" ")
-                            : "Eski üye"}
-                        </span>
-                        <time
-                          dateTime={new Date(n.updatedAt * 1000).toISOString()}
-                          title={n.version > 1 ? "Düzenlendi" : "Oluşturuldu"}
-                        >
-                          {time(n.updatedAt)}
-                          {n.version > 1 ? " · Düzenlendi" : ""}
-                        </time>
-                      </div>
-                      {canEdit && (
-                        <div className="sticky-actions">
-                          {feed.canModerate && (
-                            <IconButton
-                              label={
-                                n.pinned ? "Sabitlemeyi kaldır" : "Notu sabitle"
-                              }
-                              size="sm"
-                              variant="bare"
-                              onClick={() => change(n, { pinned: !n.pinned })}
-                            >
-                              <Pin size={15} />
-                            </IconButton>
-                          )}
-                          <IconButton
-                            label="Notu düzenle"
-                            size="sm"
-                            variant="bare"
-                            onClick={() => {
-                              setEditorError("");
-                              setEditor(n);
-                            }}
-                          >
-                            <Pencil size={15} />
-                          </IconButton>
-                          <IconButton
-                            label={
-                              n.archived ? "Notu geri getir" : "Notu arşivle"
-                            }
-                            size="sm"
-                            variant="bare"
-                            onClick={() => change(n, { archived: !n.archived })}
-                          >
-                            {n.archived ? (
-                              <ArchiveRestore size={15} />
-                            ) : (
-                              <Archive size={15} />
-                            )}
-                          </IconButton>
-                          <IconButton
-                            label="Notu sil"
-                            size="sm"
-                            variant="bare"
-                            onClick={() => {
-                              setEditorError("");
-                              setDeleteNote(n);
-                            }}
-                          >
-                            <Trash2 size={15} />
-                          </IconButton>
-                        </div>
-                      )}
-                    </Panel>
+                    <BoardItemRenderer
+                      note={n}
+                      itemType={itemType}
+                      apps={apps}
+                      canEdit={canEdit}
+                      canModerate={feed.canModerate}
+                      onChange={(patch) => change(n, patch)}
+                      onEdit={() => {
+                        setEditorError("");
+                        setEditor({ mode: "edit", note: n });
+                      }}
+                      onDelete={() => {
+                        setEditorError("");
+                        setDeleteNote(n);
+                      }}
+                    />
                   </MovableNote>
                 );
               })}
@@ -642,12 +1078,12 @@ function BoardCanvas({
             !error && (
               <EmptyState
                 title={
-                  archived === "1" ? "Arşivde not yok" : "İlk notu sen bırak"
+                  archived === "1" ? "Arşivde öğe yok" : "İlk öğeyi sen bırak"
                 }
                 description={
                   scope === "private"
-                    ? "Yalnızca senin gördüğün notlar. Ekle, başlığından tut ve istediğin yere bırak."
-                    : "Ekip notları ve duyurular için ortak alanımız. Kendi notlarını başlığından tutup taşı."
+                    ? "Not, uygulama kısayolu, serbest yazı veya ok çizimi ekle; başlığından tutup istediğin yere taşı."
+                    : "Ekip notları, uygulama kısayolları, yönlendirme yazıları ve ok çizimleri için ortak çalışma panosu."
                 }
               />
             )
@@ -673,23 +1109,26 @@ function BoardCanvas({
       )}
       <Dialog
         open={editor !== null}
-        title={editor === "new" ? "Panoya not ekle" : "Notu düzenle"}
+        title={modalTitle}
         description={
           scope === "private"
-            ? "Bu not yalnızca senin panonda görünecek."
-            : "Takım üyelerinin tamamı bu notu görebilir."
+            ? "Bu öğe yalnızca senin kişisel panonda görünecek."
+            : activeModalType === "shortcut"
+              ? "Ortak panodaki kısayola tıklayan her üye kendi STARBASE hesabıyla uygulamaya bağlanır."
+              : "Takım üyelerinin tamamı ortak panodaki bu öğeyi görebilir."
         }
         onClose={() => {
           if (!saving) setEditor(null);
         }}
       >
         {editor !== null && (
-          <NoteForm
-            key={editing?.id ?? "new"}
-            note={editing}
+          <BoardItemForm
+            key={editingNote?.id ?? `new-${activeModalType}`}
+            itemType={activeModalType}
+            note={editingNote}
             teams={teams}
-            onSubmit={save}
-            dateValue={dateValue}
+            apps={apps}
+            onSubmit={submitEditorPayload}
             error={editorError}
             saving={saving}
           />
@@ -697,8 +1136,8 @@ function BoardCanvas({
       </Dialog>
       <Dialog
         open={!!deleteNote}
-        title="Notu sil"
-        description="Bu not kalıcı olarak silinecek. Saklamak istersen arşivleyebilirsin."
+        title="Pano öğesini sil"
+        description="Bu öğe panodan kalıcı olarak silinecek."
         onClose={() => {
           if (!saving) setDeleteNote(null);
         }}
@@ -715,65 +1154,811 @@ function BoardCanvas({
     </section>
   );
 }
-function NoteForm({
+
+function BoardVectorShape({
+  tool,
+  strokeStyle,
+  points,
+}: {
+  tool: DrawTool;
+  strokeStyle: StrokeStyle;
+  points: DrawingPoint[];
+}) {
+  const markerId = useId();
+  if (points.length < 2) return null;
+  const dashArray = strokeStyle === "dashed" ? "7 5" : undefined;
+  const start = points[0];
+  const end = points[points.length - 1];
+
+  if (tool === "arrow" || tool === "line") {
+    return (
+      <g>
+        {tool === "arrow" && (
+          <defs>
+            <marker
+              id={markerId}
+              viewBox="0 0 12 12"
+              refX="10"
+              refY="6"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
+              <path
+                d="M 1 2 L 10 6 L 1 10 z"
+                fill="#ffffff"
+                stroke="#ffffff"
+                strokeWidth="1"
+              />
+            </marker>
+          </defs>
+        )}
+        <line
+          x1={start.x}
+          y1={start.y}
+          x2={end.x}
+          y2={end.y}
+          stroke="#ffffff"
+          strokeWidth="2.2"
+          strokeLinecap="square"
+          strokeDasharray={dashArray}
+          markerEnd={tool === "arrow" ? `url(#${markerId})` : undefined}
+        />
+      </g>
+    );
+  }
+
+  if (tool === "rect") {
+    const x = Math.min(start.x, end.x);
+    const y = Math.min(start.y, end.y);
+    const width = Math.max(4, Math.abs(end.x - start.x));
+    const height = Math.max(4, Math.abs(end.y - start.y));
+    return (
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="#ffffff08"
+        stroke="#ffffff"
+        strokeWidth="2"
+        strokeDasharray={dashArray}
+      />
+    );
+  }
+
+  const d = points
+    .map((pt, idx) => `${idx === 0 ? "M" : "L"} ${pt.x} ${pt.y}`)
+    .join(" ");
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke="#ffffff"
+      strokeWidth="2.2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      strokeDasharray={dashArray}
+    />
+  );
+}
+
+function BoardItemRenderer({
+  note,
+  itemType,
+  apps,
+  canEdit,
+  canModerate,
+  onChange,
+  onEdit,
+  onDelete,
+}: {
+  note: Note;
+  itemType: BoardItemType;
+  apps: BoardApp[];
+  canEdit: boolean;
+  canModerate: boolean;
+  onChange: (patch: Record<string, unknown>) => Promise<void>;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const data = note.itemData ?? {};
+  const authorLabel = note.authorFirstName
+    ? [note.authorFirstName, note.authorLastName].join(" ")
+    : "Takım üyesi";
+
+  if (itemType === "drawing") {
+    const tool =
+      data.tool === "line" || data.tool === "rect" || data.tool === "pen"
+        ? data.tool
+        : "arrow";
+    const strokeStyle = data.strokeStyle === "dashed" ? "dashed" : "solid";
+    const width =
+      typeof data.width === "number" && data.width >= 32 ? data.width : 180;
+    const height =
+      typeof data.height === "number" && data.height >= 32 ? data.height : 120;
+    const rawPoints = Array.isArray(data.points) ? data.points : [];
+    const points: DrawingPoint[] = rawPoints
+      .filter(
+        (pt): pt is DrawingPoint =>
+          Boolean(pt) &&
+          typeof (pt as DrawingPoint).x === "number" &&
+          typeof (pt as DrawingPoint).y === "number",
+      )
+      .map((pt) => ({ x: pt.x, y: pt.y }));
+
+    return (
+      <div
+        className="board-drawing-item"
+        style={{ width, height }}
+        data-note-id={note.id}
+      >
+        <svg
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          aria-label={note.title}
+        >
+          <BoardVectorShape
+            tool={tool}
+            strokeStyle={strokeStyle}
+            points={points}
+          />
+        </svg>
+        {canEdit && (
+          <button
+            type="button"
+            className="board-drawing-delete"
+            title="Çizimi sil"
+            aria-label="Çizimi sil"
+            onClick={onDelete}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (itemType === "text") {
+    const size =
+      data.size === "sm" || data.size === "md" || data.size === "lg"
+        ? data.size
+        : "lg";
+    const framed = Boolean(data.framed);
+    return (
+      <div
+        className={`board-canvas-text size-${size}${framed ? " is-framed" : ""}`}
+        data-note-id={note.id}
+      >
+        <div className="board-canvas-text__body">
+          <strong>{note.title}</strong>
+          {note.content && note.content !== note.title && (
+            <p>{note.content}</p>
+          )}
+        </div>
+        <div className="board-canvas-text__meta">
+          <span>{authorLabel}</span>
+          {canEdit && (
+            <div className="board-canvas-text__actions">
+              <button
+                type="button"
+                onClick={onEdit}
+                aria-label="Yazıyı düzenle"
+                title="Yazıyı düzenle"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                aria-label="Yazıyı sil"
+                title="Yazıyı sil"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (itemType === "shortcut") {
+    const appId = typeof data.appId === "string" ? data.appId : "";
+    const matchedApp = apps.find((a) => a.id === appId);
+    const appName =
+      matchedApp?.name ??
+      (typeof data.appName === "string" && data.appName
+        ? data.appName
+        : note.title);
+    const logoUrl =
+      matchedApp?.logoUrl ??
+      (typeof data.logoUrl === "string" ? data.logoUrl : "");
+    const rawLaunchUrl =
+      matchedApp?.launchUrl ??
+      (typeof data.launchUrl === "string" ? data.launchUrl : "");
+    const personalLaunchUrl = buildPersonalLaunchUrl(rawLaunchUrl);
+
+    return (
+      <Panel
+        className={
+          "sticky-note board-shortcut-card" + (note.pinned ? " is-pinned" : "")
+        }
+        data-note-id={note.id}
+      >
+        <div className="sticky-kicker">
+          <span>
+            <AppWindow size={14} /> Uygulama kısayolu
+          </span>
+          {note.pinned > 0 && (
+            <span>
+              <Pin size={13} /> Sabit
+            </span>
+          )}
+        </div>
+        <div className="board-shortcut-card__identity">
+          <div className="board-shortcut-card__logo" aria-hidden="true">
+            {logoUrl ? <img src={logoUrl} alt="" /> : <AppWindow size={26} />}
+          </div>
+          <div>
+            <h3>{note.title || appName}</h3>
+            <small>{appName}</small>
+          </div>
+        </div>
+        <p className="sticky-content">{note.content}</p>
+        {note.team && <span className="sticky-team">{note.team}</span>}
+        {personalLaunchUrl && (
+          <a
+            className="sd-button sd-button--primary board-shortcut-card__launch"
+            href={personalLaunchUrl}
+            target={personalLaunchUrl.startsWith("http") ? "_blank" : undefined}
+            rel={
+              personalLaunchUrl.startsWith("http") ? "noreferrer" : undefined
+            }
+          >
+            <span>Kendi hesabınla aç</span>
+            <ArrowUpRight size={15} />
+          </a>
+        )}
+        <div className="sticky-author">
+          <span>{authorLabel}</span>
+          <time dateTime={new Date(note.updatedAt * 1000).toISOString()}>
+            {time(note.updatedAt)}
+          </time>
+        </div>
+        {canEdit && (
+          <div className="sticky-actions">
+            {canModerate && (
+              <IconButton
+                label={note.pinned ? "Sabitlemeyi kaldır" : "Sabitle"}
+                size="sm"
+                variant="bare"
+                onClick={() => onChange({ pinned: !note.pinned })}
+              >
+                <Pin size={15} />
+              </IconButton>
+            )}
+            <IconButton
+              label="Kısayolu düzenle"
+              size="sm"
+              variant="bare"
+              onClick={onEdit}
+            >
+              <Pencil size={15} />
+            </IconButton>
+            <IconButton
+              label="Kısayolu sil"
+              size="sm"
+              variant="bare"
+              onClick={onDelete}
+            >
+              <Trash2 size={15} />
+            </IconButton>
+          </div>
+        )}
+      </Panel>
+    );
+  }
+
+  if (itemType === "checklist") {
+    const rawItems = Array.isArray(data.items) ? data.items : [];
+    const items: ChecklistItem[] = rawItems
+      .filter(
+        (item): item is ChecklistItem =>
+          Boolean(item) && typeof (item as ChecklistItem).text === "string",
+      )
+      .map((item, idx) => ({
+        id: typeof item.id === "string" ? item.id : `item-${idx}`,
+        text: item.text,
+        done: Boolean(item.done),
+      }));
+    const doneCount = items.filter((i) => i.done).length;
+    const progress = items.length
+      ? Math.round((doneCount / items.length) * 100)
+      : 0;
+
+    return (
+      <Panel
+        className={
+          "sticky-note board-checklist-card" + (note.pinned ? " is-pinned" : "")
+        }
+        data-note-id={note.id}
+      >
+        <div className="sticky-kicker">
+          <span>
+            <CheckSquare size={14} /> Kontrol listesi
+          </span>
+          <span>
+            {doneCount}/{items.length} ({progress}%)
+          </span>
+        </div>
+        <h3>{note.title}</h3>
+        <div className="board-checklist-progress" aria-hidden="true">
+          <i style={{ width: `${progress}%` }} />
+        </div>
+        <ul className="board-checklist-items">
+          {items.map((item) => (
+            <li key={item.id} className={item.done ? "is-done" : ""}>
+              <button
+                type="button"
+                disabled={!canEdit}
+                onClick={() => {
+                  const nextItems = items.map((entry) =>
+                    entry.id === item.id
+                      ? { ...entry, done: !entry.done }
+                      : entry,
+                  );
+                  void onChange({
+                    itemType: "checklist",
+                    itemData: { ...data, items: nextItems },
+                  });
+                }}
+              >
+                {item.done ? <CheckSquare size={14} /> : <Square size={14} />}
+                <span>{item.text}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {note.team && <span className="sticky-team">{note.team}</span>}
+        <div className="sticky-author">
+          <span>{authorLabel}</span>
+          <time dateTime={new Date(note.updatedAt * 1000).toISOString()}>
+            {time(note.updatedAt)}
+          </time>
+        </div>
+        {canEdit && (
+          <div className="sticky-actions">
+            {canModerate && (
+              <IconButton
+                label={note.pinned ? "Sabitlemeyi kaldır" : "Sabitle"}
+                size="sm"
+                variant="bare"
+                onClick={() => onChange({ pinned: !note.pinned })}
+              >
+                <Pin size={15} />
+              </IconButton>
+            )}
+            <IconButton
+              label="Listeyi düzenle"
+              size="sm"
+              variant="bare"
+              onClick={onEdit}
+            >
+              <Pencil size={15} />
+            </IconButton>
+            <IconButton
+              label="Listeyi sil"
+              size="sm"
+              variant="bare"
+              onClick={onDelete}
+            >
+              <Trash2 size={15} />
+            </IconButton>
+          </div>
+        )}
+      </Panel>
+    );
+  }
+
+  const overdue = note.dueAt !== null && note.dueAt < Date.now() / 1000;
+  return (
+    <Panel
+      className={"sticky-note" + (note.pinned ? " is-pinned" : "")}
+      data-note-id={note.id}
+    >
+      <div className="sticky-kicker">
+        <span>
+          {note.kind === "announcement" ? (
+            <Megaphone size={14} />
+          ) : (
+            <StickyNote size={14} />
+          )}{" "}
+          {note.kind === "announcement" ? "Duyuru" : "Not"}
+        </span>
+        {note.pinned > 0 && (
+          <span>
+            <Pin size={13} /> Sabit
+          </span>
+        )}
+      </div>
+      <h3>{note.title}</h3>
+      <p className="sticky-content">{note.content}</p>
+      {note.team && <span className="sticky-team">{note.team}</span>}
+      {note.dueAt !== null && (
+        <span className={"sticky-deadline" + (overdue ? " overdue" : "")}>
+          <Calendar size={13} />
+          {new Date(note.dueAt * 1000).toLocaleDateString("tr-TR")}
+          {overdue ? " · Tarihi geçti" : ""}
+        </span>
+      )}
+      <div className="sticky-author">
+        <span>{authorLabel}</span>
+        <time
+          dateTime={new Date(note.updatedAt * 1000).toISOString()}
+          title={note.version > 1 ? "Düzenlendi" : "Oluşturuldu"}
+        >
+          {time(note.updatedAt)}
+          {note.version > 1 ? " · Düzenlendi" : ""}
+        </time>
+      </div>
+      {canEdit && (
+        <div className="sticky-actions">
+          {canModerate && (
+            <IconButton
+              label={note.pinned ? "Sabitlemeyi kaldır" : "Notu sabitle"}
+              size="sm"
+              variant="bare"
+              onClick={() => onChange({ pinned: !note.pinned })}
+            >
+              <Pin size={15} />
+            </IconButton>
+          )}
+          <IconButton
+            label="Notu düzenle"
+            size="sm"
+            variant="bare"
+            onClick={onEdit}
+          >
+            <Pencil size={15} />
+          </IconButton>
+          <IconButton
+            label={note.archived ? "Notu geri getir" : "Notu arşivle"}
+            size="sm"
+            variant="bare"
+            onClick={() => onChange({ archived: !note.archived })}
+          >
+            {note.archived ? (
+              <ArchiveRestore size={15} />
+            ) : (
+              <Archive size={15} />
+            )}
+          </IconButton>
+          <IconButton
+            label="Notu sil"
+            size="sm"
+            variant="bare"
+            onClick={onDelete}
+          >
+            <Trash2 size={15} />
+          </IconButton>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function BoardItemForm({
+  itemType,
   note,
   teams,
+  apps,
   onSubmit,
-  dateValue,
   error,
   saving,
 }: {
+  itemType: Exclude<BoardItemType, "drawing">;
   note: Note | null;
   teams: { id: string; name: string }[];
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
-  dateValue: string;
+  apps: BoardApp[];
+  onSubmit: (payload: {
+    title: string;
+    content: string;
+    kind: "note" | "announcement";
+    itemType: BoardItemType;
+    itemData?: Record<string, unknown>;
+    teamId: string | null;
+    dueAt: number | null;
+  }) => Promise<void>;
   error: string;
   saving: boolean;
 }) {
-  const [kind, setKind] = useState(note?.kind ?? "note"),
-    [team, setTeam] = useState(note?.teamId ?? "");
+  const existingData = note?.itemData ?? {};
+  const [kind, setKind] = useState<"note" | "announcement">(
+    itemType === "announcement" || note?.kind === "announcement"
+      ? "announcement"
+      : "note",
+  );
+  const [team, setTeam] = useState(note?.teamId ?? "");
+  const [selectedAppId, setSelectedAppId] = useState<string>(() => {
+    if (typeof existingData.appId === "string" && existingData.appId) {
+      return existingData.appId;
+    }
+    return apps[0]?.id ?? "yrt-latex-web";
+  });
+  const [textSize, setTextSize] = useState<"sm" | "md" | "lg">(() =>
+    existingData.size === "sm" ||
+    existingData.size === "md" ||
+    existingData.size === "lg"
+      ? existingData.size
+      : "lg",
+  );
+  const [textFramed, setTextFramed] = useState<string>(() =>
+    existingData.framed ? "1" : "0",
+  );
+
+  const defaultChecklistLines = Array.isArray(existingData.items)
+    ? (existingData.items as ChecklistItem[])
+        .map((i) => i.text)
+        .filter(Boolean)
+        .join("\n")
+    : note?.content ?? "";
+
+  const dateValue = note?.dueAt
+    ? new Date(note.dueAt * 1000).toLocaleDateString("en-CA")
+    : "";
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+
+    if (itemType === "shortcut") {
+      const app =
+        apps.find((a) => a.id === selectedAppId) ?? {
+          id: selectedAppId,
+          name: "YRT LaTeX",
+          logoUrl: "/api/v1/apps/yrt-latex-web/logo",
+          launchUrl: "https://yrt-latex.web.app/?starbase_login=1",
+        };
+      const customTitle = String(f.get("title") ?? "").trim() || app.name;
+      const customNote =
+        String(f.get("content") ?? "").trim() ||
+        `${app.name} çalışma alanına kendi STARBASE hesabınla hızlı geçiş yap.`;
+      void onSubmit({
+        title: customTitle,
+        content: customNote,
+        kind: "note",
+        itemType: "shortcut",
+        itemData: {
+          appId: app.id,
+          appName: app.name,
+          logoUrl: app.logoUrl,
+          launchUrl: app.launchUrl,
+        },
+        teamId: team || null,
+        dueAt: null,
+      });
+      return;
+    }
+
+    if (itemType === "text") {
+      const mainText = String(f.get("title") ?? "").trim();
+      const subText = String(f.get("content") ?? "").trim() || mainText;
+      void onSubmit({
+        title: mainText,
+        content: subText,
+        kind: "note",
+        itemType: "text",
+        itemData: {
+          size: textSize,
+          framed: textFramed === "1",
+        },
+        teamId: null,
+        dueAt: null,
+      });
+      return;
+    }
+
+    if (itemType === "checklist") {
+      const title = String(f.get("title") ?? "").trim();
+      const rawLines = String(f.get("content") ?? "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const prevItems = Array.isArray(existingData.items)
+        ? (existingData.items as ChecklistItem[])
+        : [];
+      const items: ChecklistItem[] = rawLines.map((line, index) => {
+        const matched = prevItems.find((p) => p.text === line);
+        return {
+          id: matched?.id ?? `chk-${index}-${Date.now()}`,
+          text: line,
+          done: matched?.done ?? false,
+        };
+      });
+      void onSubmit({
+        title,
+        content: rawLines.join("\n") || title,
+        kind: "note",
+        itemType: "checklist",
+        itemData: { items },
+        teamId: team || null,
+        dueAt: null,
+      });
+      return;
+    }
+
+    const date = String(f.get("dueAt") ?? "");
+    void onSubmit({
+      title: String(f.get("title") ?? "").trim(),
+      content: String(f.get("content") ?? "").trim(),
+      kind,
+      itemType: kind,
+      itemData: {},
+      teamId: team || null,
+      dueAt: date
+        ? Math.floor(new Date(date + "T23:59:59").getTime() / 1000)
+        : null,
+    });
+  }
+
   return (
-    <form onSubmit={onSubmit}>
-      <TextField
-        name="title"
-        label="Başlık"
-        defaultValue={note?.title ?? ""}
-        maxLength={120}
-        required
-      />
-      <TextArea
-        name="content"
-        label="Not"
-        defaultValue={note?.content ?? ""}
-        maxLength={2000}
-        required
-      />
-      <input type="hidden" name="kind" value={kind} />
-      <SelectMenu
-        label="Not veya duyuru"
-        value={kind}
-        onChange={(v) => setKind(v as "note" | "announcement")}
-        options={[
-          { value: "note", label: "Not" },
-          { value: "announcement", label: "Duyuru" },
-        ]}
-      />
-      <input type="hidden" name="teamId" value={team} />
-      <SelectMenu
-        label="İlgili ekip"
-        value={team}
-        onChange={setTeam}
-        options={[
-          { value: "", label: "Tüm takım" },
-          ...teams.map((t) => ({ value: t.id, label: t.name })),
-        ]}
-      />
-      <TextField
-        name="dueAt"
-        label="Son tarih (isteğe bağlı)"
-        type="date"
-        defaultValue={dateValue}
-      />
+    <form onSubmit={handleSubmit}>
+      {itemType === "shortcut" && (
+        <>
+          <SelectMenu
+            label="STARBASE uygulaması"
+            value={selectedAppId}
+            onChange={setSelectedAppId}
+            options={
+              apps.length
+                ? apps.map((a) => ({ value: a.id, label: a.name }))
+                : [{ value: "yrt-latex-web", label: "YRT LaTeX" }]
+            }
+          />
+          <TextField
+            name="title"
+            label="Kısayol başlığı (isteğe bağlı)"
+            defaultValue={note?.title ?? ""}
+            placeholder="Örn: YRT LaTeX — Rapor Merkezi"
+            maxLength={120}
+          />
+          <TextArea
+            name="content"
+            label="Açıklama / yönlendirme notu"
+            defaultValue={note?.content ?? ""}
+            placeholder="Örn: Güncel AKU-R ve toplantı raporlarına buradan ulaşabilirsiniz."
+            maxLength={600}
+          />
+          <SelectMenu
+            label="İlgili ekip"
+            value={team}
+            onChange={setTeam}
+            options={[
+              { value: "", label: "Tüm takım" },
+              ...teams.map((t) => ({ value: t.id, label: t.name })),
+            ]}
+          />
+        </>
+      )}
+
+      {itemType === "text" && (
+        <>
+          <TextField
+            name="title"
+            label="Pano yazısı"
+            defaultValue={note?.title ?? ""}
+            placeholder="Örn: Bakın şu uygulamaya gidin →"
+            maxLength={120}
+            required
+          />
+          <TextField
+            name="content"
+            label="Alt açıklama (isteğe bağlı)"
+            defaultValue={
+              note && note.content !== note.title ? note.content : ""
+            }
+            placeholder="Örn: Tüm teknik rapor şablonları YRT LaTeX üzerinde güncellendi"
+            maxLength={300}
+          />
+          <SelectMenu
+            label="Yazı boyutu"
+            value={textSize}
+            onChange={(v) => setTextSize(v as "sm" | "md" | "lg")}
+            options={[
+              { value: "lg", label: "Büyük başlık (Çağrı)" },
+              { value: "md", label: "Orta vurgu" },
+              { value: "sm", label: "Kompakt etiket" },
+            ]}
+          />
+          <SelectMenu
+            label="Görünüm"
+            value={textFramed}
+            onChange={setTextFramed}
+            options={[
+              { value: "0", label: "Çerçevesiz serbest yazı" },
+              { value: "1", label: "İnce teknik çerçeveli" },
+            ]}
+          />
+        </>
+      )}
+
+      {itemType === "checklist" && (
+        <>
+          <TextField
+            name="title"
+            label="Liste başlığı"
+            defaultValue={note?.title ?? ""}
+            placeholder="Örn: Uçuş Öncesi Rapor Teslim Listesi"
+            maxLength={120}
+            required
+          />
+          <TextArea
+            name="content"
+            label="Görev maddeleri (her satıra bir madde)"
+            defaultValue={defaultChecklistLines}
+            placeholder={
+              "Avyonik test raporunu YRT LaTeX'te derle\nİtki alt sistem tablosunu güncelle\nSon PDF kontrolünü tamamla"
+            }
+            maxLength={2000}
+            required
+          />
+          <SelectMenu
+            label="İlgili ekip"
+            value={team}
+            onChange={setTeam}
+            options={[
+              { value: "", label: "Tüm takım" },
+              ...teams.map((t) => ({ value: t.id, label: t.name })),
+            ]}
+          />
+        </>
+      )}
+
+      {(itemType === "note" || itemType === "announcement") && (
+        <>
+          <TextField
+            name="title"
+            label="Başlık"
+            defaultValue={note?.title ?? ""}
+            maxLength={120}
+            required
+          />
+          <TextArea
+            name="content"
+            label="İçerik"
+            defaultValue={note?.content ?? ""}
+            maxLength={2000}
+            required
+          />
+          <SelectMenu
+            label="Tür"
+            value={kind}
+            onChange={(v) => setKind(v as "note" | "announcement")}
+            options={[
+              { value: "note", label: "Yapışkan not" },
+              { value: "announcement", label: "Ekip duyurusu" },
+            ]}
+          />
+          <SelectMenu
+            label="İlgili ekip"
+            value={team}
+            onChange={setTeam}
+            options={[
+              { value: "", label: "Tüm takım" },
+              ...teams.map((t) => ({ value: t.id, label: t.name })),
+            ]}
+          />
+          <TextField
+            name="dueAt"
+            label="Son tarih (isteğe bağlı)"
+            type="date"
+            defaultValue={dateValue}
+          />
+        </>
+      )}
+
       {error && (
         <p className="message error" role="alert">
           {error}
@@ -788,11 +1973,13 @@ function NoteForm({
 
 function MovableNote({
   note,
+  itemType,
   canMove,
   onMove,
   children,
 }: {
   note: Note;
+  itemType: BoardItemType;
   canMove: boolean;
   onMove: (x: number, y: number, layoutVersion: number) => Promise<void>;
   children: ReactNode;
@@ -829,15 +2016,17 @@ function MovableNote({
   };
   return (
     <div
-      className={"movable-note" + (moving ? " is-moving" : "")}
+      className={
+        `movable-note is-type-${itemType}` + (moving ? " is-moving" : "")
+      }
       style={{
         transform: `translate(${position.x}px,${position.y}px)`,
-        zIndex: moving ? 100 : undefined,
+        zIndex: moving ? 100 : itemType === "drawing" ? 2 : undefined,
       }}
     >
       <button
         className="note-grip"
-        aria-label={note.title + " notunu taşı"}
+        aria-label={note.title + " öğesini taşı"}
         title="Sürükle veya yön tuşlarıyla taşı (Shift: büyük adım)"
         disabled={!canMove || pending}
         onPointerDown={(e) => {

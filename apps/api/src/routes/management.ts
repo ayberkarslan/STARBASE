@@ -55,7 +55,7 @@ export function register(app: App) {
     await permit(c, "users.manage");
     const id = c.req.param("id");
     const user = await c.env.DB.prepare(
-      "SELECT id,username,email,first_name,last_name,avatar_url,avatar_version,verified,disabled,owner FROM users WHERE id=?",
+      "SELECT id,username,email,first_name,last_name,avatar_url,avatar_version,verified,disabled,owner,custom_title FROM users WHERE id=?",
     )
       .bind(id)
       .first();
@@ -67,18 +67,59 @@ export function register(app: App) {
         .bind(id)
         .all()
     ).results;
-    return c.json({ ...user, memberships });
+    const roles = (
+      await c.env.DB.prepare(
+        "SELECT r.id,r.name FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id=?",
+      )
+        .bind(id)
+        .all()
+    ).results;
+    const badges = (
+      await c.env.DB.prepare(
+        "SELECT b.id,b.name,b.description,b.tier,b.color,b.icon,ub.assigned_at assignedAt FROM user_badges ub JOIN badges b ON b.id=ub.badge_id WHERE ub.user_id=? ORDER BY b.tier DESC, b.name",
+      )
+        .bind(id)
+        .all()
+    ).results;
+    return c.json({ ...user, memberships, roles, badges });
   });
 
   app.get("/api/v1/admin/users", async (c) => {
     await permit(c, "users.manage");
+    const users = (
+      await c.env.DB.prepare(
+        "SELECT id,username,email,first_name,last_name,avatar_url,avatar_version,verified,disabled,owner,custom_title FROM users ORDER BY created_at DESC LIMIT 100",
+      ).all()
+    ).results;
+    const roles = (
+      await c.env.DB.prepare(
+        "SELECT ur.user_id, r.id, r.name FROM user_roles ur JOIN roles r ON r.id=ur.role_id",
+      ).all<{ user_id: string; id: string; name: string }>()
+    ).results;
+    const badges = (
+      await c.env.DB.prepare(
+        "SELECT ub.user_id, b.id, b.name, b.description, b.tier, b.color, b.icon FROM user_badges ub JOIN badges b ON b.id=ub.badge_id ORDER BY b.tier DESC",
+      ).all<{ user_id: string; id: string; name: string; description: string; tier: number; color: string; icon: string }>()
+    ).results;
     return c.json(
-      (
-        await c.env.DB.prepare(
-          "SELECT id,username,email,first_name,last_name,avatar_url,avatar_version,verified,disabled,owner FROM users ORDER BY created_at DESC LIMIT 100",
-        ).all()
-      ).results,
+      users.map((u: any) => ({
+        ...u,
+        roles: roles.filter((r) => r.user_id === u.id).map(({ id, name }) => ({ id, name })),
+        badges: badges.filter((b) => b.user_id === u.id),
+      })),
     );
+  });
+
+  app.patch("/api/v1/admin/users/:id/title", async (c) => {
+    await permit(c, "users.manage");
+    const b = await body(c, z.object({ title: z.string().trim().max(80) }));
+    const uid = c.req.param("id");
+    await c.env.DB.prepare("UPDATE users SET custom_title=? WHERE id=?")
+      .bind(b.title || null, uid)
+      .run();
+    await audit(c, "user.title.update", uid);
+    await notifyDirectory(c.env);
+    return c.json({ ok: true, customTitle: b.title });
   });
   app.patch("/api/v1/admin/users/:id/status", async (c) => {
     await permit(c, "users.manage");
@@ -431,10 +472,10 @@ export function register(app: App) {
       z.object({
         userId: z.string(),
         roleId: z.string(),
-        currentPassword: z.string(),
+        currentPassword: z.string().optional(),
       }),
     );
-    await reauthenticate(c, b.currentPassword);
+    if (b.currentPassword) await reauthenticate(c, b.currentPassword);
     await c.env.DB.prepare("INSERT OR IGNORE INTO user_roles VALUES(?,?)")
       .bind(b.userId, b.roleId)
       .run();
@@ -449,16 +490,106 @@ export function register(app: App) {
       z.object({
         userId: z.string(),
         roleId: z.string(),
-        currentPassword: z.string(),
+        currentPassword: z.string().optional(),
       }),
     );
-    await reauthenticate(c, b.currentPassword);
+    if (b.currentPassword) await reauthenticate(c, b.currentPassword);
     await c.env.DB.prepare(
       "DELETE FROM user_roles WHERE user_id=? AND role_id=?",
     )
       .bind(b.userId, b.roleId)
       .run();
     await audit(c, "role.remove", b.userId);
+    await notifyDirectory(c.env);
+    return c.json({ ok: true });
+  });
+  app.get("/api/v1/badges", async (c) => {
+    if (c.get("session").kind !== "central") fail(403, "central_session_required");
+    const rows = (
+      await c.env.DB.prepare(
+        "SELECT id, name, description, tier, color, icon, created_at createdAt FROM badges ORDER BY tier DESC, name",
+      ).all()
+    ).results;
+    return c.json(rows);
+  });
+  app.post("/api/v1/admin/badges", async (c) => {
+    await permit(c, "roles.manage");
+    const b = await body(
+      c,
+      z.object({
+        id: z.string().regex(/^[a-z0-9_-]{2,60}$/).optional(),
+        name: z.string().trim().min(1).max(80),
+        description: z.string().trim().max(250).default(""),
+        tier: z.number().int().min(1).max(6).default(1),
+        color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#ffffff"),
+        icon: z.string().min(1).max(40).default("shield"),
+      }),
+    );
+    const id = b.id || ("badge-" + crypto.randomUUID().slice(0, 8));
+    await c.env.DB.prepare(
+      "INSERT INTO badges(id, name, description, tier, color, icon, created_at) VALUES(?,?,?,?,?,?,?)",
+    )
+      .bind(id, b.name, b.description, b.tier, b.color, b.icon, now())
+      .run();
+    await audit(c, "badge.create", id);
+    return c.json({ id }, 201);
+  });
+  app.put("/api/v1/admin/badges/:id", async (c) => {
+    await permit(c, "roles.manage");
+    const id = c.req.param("id");
+    const b = await body(
+      c,
+      z.object({
+        name: z.string().trim().min(1).max(80),
+        description: z.string().trim().max(250).default(""),
+        tier: z.number().int().min(1).max(6).default(1),
+        color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#ffffff"),
+        icon: z.string().min(1).max(40).default("shield"),
+      }),
+    );
+    await c.env.DB.prepare(
+      "UPDATE badges SET name=?, description=?, tier=?, color=?, icon=? WHERE id=?",
+    )
+      .bind(b.name, b.description, b.tier, b.color, b.icon, id)
+      .run();
+    await audit(c, "badge.update", id);
+    await notifyDirectory(c.env);
+    return c.json({ ok: true });
+  });
+  app.delete("/api/v1/admin/badges/:id", async (c) => {
+    await permit(c, "roles.manage");
+    const id = c.req.param("id");
+    await c.env.DB.batch([
+      c.env.DB.prepare("DELETE FROM user_badges WHERE badge_id=?").bind(id),
+      c.env.DB.prepare("DELETE FROM badges WHERE id=?").bind(id),
+    ]);
+    await audit(c, "badge.delete", id);
+    await notifyDirectory(c.env);
+    return c.json({ ok: true });
+  });
+  app.post("/api/v1/admin/users/:userId/badges", async (c) => {
+    await permit(c, "users.manage");
+    const userId = c.req.param("userId");
+    const b = await body(c, z.object({ badgeId: z.string().min(1) }));
+    await c.env.DB.prepare(
+      "INSERT OR IGNORE INTO user_badges(user_id, badge_id, assigned_at, assigned_by) VALUES(?,?,?,?)",
+    )
+      .bind(userId, b.badgeId, now(), c.get("user").id)
+      .run();
+    await audit(c, "badge.assign", `${userId}:${b.badgeId}`);
+    await notifyDirectory(c.env);
+    return c.json({ ok: true });
+  });
+  app.delete("/api/v1/admin/users/:userId/badges/:badgeId", async (c) => {
+    await permit(c, "users.manage");
+    const userId = c.req.param("userId");
+    const badgeId = c.req.param("badgeId");
+    await c.env.DB.prepare(
+      "DELETE FROM user_badges WHERE user_id=? AND badge_id=?",
+    )
+      .bind(userId, badgeId)
+      .run();
+    await audit(c, "badge.remove", `${userId}:${badgeId}`);
     await notifyDirectory(c.env);
     return c.json({ ok: true });
   });

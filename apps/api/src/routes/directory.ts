@@ -44,7 +44,7 @@ async function userResources(env: Env, userId: string) {
 }
 async function target(c: C) {
   const u = await c.env.DB.prepare(
-    `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl,u.avatar_version avatarVersion FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
+    `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl,u.avatar_version avatarVersion,u.custom_title customTitle,u.owner FROM users u WHERE u.id=? AND u.disabled=0 AND ${member("u")}`,
   )
     .bind(c.req.param("id"))
     .first();
@@ -116,28 +116,44 @@ export function register(app: App) {
       .first<{ total: number }>();
     const users = (
       await c.env.DB.prepare(
-        `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl,u.avatar_version avatarVersion FROM users u WHERE ${where} ORDER BY u.first_name COLLATE NOCASE,u.last_name COLLATE NOCASE,u.username LIMIT 24 OFFSET ?`,
+        `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName,u.avatar_url avatarUrl,u.avatar_version avatarVersion,u.custom_title customTitle,u.owner FROM users u WHERE ${where} ORDER BY u.first_name COLLATE NOCASE,u.last_name COLLATE NOCASE,u.username LIMIT 24 OFFSET ?`,
       )
         .bind(...bindings, (b.page - 1) * 24)
         .all()
     ).results;
     const ids = users.map((u) => u.id as string);
-    const memberships = ids.length
-      ? (
-          await c.env.DB.prepare(
-            `SELECT m.user_id userId,d.id departmentId,d.name department,t.id teamId,t.name team FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id IN (${ids.map(() => "?").join(",")}) AND d.archived=0 AND (t.id IS NULL OR t.archived=0) ORDER BY d.name,t.name`,
-          )
-            .bind(...ids)
-            .all()
-        ).results
-      : [];
+    const [memberships, userBadges] = await Promise.all([
+      ids.length
+        ? (
+            await c.env.DB.prepare(
+              `SELECT m.user_id userId,d.id departmentId,d.name department,t.id teamId,t.name team FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id IN (${ids.map(() => "?").join(",")}) AND d.archived=0 AND (t.id IS NULL OR t.archived=0) ORDER BY d.name,t.name`,
+            )
+              .bind(...ids)
+              .all()
+          ).results
+        : [],
+      ids.length
+        ? (
+            await c.env.DB.prepare(
+              `SELECT ub.user_id userId, b.id, b.name, b.description, b.tier, b.color, b.icon FROM user_badges ub JOIN badges b ON b.id=ub.badge_id WHERE ub.user_id IN (${ids.map(() => "?").join(",")}) ORDER BY b.tier DESC, b.name`,
+            )
+              .bind(...ids)
+              .all<{ userId: string; id: string; name: string; description: string; tier: number; color: string; icon: string }>()
+          ).results
+        : [],
+    ]);
     return c.json({
-      users: users.map(({ avatarUrl, avatarVersion, ...u }) => ({
+      users: users.map(({ avatarUrl, avatarVersion, customTitle, owner, ...u }: any) => ({
         ...u,
+        owner: !!owner,
+        customTitle: customTitle || (u.username === "ayberkarslan" ? "Geliştirici Hesabı" : (owner ? "Takım Sahibi" : "")),
         photoUrl: avatarUrl ? userPhotoUrl(u.id as string, avatarVersion as number) : "",
         memberships: memberships
           .filter((m) => m.userId === u.id)
           .map(({ userId, ...m }) => m),
+        badges: userBadges
+          .filter((b) => b.userId === u.id)
+          .map(({ userId, ...b }) => b),
       })),
       page: b.page,
       pageSize: 24,
@@ -204,7 +220,7 @@ export function register(app: App) {
   });
   app.get("/api/v1/directory/users/:id", async (c) => {
     await requireDirectory(c);
-    const user = await target(c) as { id: string; avatarUrl: string; avatarVersion: number; [key: string]: unknown };
+    const user = await target(c) as { id: string; avatarUrl: string; avatarVersion: number; customTitle?: string; owner?: number; [key: string]: unknown };
     const memberships = (
       await c.env.DB.prepare(
         "SELECT d.id departmentId,d.name department,t.id teamId,t.name team FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=? AND d.archived=0 AND (t.id IS NULL OR t.archived=0) ORDER BY d.name,t.name",
@@ -213,16 +229,27 @@ export function register(app: App) {
         .all()
     ).results;
     const { avatarUrl, avatarVersion, ...profile } = user;
-    const [applications, resources] = await Promise.all([
+    const [applications, resources, badges, roles] = await Promise.all([
       usedApplications(c.env, c.req.param("id")),
       userResources(c.env, c.req.param("id")),
+      c.env.DB.prepare(
+        "SELECT b.id, b.name, b.description, b.tier, b.color, b.icon, ub.assigned_at assignedAt FROM user_badges ub JOIN badges b ON b.id=ub.badge_id WHERE ub.user_id=? ORDER BY b.tier DESC, b.name",
+      ).bind(c.req.param("id")).all().then((r) => r.results),
+      c.env.DB.prepare(
+        "SELECT r.id, r.name FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id=?",
+      ).bind(c.req.param("id")).all().then((r) => r.results),
     ]);
+    const customTitle = profile.customTitle || (profile.username === "ayberkarslan" ? "Geliştirici Hesabı" : (profile.owner ? "Takım Sahibi" : ""));
     return c.json({
       ...profile,
+      owner: !!profile.owner,
+      customTitle,
       photoUrl: avatarUrl ? userPhotoUrl(user.id, avatarVersion) : "",
       memberships,
       applications,
       resources,
+      badges,
+      roles,
     });
   });
   app.get("/api/v1/me/resources", async (c) => {

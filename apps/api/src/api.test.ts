@@ -48,6 +48,8 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0019_visit_devices.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0020_modular_app_resources.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0021_yrt_latex_app.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0022_board_canvas_widgets.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0023_user_roles_and_badges.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -1352,5 +1354,48 @@ describe("shared board notes", () => {
     expect(removeSync.status).toBe(200);
     const afterDelete: any = await (await call("/directory/users/u2")).json();
     expect(afterDelete.resources).toEqual([]);
+  });
+  it("manages badges, user custom titles, and admin role assignments", async () => {
+    // 1. List badges
+    const badgesRes = await call("/badges");
+    expect(badgesRes.status).toBe(200);
+    const badges: any[] = await badgesRes.json();
+    expect(badges.some((b) => b.id === "developer" && b.tier === 6)).toBe(true);
+    expect(badges.some((b) => b.id === "lead-avionics" && b.tier === 4)).toBe(true);
+
+    // 2. Custom title on /me and /directory
+    const initialMe: any = await (await call("/me")).json();
+    expect(initialMe.customTitle).toBe("Takım Sahibi");
+
+    const updateTitleRes = await call("/me/title", { title: "Baş Geliştirici" }, "central", "PUT");
+    expect(updateTitleRes.status).toBe(200);
+    const updatedMe: any = await (await call("/me")).json();
+    expect(updatedMe.customTitle).toBe("Baş Geliştirici");
+
+    // 3. Assign admin role to user u2
+    const assignAdminRes = await call("/admin/role-assignments", {
+      userId: "u2",
+      roleId: "admin",
+    });
+    expect(assignAdminRes.status).toBe(200);
+
+    const userDetails: any = await (await call("/admin/users/u2")).json();
+    expect(userDetails.roles.some((r: any) => r.id === "admin")).toBe(true);
+
+    // 4. Assign badge to user u2
+    const assignBadgeRes = await call("/admin/users/u2/badges", {
+      badgeId: "developer",
+    });
+    expect(assignBadgeRes.status).toBe(200);
+
+    const u2Profile: any = await (await call("/directory/users/u2")).json();
+    expect(u2Profile.badges.some((b: any) => b.id === "developer")).toBe(true);
+
+    // 5. Unassign badge from user u2
+    const unassignBadgeRes = await call("/admin/users/u2/badges/developer", undefined, "central", "DELETE");
+    expect(unassignBadgeRes.status).toBe(200);
+
+    const u2ProfileAfter: any = await (await call("/directory/users/u2")).json();
+    expect(u2ProfileAfter.badges.some((b: any) => b.id === "developer")).toBe(false);
   });
 });

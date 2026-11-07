@@ -86,7 +86,33 @@ export function register(app: App) {
           .all()
       ).results;
     if (s.kind === "central") result.owner = !!u.owner;
+    const customTitle = u.custom_title || (u.username === "ayberkarslan" ? "Geliştirici Hesabı" : (u.owner ? "Takım Sahibi" : ""));
+    const badges = (
+      await c.env.DB.prepare(
+        "SELECT b.id, b.name, b.description, b.tier, b.color, b.icon, ub.assigned_at assignedAt FROM user_badges ub JOIN badges b ON b.id=ub.badge_id WHERE ub.user_id=? ORDER BY b.tier DESC, b.name",
+      )
+        .bind(u.id)
+        .all()
+    ).results;
+    const roles = (
+      await c.env.DB.prepare(
+        "SELECT r.id, r.name FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id=?",
+      )
+        .bind(u.id)
+        .all()
+    ).results;
+    Object.assign(result, { customTitle, badges, roles });
     return c.json(result);
+  });
+  app.put("/api/v1/me/title", async (c) => {
+    if (c.get("session").kind !== "central") fail(403, "central_session_required");
+    const b = await body(c, z.object({ title: z.string().trim().max(80) }));
+    const u = c.get("user");
+    await c.env.DB.prepare("UPDATE users SET custom_title=? WHERE id=?")
+      .bind(b.title || null, u.id)
+      .run();
+    await notifyDirectory(c.env);
+    return c.json({ ok: true, customTitle: b.title });
   });
   app.get("/api/v1/sessions", async (c) => {
     if (c.get("session").kind !== "central")

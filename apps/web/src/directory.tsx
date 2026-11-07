@@ -408,14 +408,19 @@ export function TeamDirectory({
                     className="member-card"
                     onClick={() => setSelected(u.id)}
                   >
-                    <span className="member-initials" aria-hidden="true">
-                      {u.photoUrl ? <img src={u.photoUrl} alt="" /> : <>{u.firstName[0]}{u.lastName[0]}</>}
-                    </span>
-                    <span className="member-card-body">
-                      <strong>
-                        {u.firstName} {u.lastName}
-                      </strong>
-                      <span>@{u.username}</span>
+                    <div className="member-card__top">
+                      <span className="member-initials" aria-hidden="true">
+                        {u.photoUrl ? <img src={u.photoUrl} alt="" /> : <>{u.firstName[0]}{u.lastName[0]}</>}
+                      </span>
+                      <div className="member-card__title">
+                        <strong>
+                          {u.firstName} {u.lastName}
+                        </strong>
+                        <span>@{u.username}</span>
+                      </div>
+                      <ArrowUpRight className="member-card__arrow" size={15} />
+                    </div>
+                    <div className="member-card__info">
                       <small>
                         {u.memberships.length
                           ? u.memberships
@@ -423,13 +428,12 @@ export function TeamDirectory({
                               .join(" · ")
                           : "Ekip atanmamış"}
                       </small>
-                      {(u as any).badges?.length ? (
-                        <div style={{ marginTop: "4px" }}>
-                          <BadgeList badges={(u as any).badges} size="sm" />
-                        </div>
-                      ) : null}
-                    </span>
-                    <ArrowUpRight size={16} />
+                    </div>
+                    {(u as any).badges?.length ? (
+                      <div className="member-card__badges">
+                        <BadgeList badges={(u as any).badges} size="sm" />
+                      </div>
+                    ) : null}
                   </Button>
                 ))}
               </div>

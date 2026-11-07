@@ -27,50 +27,119 @@
 }
 .member-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
   gap: 16px;
 }
 .member-card.sd-button {
   position: relative;
+  display: flex;
+  flex-direction: column;
   justify-content: flex-start;
-  align-items: flex-start;
-  gap: 16px;
-  min-height: 134px;
-  padding: 24px;
+  align-items: stretch;
+  min-height: 148px;
+  height: 100%;
+  padding: 18px 20px 16px;
   text-align: left;
+  background: #000000;
+  border: 1px solid #ffffff26;
+  border-radius: 6px;
+  gap: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  box-sizing: border-box;
+}
+.member-card.sd-button:hover {
+  border-color: #ffffff55;
+  background: #ffffff05;
+}
+.member-card__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 .member-initials {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: 1px solid #ffffff40;
   border-radius: 50%;
   font-size: 11px;
   flex: none;
+  overflow: hidden;
+  background: #000000;
 }
-.member-card-body {
-  display: grid;
-  gap: 9px;
+.member-initials img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.member-card__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
   flex: 1;
+  padding-right: 22px;
 }
-.member-card-body strong {
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
+.member-card__title strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.member-card-body > span {
-  font-size: 10px;
-  overflow-wrap: anywhere;
+.member-card__title span {
+  font-size: 10.5px;
+  color: #ffffff75;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.member-card-body small {
-  font-size: 10px;
-  line-height: 1.8;
+.member-card__arrow {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  color: #ffffff45;
+  flex: none;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
-.member-card > svg {
-  margin-top: 4px;
+.member-card.sd-button:hover .member-card__arrow {
+  color: #ffffff;
+  transform: translate(1px, -1px);
+}
+.member-card__info {
+  margin-top: 10px;
+  width: 100%;
+  min-width: 0;
+}
+.member-card__info small {
+  font-size: 10.5px;
+  color: #ffffffa0;
+  line-height: 1.4;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-card__badges {
+  margin-top: auto;
+  padding-top: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.member-card__badges .badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+.member-card__badges .badge-pill {
+  max-width: 100%;
 }
 .directory-pagination {
   display: flex;

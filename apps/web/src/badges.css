@@ -21,6 +21,14 @@
   color: #ffffff;
   user-select: none;
   transition: border-color 0.15s ease, color 0.15s ease;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.badge-pill > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge-pill--sm {

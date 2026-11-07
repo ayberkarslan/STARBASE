@@ -2,11 +2,54 @@
   display: grid;
   gap: 16px;
 }
-.application-detail > .sd-button {
-  justify-self: start;
+.application-detail-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.application-detail-nav > .sd-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+.application-detail-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid #ffffff30;
+  background: transparent;
+  color: #ffffffa6;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+.application-detail-refresh:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: #ffffff90;
+  background: #ffffff14;
+}
+.application-detail-refresh:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.application-detail-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.application-detail-refresh.is-spinning svg {
+  animation: app-refresh-spin 0.75s linear infinite;
+}
+@keyframes app-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .application-detail-hero {
   position: relative;

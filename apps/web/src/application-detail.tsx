@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, AppWindow, FileText, FolderOpen } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowUpRight, AppWindow, FileText, FolderOpen, RefreshCw } from "lucide-react";
 import { Button, Panel } from "@stardrop/ui";
 import "./application-detail.css";
 
@@ -18,24 +18,134 @@ const dateTime = (value: number | null) => value
 export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState("");
-  useEffect(() => {
-    let active = true;
-    setOverview(null);
-    setError("");
-    fetch(`/api/v1/apps/${encodeURIComponent(id)}/overview`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Uygulama bilgileri yüklenemedi.");
-        return response.json() as Promise<Overview>;
-      })
-      .then((value) => { if (active) setOverview(value); })
-      .catch((cause) => { if (active) setError(String(cause.message ?? cause)); });
-    return () => { active = false; };
+  const [refreshing, setRefreshing] = useState(false);
+  const overviewRef = useRef<Overview | null>(null);
+  overviewRef.current = overview;
+  const reloadRef = useRef<() => void>(() => {});
+
+  const loadOverview = useCallback(async (silent = false) => {
+    if (!silent && !overviewRef.current) {
+      setOverview(null);
+    }
+    if (!silent) setRefreshing(true);
+    try {
+      const response = await fetch(`/api/v1/apps/${encodeURIComponent(id)}/overview`);
+      if (!response.ok) throw new Error("Uygulama bilgileri yüklenemedi.");
+      const data = (await response.json()) as Overview;
+      setOverview(data);
+      setError("");
+    } catch (cause: any) {
+      if (!silent || !overviewRef.current) {
+        setError(String(cause?.message ?? cause));
+      }
+    } finally {
+      setRefreshing(false);
+    }
   }, [id]);
+
+  reloadRef.current = () => {
+    void loadOverview(true);
+  };
+
+  useEffect(() => {
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
+    let ws: WebSocket | null = null;
+    let attempts = 0;
+
+    void loadOverview(false);
+
+    function connect() {
+      if (disposed || document.hidden) return;
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+      try {
+        const url = new URL("/api/v1/board/live", location.origin);
+        url.searchParams.set("scope", "private");
+        url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+        ws = new WebSocket(url);
+        ws.onopen = () => {
+          if (disposed) {
+            ws?.close();
+            return;
+          }
+          attempts = 0;
+        };
+        ws.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data?.type === "board.changed") {
+              reloadRef.current();
+            }
+          } catch {}
+        };
+        ws.onclose = () => {
+          ws = null;
+          if (!disposed && !document.hidden) {
+            reconnectTimer = setTimeout(
+              connect,
+              Math.min(30000, 1000 * 2 ** Math.min(attempts++, 5)) + Math.random() * 500,
+            );
+          }
+        };
+        ws.onerror = () => ws?.close();
+      } catch {}
+    }
+
+    function onVisibility() {
+      clearTimeout(reconnectTimer);
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+      if (!document.hidden) {
+        reloadRef.current();
+        connect();
+      }
+    }
+
+    function onFocus() {
+      if (!document.hidden) {
+        reloadRef.current();
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+    const pollInterval = setInterval(() => {
+      if (!document.hidden) reloadRef.current();
+    }, 15000);
+
+    connect();
+
+    return () => {
+      disposed = true;
+      clearTimeout(reconnectTimer);
+      clearInterval(pollInterval);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+    };
+  }, [id, loadOverview]);
 
   const latestResource = overview?.resources[0];
 
   return <div className="application-detail">
-    <Button variant="bare" onClick={onBack}><ArrowLeft size={16} /> Uygulamalara dön</Button>
+    <div className="application-detail-nav">
+      <Button variant="bare" onClick={onBack}><ArrowLeft size={16} /> Uygulamalara dön</Button>
+      <button
+        type="button"
+        className={`application-detail-refresh ${refreshing ? "is-spinning" : ""}`}
+        onClick={() => void loadOverview(false)}
+        disabled={refreshing}
+        title="Verileri ve son dosyaları yenile"
+        aria-label="Verileri ve son dosyaları yenile"
+      >
+        <RefreshCw size={13} aria-hidden="true" />
+      </button>
+    </div>
     {error && <p role="alert">{error}</p>}
     {!overview && !error && <p>Uygulama yükleniyor…</p>}
     {overview && <>
@@ -62,6 +172,17 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
                   <em>KAYITLAR</em>
                   <strong>{overview.resourceCount}</strong>
                 </span>
+                <i aria-hidden="true" />
+                <button
+                  type="button"
+                  className={`application-detail-refresh ${refreshing ? "is-spinning" : ""}`}
+                  onClick={() => void loadOverview(false)}
+                  disabled={refreshing}
+                  title="Verileri ve son dosyaları yenile"
+                  aria-label="Verileri ve son dosyaları yenile"
+                >
+                  <RefreshCw size={11} aria-hidden="true" />
+                </button>
               </div>
             </div>
             <h1>{overview.application.name}</h1>

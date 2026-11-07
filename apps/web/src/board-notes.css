@@ -546,6 +546,91 @@
 .board-draw-toolbar button[aria-pressed="true"]::after {
   opacity: 1;
 }
+.board-draw-toolbar button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Marquee Multi-Selection Box & Bulk Action Bar */
+.board-marquee {
+  position: absolute;
+  z-index: 980;
+  border: 1px dashed #ffffff;
+  background: #ffffff12;
+  pointer-events: none;
+}
+.board-selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 40px 14px;
+  padding: 8px 14px;
+  background: #000000;
+  border: 1px solid #ffffff55;
+  border-left: 2px solid #ffffff;
+  border-radius: 6px;
+}
+.board-selection-bar__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  color: #ffffff;
+}
+.board-selection-bar__actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.board-selection-bar__actions button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid #ffffff30;
+  border-radius: 4px;
+  background: #000000;
+  color: #ffffff;
+  font: 9px var(--sd-font);
+  cursor: pointer;
+}
+.board-selection-bar__actions button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+.board-selection-bar__actions button:hover:not(:disabled),
+.board-selection-bar__actions button:focus-visible:not(:disabled) {
+  border-color: #ffffff;
+  background: #000000;
+  outline: none;
+}
+.board-selection-bar__actions button:hover:not(:disabled)::before,
+.board-selection-bar__actions button:focus-visible:not(:disabled)::before {
+  opacity: 1;
+}
+.movable-note.is-selected > .sticky-note.sd-panel,
+.movable-note.is-selected > .board-canvas-text,
+.movable-note.is-selected > .board-drawing-item {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 1px #ffffff;
+}
+.movable-note.is-selected > .note-top-controls {
+  opacity: 1;
+  background: #000000;
+  border-color: #ffffff78;
+}
 
 /* Drawing Canvas Overlay & Persisted Vector Items */
 .board-draw-capture {

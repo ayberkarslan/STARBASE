@@ -122,6 +122,83 @@ interface Feed {
   hasMore: boolean;
 }
 
+type NoteRestoreSnapshot = {
+  scope: "private" | "shared";
+  x: number;
+  y: number;
+  title: string;
+  content: string;
+  kind: "note" | "announcement";
+  itemType: BoardItemType;
+  itemData: Record<string, unknown>;
+  teamId: string | null;
+  dueAt: number | null;
+};
+
+type BoardHistoryAction =
+  | {
+      kind: "create";
+      noteIds: string[];
+      snapshots: NoteRestoreSnapshot[];
+    }
+  | {
+      kind: "delete";
+      noteIds: string[];
+      snapshots: NoteRestoreSnapshot[];
+    }
+  | {
+      kind: "move";
+      moves: {
+        id: string;
+        fromX: number;
+        fromY: number;
+        toX: number;
+        toY: number;
+      }[];
+    }
+  | {
+      kind: "patch";
+      patches: {
+        id: string;
+        before: Record<string, unknown>;
+        after: Record<string, unknown>;
+      }[];
+    };
+
+function snapshotFromNote(
+  note: Note,
+  scope: "private" | "shared",
+): NoteRestoreSnapshot {
+  return {
+    scope,
+    x: note.x,
+    y: note.y,
+    title: note.title,
+    content: note.content,
+    kind: note.kind === "announcement" ? "announcement" : "note",
+    itemType: resolveItemType(note),
+    itemData: { ...(note.itemData ?? {}) },
+    teamId: note.teamId ?? null,
+    dueAt: note.dueAt ?? null,
+  };
+}
+
+function getNoteDimensions(note: Note): { width: number; height: number } {
+  const type = resolveItemType(note);
+  if (type === "drawing") {
+    const w = note.itemData?.width;
+    const h = note.itemData?.height;
+    return {
+      width: typeof w === "number" && w >= 32 ? w : 180,
+      height: typeof h === "number" && h >= 32 ? h : 120,
+    };
+  }
+  if (type === "text") {
+    return { width: 250, height: 96 };
+  }
+  return { width: 300, height: 260 };
+}
+
 const messages: Record<string, string> = {
   note_conflict:
     "Bu öğe başka bir yerde değiştirildi. Pencereyi kapatıp güncel panoyu kontrol et.",
@@ -332,7 +409,7 @@ function BoardCanvas({
     [saving, setSaving] = useState(false),
     [deleteNote, setDeleteNote] = useState<Note | null>(null);
 
-  // Canvas drawing & zoom state
+  // Canvas drawing, zoom, marquee multi-selection & undo/redo state
   const [drawMode, setDrawMode] = useState(false);
   const [drawTool, setDrawTool] = useState<DrawTool>("arrow");
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
@@ -342,8 +419,33 @@ function BoardCanvas({
     points: DrawingPoint[];
   } | null>(null);
   const [zoom, setZoom] = useState<number>(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [marquee, setMarquee] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    pointerId: number;
+    additive: boolean;
+    initialSelected: Set<string>;
+  } | null>(null);
+  const [multiDrag, setMultiDrag] = useState<{
+    leaderId: string;
+    dx: number;
+    dy: number;
+  } | null>(null);
+  const [undoStack, setUndoStack] = useState<BoardHistoryAction[]>([]);
+  const [redoStack, setRedoStack] = useState<BoardHistoryAction[]>([]);
+  const [historyBusy, setHistoryBusy] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const notesRef = useRef<Note[]>(feed.notes);
+  notesRef.current = feed.notes;
+
+  function pushHistory(action: BoardHistoryAction) {
+    setUndoStack((prev) => [...prev.slice(-39), action]);
+    setRedoStack([]);
+  }
 
   const sequence = useRef(0),
     socket = useRef<WebSocket | null>(null),
@@ -536,14 +638,29 @@ function BoardCanvas({
     };
   }, []);
 
-  async function change(note: Note, patch: Record<string, unknown>) {
+  async function change(
+    note: Note,
+    patch: Record<string, unknown>,
+    recordHistory = true,
+  ) {
     setError("");
+    const before: Record<string, unknown> = {};
+    if ("pinned" in patch) before.pinned = Boolean(note.pinned);
+    if ("archived" in patch) before.archived = Boolean(note.archived);
+    if ("itemType" in patch) before.itemType = resolveItemType(note);
+    if ("itemData" in patch) before.itemData = { ...(note.itemData ?? {}) };
     try {
       await request(
         "/board/notes/" + note.id,
         { ...patch, version: note.version },
         "PATCH",
       );
+      if (recordHistory && Object.keys(before).length) {
+        pushHistory({
+          kind: "patch",
+          patches: [{ id: note.id, before, after: patch }],
+        });
+      }
       await load();
     } catch (e) {
       const message =
@@ -581,6 +698,49 @@ function BoardCanvas({
       itemType: resolveItemType(note),
       itemData: { ...(note.itemData ?? {}), zIndex: nextZ },
     });
+  }
+
+  async function changeLayerSelected(direction: "front" | "back") {
+    const targets = feed.notes.filter(
+      (n) =>
+        selectedIds.has(n.id) &&
+        (n.authorId === currentUserId || feed.canModerate),
+    );
+    if (!targets.length) return;
+    const allZ = feed.notes.map(getNoteZIndex);
+    const maxZ = allZ.length ? Math.max(...allZ) : 10;
+    const minZ = allZ.length ? Math.min(...allZ) : 2;
+    const nextZ =
+      direction === "front" ? Math.min(900, maxZ + 1) : Math.max(1, minZ - 1);
+    const patches: {
+      id: string;
+      before: Record<string, unknown>;
+      after: Record<string, unknown>;
+    }[] = [];
+    try {
+      for (const n of targets) {
+        const before = {
+          itemType: resolveItemType(n),
+          itemData: { ...(n.itemData ?? {}) },
+        };
+        const after = {
+          itemType: resolveItemType(n),
+          itemData: { ...(n.itemData ?? {}), zIndex: nextZ },
+        };
+        await request(
+          "/board/notes/" + n.id,
+          { ...after, version: n.version },
+          "PATCH",
+        );
+        patches.push({ id: n.id, before, after });
+      }
+      if (patches.length) {
+        pushHistory({ kind: "patch", patches });
+      }
+      await load();
+    } catch {
+      await reload.current();
+    }
   }
 
   function nextCanvasPosition(itemType: BoardItemType = "note") {
@@ -644,29 +804,56 @@ function BoardCanvas({
         const pos = nextCanvasPosition(payload.itemType);
         const allZ = feed.notes.map(getNoteZIndex);
         const topZ = allZ.length ? Math.min(900, Math.max(...allZ) + 1) : 10;
-        await request("/board/notes", {
+        const itemData = { ...(payload.itemData ?? {}), zIndex: topZ };
+        const snapshot: NoteRestoreSnapshot = {
           scope,
           x: pos.x,
           y: pos.y,
           ...payload,
-          itemData: { ...(payload.itemData ?? {}), zIndex: topZ },
-        });
+          itemData,
+        };
+        const created = (await request("/board/notes", snapshot)) as {
+          id?: string;
+        };
+        if (created?.id) {
+          pushHistory({
+            kind: "create",
+            noteIds: [created.id],
+            snapshots: [snapshot],
+          });
+        }
         setArchived("0");
         setKind("");
         setTeam("");
       } else {
+        const before = {
+          title: editor.note.title,
+          content: editor.note.content,
+          kind: editor.note.kind,
+          itemType: resolveItemType(editor.note),
+          itemData: { ...(editor.note.itemData ?? {}) },
+          teamId: editor.note.teamId,
+          dueAt: editor.note.dueAt,
+        };
+        const after = {
+          ...payload,
+          itemData: {
+            ...(editor.note.itemData ?? {}),
+            ...(payload.itemData ?? {}),
+          },
+        };
         await request(
           "/board/notes/" + editor.note.id,
           {
-            ...payload,
-            itemData: {
-              ...(editor.note.itemData ?? {}),
-              ...(payload.itemData ?? {}),
-            },
+            ...after,
             version: editor.note.version,
           },
           "PATCH",
         );
+        pushHistory({
+          kind: "patch",
+          patches: [{ id: editor.note.id, before, after }],
+        });
       }
       setEditor(null);
       setPage(1);
@@ -713,25 +900,40 @@ function BoardCanvas({
       pen: "Serbest çizim",
     };
 
+    const allZ = feed.notes.map(getNoteZIndex);
+    const topZ = allZ.length ? Math.min(900, Math.max(...allZ) + 1) : 12;
+
+    const snapshot: NoteRestoreSnapshot = {
+      scope,
+      x: boxX,
+      y: boxY,
+      title: labelMap[draft.tool],
+      content: labelMap[draft.tool],
+      kind: "note",
+      itemType: "drawing",
+      itemData: {
+        tool: draft.tool,
+        strokeStyle: draft.strokeStyle,
+        width,
+        height,
+        points: relativePoints,
+        zIndex: topZ,
+      },
+      teamId: null,
+      dueAt: null,
+    };
+
     try {
-      await request("/board/notes", {
-        scope,
-        x: boxX,
-        y: boxY,
-        title: labelMap[draft.tool],
-        content: labelMap[draft.tool],
-        kind: "note",
-        itemType: "drawing",
-        itemData: {
-          tool: draft.tool,
-          strokeStyle: draft.strokeStyle,
-          width,
-          height,
-          points: relativePoints,
-        },
-        teamId: null,
-        dueAt: null,
-      });
+      const created = (await request("/board/notes", snapshot)) as {
+        id?: string;
+      };
+      if (created?.id) {
+        pushHistory({
+          kind: "create",
+          noteIds: [created.id],
+          snapshots: [snapshot],
+        });
+      }
       await load();
     } catch (e) {
       setError(
@@ -744,11 +946,22 @@ function BoardCanvas({
     if (!deleteNote) return;
     setSaving(true);
     try {
+      const snap = snapshotFromNote(deleteNote, scope);
       await request(
         "/board/notes/" + deleteNote.id,
         { version: deleteNote.version },
         "DELETE",
       );
+      pushHistory({
+        kind: "delete",
+        noteIds: [],
+        snapshots: [snap],
+      });
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteNote.id);
+        return next;
+      });
       setDeleteNote(null);
       await load();
     } catch (e) {
@@ -757,6 +970,215 @@ function BoardCanvas({
       setSaving(false);
     }
   }
+
+  async function removeSelected() {
+    const targets = feed.notes.filter(
+      (n) =>
+        selectedIds.has(n.id) &&
+        (n.authorId === currentUserId || feed.canModerate),
+    );
+    if (!targets.length) return;
+    setSaving(true);
+    setError("");
+    const snapshots: NoteRestoreSnapshot[] = [];
+    try {
+      for (const n of targets) {
+        const snap = snapshotFromNote(n, scope);
+        await request(
+          "/board/notes/" + n.id,
+          { version: n.version },
+          "DELETE",
+        );
+        snapshots.push(snap);
+      }
+      if (snapshots.length) {
+        pushHistory({
+          kind: "delete",
+          noteIds: [],
+          snapshots,
+        });
+      }
+      setSelectedIds(new Set());
+      await load();
+    } catch (e) {
+      setError(
+        messages[(e as Error).message] ??
+          "Seçilen öğelerden bazıları silinemedi.",
+      );
+      await reload.current();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function undo() {
+    if (historyBusy || !undoStack.length) return;
+    const action = undoStack[undoStack.length - 1];
+    setHistoryBusy(true);
+    setError("");
+    try {
+      if (action.kind === "create") {
+        for (const id of action.noteIds) {
+          const liveNote = notesRef.current.find((n) => n.id === id);
+          await request(
+            "/board/notes/" + id,
+            { version: liveNote?.version ?? 1 },
+            "DELETE",
+          );
+        }
+        setUndoStack((prev) => prev.slice(0, -1));
+        setRedoStack((prev) => [...prev, action]);
+      } else if (action.kind === "delete") {
+        const createdIds: string[] = [];
+        for (const snap of action.snapshots) {
+          const created = (await request("/board/notes", snap)) as {
+            id?: string;
+          };
+          if (created?.id) createdIds.push(created.id);
+        }
+        setUndoStack((prev) => prev.slice(0, -1));
+        setRedoStack((prev) => [...prev, { ...action, noteIds: createdIds }]);
+      } else if (action.kind === "move") {
+        for (const m of action.moves) {
+          const liveNote = notesRef.current.find((n) => n.id === m.id);
+          if (!liveNote) continue;
+          await request(
+            "/board/notes/" + m.id + "/position",
+            {
+              x: m.fromX,
+              y: m.fromY,
+              layoutVersion: liveNote.layoutVersion,
+            },
+            "PATCH",
+          );
+        }
+        setUndoStack((prev) => prev.slice(0, -1));
+        setRedoStack((prev) => [...prev, action]);
+      } else if (action.kind === "patch") {
+        for (const p of action.patches) {
+          const liveNote = notesRef.current.find((n) => n.id === p.id);
+          if (!liveNote) continue;
+          await request(
+            "/board/notes/" + p.id,
+            { ...p.before, version: liveNote.version },
+            "PATCH",
+          );
+        }
+        setUndoStack((prev) => prev.slice(0, -1));
+        setRedoStack((prev) => [...prev, action]);
+      }
+      await load();
+    } catch {
+      await reload.current();
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
+  async function redo() {
+    if (historyBusy || !redoStack.length) return;
+    const action = redoStack[redoStack.length - 1];
+    setHistoryBusy(true);
+    setError("");
+    try {
+      if (action.kind === "create") {
+        const createdIds: string[] = [];
+        for (const snap of action.snapshots) {
+          const created = (await request("/board/notes", snap)) as {
+            id?: string;
+          };
+          if (created?.id) createdIds.push(created.id);
+        }
+        setRedoStack((prev) => prev.slice(0, -1));
+        setUndoStack((prev) => [...prev, { ...action, noteIds: createdIds }]);
+      } else if (action.kind === "delete") {
+        for (const id of action.noteIds) {
+          const liveNote = notesRef.current.find((n) => n.id === id);
+          await request(
+            "/board/notes/" + id,
+            { version: liveNote?.version ?? 1 },
+            "DELETE",
+          );
+        }
+        setRedoStack((prev) => prev.slice(0, -1));
+        setUndoStack((prev) => [...prev, action]);
+      } else if (action.kind === "move") {
+        for (const m of action.moves) {
+          const liveNote = notesRef.current.find((n) => n.id === m.id);
+          if (!liveNote) continue;
+          await request(
+            "/board/notes/" + m.id + "/position",
+            {
+              x: m.toX,
+              y: m.toY,
+              layoutVersion: liveNote.layoutVersion,
+            },
+            "PATCH",
+          );
+        }
+        setRedoStack((prev) => prev.slice(0, -1));
+        setUndoStack((prev) => [...prev, action]);
+      } else if (action.kind === "patch") {
+        for (const p of action.patches) {
+          const liveNote = notesRef.current.find((n) => n.id === p.id);
+          if (!liveNote) continue;
+          await request(
+            "/board/notes/" + p.id,
+            { ...p.after, version: liveNote.version },
+            "PATCH",
+          );
+        }
+        setRedoStack((prev) => prev.slice(0, -1));
+        setUndoStack((prev) => [...prev, action]);
+      }
+      await load();
+    } catch {
+      await reload.current();
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (editor !== null || deleteNote !== null) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        void undo();
+        return;
+      }
+      if (
+        (mod && e.key.toLowerCase() === "y") ||
+        (mod && e.key.toLowerCase() === "z" && e.shiftKey)
+      ) {
+        e.preventDefault();
+        void redo();
+        return;
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.size > 0) {
+        e.preventDefault();
+        void removeSelected();
+        return;
+      }
+      if (e.key === "Escape" && selectedIds.size > 0) {
+        setSelectedIds(new Set());
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   function openCreate(itemType: Exclude<BoardItemType, "drawing">) {
     setAddMenuOpen(false);
@@ -821,7 +1243,25 @@ function BoardCanvas({
           </span>
         </div>
         <div className="notes-tools">
-          <div className="board-zoom-bar" role="group" aria-label="Pano ölçeği">
+          <div className="board-zoom-bar" role="group" aria-label="Geri al, ileri al ve pano ölçeği">
+            <button
+              type="button"
+              title="Son işlemi geri al (Ctrl+Z)"
+              aria-label="Geri al"
+              disabled={!undoStack.length || historyBusy}
+              onClick={() => void undo()}
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              type="button"
+              title="İleri al (Ctrl+Y)"
+              aria-label="İleri al"
+              disabled={!redoStack.length || historyBusy}
+              onClick={() => void redo()}
+            >
+              <Redo2 size={14} />
+            </button>
             <button
               type="button"
               title="Panoyu küçült (uzaklaştır)"
@@ -1010,6 +1450,24 @@ function BoardCanvas({
               Kesikli
             </button>
           </div>
+          <div className="board-draw-toolbar__group">
+            <button
+              type="button"
+              title="Son çizimi geri al (Ctrl+Z)"
+              disabled={!undoStack.length || historyBusy}
+              onClick={() => void undo()}
+            >
+              <Undo2 size={14} /> Geri al
+            </button>
+            <button
+              type="button"
+              title="İleri al (Ctrl+Y)"
+              disabled={!redoStack.length || historyBusy}
+              onClick={() => void redo()}
+            >
+              <Redo2 size={14} /> İleri al
+            </button>
+          </div>
           <button
             type="button"
             className="board-draw-toolbar__close"
@@ -1020,6 +1478,46 @@ function BoardCanvas({
           >
             <X size={14} /> Bitti
           </button>
+        </div>
+      )}
+
+      {selectedIds.size > 0 && !drawMode && (
+        <div
+          className="board-selection-bar"
+          role="toolbar"
+          aria-label="Seçili pano öğeleri araçları"
+        >
+          <span className="board-selection-bar__count">
+            <BoxSelect size={14} /> {selectedIds.size} öğe seçildi
+          </span>
+          <div className="board-selection-bar__actions">
+            <button
+              type="button"
+              onClick={() => void changeLayerSelected("front")}
+            >
+              <ArrowUpToLine size={13} /> En öne al
+            </button>
+            <button
+              type="button"
+              onClick={() => void changeLayerSelected("back")}
+            >
+              <ArrowDownToLine size={13} /> En arkaya al
+            </button>
+            <button
+              type="button"
+              className="is-danger"
+              disabled={saving}
+              onClick={() => void removeSelected()}
+            >
+              <Trash2 size={13} /> Seçilenleri sil
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X size={13} /> Seçimi temizle
+            </button>
+          </div>
         </div>
       )}
 
@@ -1109,7 +1607,80 @@ function BoardCanvas({
               transform: `scale(${zoom})`,
               transformOrigin: "0 0",
             }}
+            onPointerDown={(e) => {
+              if (drawMode || e.button !== 0) return;
+              const target = e.target as HTMLElement;
+              if (
+                target.closest(
+                  ".movable-note, button, a, input, textarea, select",
+                )
+              ) {
+                return;
+              }
+              e.preventDefault();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              const pt = surfaceCoordinates(e);
+              const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+              if (!additive) {
+                setSelectedIds(new Set());
+              }
+              setMarquee({
+                startX: pt.x,
+                startY: pt.y,
+                currentX: pt.x,
+                currentY: pt.y,
+                pointerId: e.pointerId,
+                additive,
+                initialSelected: additive ? new Set(selectedIds) : new Set(),
+              });
+            }}
+            onPointerMove={(e) => {
+              if (!marquee || marquee.pointerId !== e.pointerId) return;
+              const pt = surfaceCoordinates(e);
+              const rx1 = Math.min(marquee.startX, pt.x);
+              const ry1 = Math.min(marquee.startY, pt.y);
+              const rx2 = Math.max(marquee.startX, pt.x);
+              const ry2 = Math.max(marquee.startY, pt.y);
+              setMarquee((prev) =>
+                prev
+                  ? { ...prev, currentX: pt.x, currentY: pt.y }
+                  : null,
+              );
+              if (Math.hypot(rx2 - rx1, ry2 - ry1) < 4) return;
+              const next = new Set(marquee.initialSelected);
+              for (const n of feed.notes) {
+                const { width, height } = getNoteDimensions(n);
+                const nx1 = n.x;
+                const ny1 = n.y;
+                const nx2 = n.x + width;
+                const ny2 = n.y + height;
+                if (nx1 <= rx2 && nx2 >= rx1 && ny1 <= ry2 && ny2 >= ry1) {
+                  next.add(n.id);
+                }
+              }
+              setSelectedIds(next);
+            }}
+            onPointerUp={(e) => {
+              if (!marquee || marquee.pointerId !== e.pointerId) return;
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
+              setMarquee(null);
+            }}
+            onPointerCancel={() => setMarquee(null)}
           >
+            {marquee && (
+              <div
+                className="board-marquee"
+                aria-hidden="true"
+                style={{
+                  left: Math.min(marquee.startX, marquee.currentX),
+                  top: Math.min(marquee.startY, marquee.currentY),
+                  width: Math.abs(marquee.currentX - marquee.startX),
+                  height: Math.abs(marquee.currentY - marquee.startY),
+                }}
+              />
+            )}
             {drawMode && (
               <div
                 className="board-draw-capture"
@@ -1172,6 +1743,14 @@ function BoardCanvas({
                     canEdit = own || feed.canModerate;
                   const itemType = resolveItemType(n);
                   const zIndex = getNoteZIndex(n);
+                  const isSelected = selectedIds.has(n.id);
+                  const externalOffset =
+                    isSelected &&
+                    multiDrag &&
+                    multiDrag.leaderId !== n.id &&
+                    canEdit
+                      ? { dx: multiDrag.dx, dy: multiDrag.dy }
+                      : null;
                   return (
                     <MovableNote
                       key={n.id}
@@ -1179,9 +1758,34 @@ function BoardCanvas({
                       itemType={itemType}
                       zoom={zoom}
                       zIndex={zIndex}
+                      selected={isSelected}
+                      externalOffset={externalOffset}
                       canMove={canEdit && !drawMode}
                       canEdit={canEdit && !drawMode}
                       canModerate={feed.canModerate}
+                      onSelect={(additive) => {
+                        setSelectedIds((prev) => {
+                          if (additive) {
+                            const next = new Set(prev);
+                            if (next.has(n.id)) next.delete(n.id);
+                            else next.add(n.id);
+                            return next;
+                          }
+                          if (prev.has(n.id)) return prev;
+                          return new Set([n.id]);
+                        });
+                      }}
+                      onDragDelta={(dx, dy) => {
+                        if (!selectedIds.has(n.id) || selectedIds.size <= 1) {
+                          if (multiDrag) setMultiDrag(null);
+                          return;
+                        }
+                        if (dx === 0 && dy === 0) {
+                          setMultiDrag(null);
+                        } else {
+                          setMultiDrag({ leaderId: n.id, dx, dy });
+                        }
+                      }}
                       onEdit={
                         itemType !== "drawing"
                           ? () => {
@@ -1214,12 +1818,55 @@ function BoardCanvas({
                           : undefined
                       }
                       onMove={async (x, y, layoutVersion) => {
+                        setMultiDrag(null);
+                        const dx = x - n.x;
+                        const dy = y - n.y;
+                        const bulkTargets =
+                          selectedIds.has(n.id) && selectedIds.size > 1
+                            ? feed.notes.filter(
+                                (item) =>
+                                  selectedIds.has(item.id) &&
+                                  (item.authorId === currentUserId ||
+                                    feed.canModerate),
+                              )
+                            : [n];
                         try {
-                          await request(
-                            "/board/notes/" + n.id + "/position",
-                            { x, y, layoutVersion },
-                            "PATCH",
-                          );
+                          const moves: {
+                            id: string;
+                            fromX: number;
+                            fromY: number;
+                            toX: number;
+                            toY: number;
+                          }[] = [];
+                          for (const item of bulkTargets) {
+                            const toX =
+                              item.id === n.id
+                                ? x
+                                : Math.max(0, Math.min(20000, item.x + dx));
+                            const toY =
+                              item.id === n.id
+                                ? y
+                                : Math.max(0, Math.min(20000, item.y + dy));
+                            const lv =
+                              item.id === n.id
+                                ? layoutVersion
+                                : item.layoutVersion;
+                            await request(
+                              "/board/notes/" + item.id + "/position",
+                              { x: toX, y: toY, layoutVersion: lv },
+                              "PATCH",
+                            );
+                            moves.push({
+                              id: item.id,
+                              fromX: item.x,
+                              fromY: item.y,
+                              toX,
+                              toY,
+                            });
+                          }
+                          if (moves.length) {
+                            pushHistory({ kind: "move", moves });
+                          }
                           await reload.current();
                         } catch (e) {
                           setError(
@@ -2145,9 +2792,13 @@ function MovableNote({
   itemType,
   zoom,
   zIndex,
+  selected,
+  externalOffset,
   canMove,
   canEdit,
   canModerate,
+  onSelect,
+  onDragDelta,
   onEdit,
   onDelete,
   onLayer,
@@ -2160,9 +2811,13 @@ function MovableNote({
   itemType: BoardItemType;
   zoom: number;
   zIndex: number;
+  selected: boolean;
+  externalOffset: { dx: number; dy: number } | null;
   canMove: boolean;
   canEdit: boolean;
   canModerate: boolean;
+  onSelect: (additive: boolean) => void;
+  onDragDelta: (dx: number, dy: number) => void;
   onEdit?: () => void;
   onDelete: () => void;
   onLayer: (direction: "front" | "forward" | "backward" | "back") => void;
@@ -2215,16 +2870,37 @@ function MovableNote({
       setPending(false);
     }
   };
+
+  const renderX = externalOffset
+    ? Math.max(0, Math.min(20000, position.x + externalOffset.dx))
+    : position.x;
+  const renderY = externalOffset
+    ? Math.max(0, Math.min(20000, position.y + externalOffset.dy))
+    : position.y;
+
   return (
     <div
       className={
         `movable-note is-type-${itemType}` +
-        (moving ? " is-moving" : "") +
+        (moving || externalOffset ? " is-moving" : "") +
+        (selected ? " is-selected" : "") +
         (menuOpen ? " is-menu-open" : "")
       }
       style={{
-        transform: `translate(${position.x}px,${position.y}px)`,
-        zIndex: moving ? 950 : menuOpen ? 920 : zIndex,
+        transform: `translate(${renderX}px,${renderY}px)`,
+        zIndex:
+          moving || externalOffset
+            ? 950
+            : menuOpen
+              ? 920
+              : selected
+                ? Math.max(zIndex, 40)
+                : zIndex,
+      }}
+      onPointerDown={(e) => {
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          onSelect(true);
+        }
       }}
     >
       <div className="note-top-controls">
@@ -2232,11 +2908,19 @@ function MovableNote({
           type="button"
           className="note-grip"
           aria-label={note.title + " öğesini taşı"}
-          title="Sürükle veya yön tuşlarıyla taşı (Shift: büyük adım)"
+          title="Sürükle veya yön tuşlarıyla taşı (Shift: büyük adım, Shift+Tık: çoklu seçim)"
           disabled={!canMove || pending}
           onPointerDown={(e) => {
             if (e.button !== 0) return;
             e.preventDefault();
+            e.stopPropagation();
+            if (e.shiftKey || e.ctrlKey || e.metaKey) {
+              onSelect(true);
+              return;
+            }
+            if (!selected) {
+              onSelect(false);
+            }
             e.currentTarget.setPointerCapture(e.pointerId);
             drag.current = {
               clientX: e.clientX,
@@ -2250,26 +2934,27 @@ function MovableNote({
           onPointerMove={(e) => {
             const d = drag.current;
             if (!d || d.pointerId !== e.pointerId) return;
-            move({
-              x: Math.round(
-                Math.max(
-                  0,
-                  Math.min(20000, d.x + (e.clientX - d.clientX) / zoom),
-                ),
+            const nextX = Math.round(
+              Math.max(
+                0,
+                Math.min(20000, d.x + (e.clientX - d.clientX) / zoom),
               ),
-              y: Math.round(
-                Math.max(
-                  0,
-                  Math.min(20000, d.y + (e.clientY - d.clientY) / zoom),
-                ),
+            );
+            const nextY = Math.round(
+              Math.max(
+                0,
+                Math.min(20000, d.y + (e.clientY - d.clientY) / zoom),
               ),
-            });
+            );
+            move({ x: nextX, y: nextY });
+            onDragDelta(nextX - d.x, nextY - d.y);
           }}
           onPointerUp={(e) => {
             if (!drag.current) return;
             const d = drag.current;
             drag.current = null;
             setMoving(false);
+            onDragDelta(0, 0);
             if (e.currentTarget.hasPointerCapture(e.pointerId))
               e.currentTarget.releasePointerCapture(e.pointerId);
             if (d.x !== positionRef.current.x || d.y !== positionRef.current.y)
@@ -2278,12 +2963,14 @@ function MovableNote({
           onPointerCancel={() => {
             drag.current = null;
             setMoving(false);
+            onDragDelta(0, 0);
             move({ x: note.x, y: note.y });
           }}
           onLostPointerCapture={() => {
             if (drag.current) {
               drag.current = null;
               setMoving(false);
+              onDragDelta(0, 0);
               move({ x: note.x, y: note.y });
             }
           }}
@@ -2291,6 +2978,7 @@ function MovableNote({
             if (e.key === "Escape") {
               drag.current = null;
               setMoving(false);
+              onDragDelta(0, 0);
               move({ x: note.x, y: note.y });
               return;
             }

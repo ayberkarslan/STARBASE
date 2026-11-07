@@ -15,7 +15,7 @@ import { invalidateDirectory, subscribeDirectoryChanges } from "./member-live";
 import { Captcha } from "./captcha";
 import { AdminActivity } from "./admin-activity";
 import { PasswordField } from "./password-field";
-import { compactPatch } from "./image-upload";
+import { PhotoCrop } from "./photo-crop";
 import {
   Invitations,
   EditUser,
@@ -128,6 +128,7 @@ function App() {
   const [directoryRevision, setDirectoryRevision] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const path = location.pathname;
   const params = new URLSearchParams(location.search);
   async function load() {
@@ -220,11 +221,10 @@ function App() {
       setBusy(false);
     }
   }
-  async function updatePhoto(file?: File) {
+  async function updatePhoto(image?: Blob) {
     setPhotoBusy(true);
     setPhotoError("");
     try {
-      const image = file ? await compactPatch(file) : null;
       const response = await fetch("/api/v1/me/photo", {
         method: image ? "POST" : "DELETE",
         ...(image ? { headers: { "Content-Type": image.type }, body: image } : {}),
@@ -233,8 +233,10 @@ function App() {
       if (!response.ok) throw new Error(result.error?.code ?? "Fotoğraf kaydedilemedi.");
       setUser((current: any) => ({ ...current, photoUrl: result.photoUrl ?? "" }));
       invalidateDirectory();
+      return true;
     } catch (cause) {
       setPhotoError((cause as Error).message);
+      return false;
     } finally { setPhotoBusy(false); }
   }
   function field(form: FormData, k: string) {
@@ -728,10 +730,13 @@ function App() {
                 <div><span className="eyebrow">STARBASE PROFİLİ</span><h1>{user.firstName} {user.lastName}</h1><p>@{user.username} · {user.owner ? "Takım sahibi" : "Yıldız Roket Takımı"}</p></div>
               </div>
               <div className="profile-photo-actions">
-                <label className="profile-photo-upload">{photoBusy ? "Yükleniyor…" : user.photoUrl ? "Fotoğrafı değiştir" : "Profil fotoğrafı ekle"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void updatePhoto(file); event.target.value = ""; }} /></label>
+                <label className="profile-photo-upload">{photoBusy ? "Yükleniyor…" : user.photoUrl ? "Fotoğrafı değiştir" : "Profil fotoğrafı ekle"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) setCropFile(file); event.target.value = ""; }} /></label>
                 {user.photoUrl && <Button variant="bare" disabled={photoBusy} onClick={() => void updatePhoto()}>Fotoğrafı kaldır</Button>}
                 {photoError && <span className="member-form-feedback is-error" role="alert">{photoError}</span>}
               </div>
+              {cropFile && <PhotoCrop file={cropFile} onClose={() => setCropFile(null)} onSave={async (image) => {
+                if (!(await updatePhoto(image))) throw new Error("Fotoğraf kaydedilemedi.");
+              }} />}
               <div className="profile-grid">
                 <Panel title="Hesap bilgileri">
                   <dl>

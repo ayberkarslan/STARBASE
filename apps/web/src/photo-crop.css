@@ -1,0 +1,6 @@
+.photo-crop-dialog { max-width: min(94vw, 460px); background: #000; }
+.photo-crop-preview { display: grid; place-items: center; margin: 0 auto 20px; width: min(300px, 70vw); aspect-ratio: 1; overflow: hidden; border: 1px solid #ffffff80; border-radius: 50%; background: #000; }
+.photo-crop-preview canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.photo-crop-preview canvas:active { cursor: grabbing; }
+.photo-crop-zoom { display: grid; gap: 10px; color: #fff; font-size: 11px; }
+.photo-crop-zoom input { width: 100%; accent-color: #fff; }

@@ -14,6 +14,7 @@
 .admin-activity__event-head > strong { font-size: 12px; font-weight: 400; }
 .admin-activity__times { display: flex; flex-wrap: wrap; gap: 12px 30px; margin-top: 12px; color: #ffffff9d; font-size: 10px; }
 .admin-activity__times b, .admin-activity__platform b { display: block; margin-top: 5px; color: #fff; font-weight: 400; }
+.admin-activity__device { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; color: #ffffff85; font-size: 10px; }
 .admin-activity__platforms { display: grid; grid-template-columns: repeat(auto-fill,minmax(230px,1fr)); gap: 10px; margin: 18px 0 8px; }
 .admin-activity__platform { display: grid; gap: 12px; padding: 16px; border: 1px solid #ffffff40; border-radius: 8px; background: #000; }
 .admin-activity__platform strong { font-size: 11px; font-weight: 400; }

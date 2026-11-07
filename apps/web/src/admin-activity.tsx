@@ -10,6 +10,7 @@ type Visit = {
   id: string; userId: string; username: string; firstName: string; lastName: string;
   applicationId: string | null; applicationName: string; source: "starbase" | "application";
   signedInAt: number; lastSeenAt: number | null; endedAt: number | null; endReason: EndReason;
+  ipAddress: string | null; userAgent: string | null;
 };
 type Platform = {
   source: "starbase" | "application"; applicationId: string | null; applicationName: string;
@@ -22,6 +23,16 @@ const date = (value: number | null) => value
 const endLabel: Record<Exclude<EndReason, null>, string> = {
   logout: "Çıkış yapıldı", revoked: "Oturum sonlandırıldı", expired: "Süresi doldu",
 };
+function deviceLabel(agent: string | null) {
+  if (!agent) return "Cihaz bilgisi yok";
+  const os = /iPad/i.test(agent) ? "iPad" : /iPhone|iPod/i.test(agent) ? "iPhone" :
+    /Android/i.test(agent) ? "Android" : /Windows/i.test(agent) ? "Windows" :
+    /Macintosh|Mac OS X/i.test(agent) ? "macOS" : /Linux/i.test(agent) ? "Linux" : "Bilinmeyen cihaz";
+  const client = /Edg\//i.test(agent) ? "Edge" : /OPR\//i.test(agent) ? "Opera" :
+    /Firefox\/|FxiOS\//i.test(agent) ? "Firefox" : /Chrome\/|CriOS\//i.test(agent) ? "Chrome" :
+    /Safari\//i.test(agent) ? "Safari" : "Bilinmeyen istemci";
+  return `${os} · ${client}`;
+}
 
 export function AdminActivity({ userId }: { userId?: string }) {
   const [focused, setFocused] = useState<{ id: string; name: string } | null>(null);
@@ -91,6 +102,9 @@ export function AdminActivity({ userId }: { userId?: string }) {
             <span>Giriş <b>{date(event.signedInAt)}</b></span>
             {event.source === "starbase" && <span>Son ziyaret <b>{date(event.lastSeenAt)}</b></span>}
             <span>{event.endReason ? endLabel[event.endReason] : "Çıkış kaydı yok"} <b>{date(event.endedAt)}</b></span>
+          </div>
+          <div className="admin-activity__device" title={event.userAgent ?? undefined}>
+            <span>{deviceLabel(event.userAgent)}</span><span>IP: {event.ipAddress ?? "Kayıt yok"}</span>
           </div>
         </article>)}
       </div> : <EmptyState title="Kayıt bulunamadı" description="Bu filtre için henüz giriş kaydı yok." />}

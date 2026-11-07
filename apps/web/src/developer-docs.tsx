@@ -140,6 +140,14 @@ export function DeveloperDocs() {
             takım dizinini okuyamaz. Ayrıntılar 90 gün, son giriş/çıkış özetleri
             hesap/uygulama silinene kadar saklanır.
           </p>
+          <p>
+            Üye yönetimi yetkisi olan yöneticiler Erişim geçmişi ekranında
+            STARBASE ve uygulama ziyaretlerini kullanıcıya göre filtreleyebilir.
+            STARBASE son ziyaret zamanı, geçerli oturumun API erişimiyle en fazla
+            dakikada bir güncellenir; çıkış yalnız gerçek oturum olayından kaydedilir.
+            Merkezi ziyaret geçmişi bu özelliğin kurulduğu tarihten itibaren
+            tutulur; önceden açık olan geçerli oturumlar aktarılır.
+          </p>
         </>
       )}
       {tab === "api" && (

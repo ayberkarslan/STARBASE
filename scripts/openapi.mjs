@@ -115,6 +115,14 @@ for (const f of fs
               ...(name === "q" ? { maxLength: 80 } : {}),
             },
           });
+      if (route === "/api/v1/admin/activity") {
+        for (const [name, schema] of [
+          ["page", { type: "integer", minimum: 1, maximum: 10000, default: 1 }],
+          ["q", { type: "string", maxLength: 80 }],
+          ["source", { type: "string", enum: ["all", "starbase", "application"] }],
+          ["userId", { type: "string", maxLength: 100 }],
+        ]) parameters.push({ name, in: "query", required: false, schema });
+      }
       if (
         route === "/api/v1/directory/users" ||
         route.endsWith("/activity") ||

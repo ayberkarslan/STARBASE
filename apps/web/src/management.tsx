@@ -75,7 +75,7 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
       return true;
     } catch (cause) {
       const code = (cause as Error).message;
-      setFeedback({ text: code === "reauthentication_required" ? "Güvenlik değişikliği için şifreni gir. Doğrulama 10 dakika geçerli." : "Kaydedilemedi: " + code, error: true });
+      setFeedback({ text: code === "reauthentication_required" ? "Güvenlik değişikliği için şifreni gir. Doğrulama 10 dakika geçerli." : code === "username_taken" ? "Bu kullanıcı adı başka bir üyede kullanılıyor." : "Kaydedilemedi: " + code, error: true });
       return false;
     } finally { setBusy(false); }
   };
@@ -91,6 +91,19 @@ export function EditUser({ user, onUpdated }: { user: any; onUpdated: (updated: 
         <TextField name="lastName" label="Soyisim" defaultValue={user.last_name} required maxLength={80} />
       </div>
       <Button type="submit" disabled={busy}>İsmi kaydet</Button>
+    </form>
+    <form key={`${user.id}:${user.username}`} className="member-edit-form" onSubmit={(event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const data = new FormData(form);
+      void save("/admin/users/" + user.id + "/username", {
+        username: String(data.get("username") || "").trim().toLowerCase(),
+        currentPassword: String(data.get("currentPassword") || ""),
+      }, "PATCH", "Kullanıcı adı değiştirildi.").then((ok) => { if (ok) form.reset(); });
+    }}>
+      <TextField name="username" label="Kullanıcı adı" defaultValue={user.username} required minLength={3} maxLength={32} pattern="[a-z0-9][a-z0-9._-]{2,31}" autoComplete="off" />
+      <PasswordField name="currentPassword" label="Senin şifren" autoComplete="current-password" hint="İlk güvenlik değişikliğinde gir; 10 dakika boyunca tekrar gerekmez." />
+      <Button type="submit" disabled={busy}>Kullanıcı adını kaydet</Button>
     </form>
     <form key={`${user.id}:${user.custom_title}`} className="member-edit-form" onSubmit={(event) => {
       event.preventDefault();

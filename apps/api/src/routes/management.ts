@@ -316,6 +316,7 @@ export function register(app: App) {
       z.object({
         currentPassword: z.string().optional(),
         temporaryPassword: z.string().min(12).max(128).optional(),
+        newPassword: z.string().min(8).max(128).optional(),
       }),
     );
     await reauthenticate(c, b.currentPassword);
@@ -327,7 +328,15 @@ export function register(app: App) {
       .first<any>();
     if (!target) fail(404, "not_found");
     if (target.owner && !c.get("user").owner) fail(403, "permission_denied");
-    if (b.temporaryPassword) {
+    if (b.newPassword) {
+      // Permanent password chosen by the admin: no forced change, but old sessions end.
+      await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=?").bind(uid).run();
+      await adminUpdate(c.env, uid, {
+        password: b.newPassword,
+        validSince: String(now()),
+      });
+      await audit(c, "password.set", uid);
+    } else if (b.temporaryPassword) {
       // Lock first: partial upstream failure must not leave active application sessions.
       await c.env.DB.batch([
         c.env.DB.prepare(
@@ -350,6 +359,26 @@ export function register(app: App) {
       await audit(c, "password.recovery", uid);
     }
     return c.json({ ok: true });
+  });
+  app.patch("/api/v1/admin/users/:id/username", async (c) => {
+    await permit(c, "users.manage");
+    const b = await body(c, z.object({
+      username: z.string().trim().toLowerCase().regex(usernamePattern),
+      currentPassword: z.string().optional(),
+    }));
+    await reauthenticate(c, b.currentPassword);
+    const uid = c.req.param("id");
+    const target = await c.env.DB.prepare("SELECT owner,username FROM users WHERE id=?").bind(uid).first<{ owner: number; username: string }>();
+    if (!target) fail(404, "not_found");
+    if (target?.owner && !c.get("user").owner) fail(403, "owner_protected");
+    if (target?.username !== b.username) {
+      const taken = await c.env.DB.prepare("SELECT id FROM users WHERE username=? AND id<>?").bind(b.username, uid).first();
+      if (taken) fail(409, "username_taken");
+      await c.env.DB.prepare("UPDATE users SET username=? WHERE id=?").bind(b.username, uid).run();
+      await audit(c, "user.username.update", uid);
+      await notifyDirectory(c.env);
+    }
+    return c.json({ ok: true, username: b.username });
   });
   app.patch("/api/v1/admin/users/:id/profile", async (c) => {
     await permit(c, "users.manage");

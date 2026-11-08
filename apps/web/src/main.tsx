@@ -1182,7 +1182,7 @@ function AdminUser({ user, org, revision }: { user: any; org: any; revision: num
         <Button type="submit" disabled={working || !org.teams.length}>Üyelik ekle</Button>
       </form>
       <details className="member-security member-password">
-        <summary>Şifre kurtarma <span>Gerekirse kullan</span></summary>
+        <summary>Şifre <span>Belirle veya sıfırla</span></summary>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -1190,11 +1190,13 @@ function AdminUser({ user, org, revision }: { user: any; org: any; revision: num
           void perform(async () => {
             await api("/admin/users/" + user.id + "/password", {
               currentPassword: String(f.get("currentPassword") || ""),
-              ...(f.get("temporaryPassword")
-                ? { temporaryPassword: f.get("temporaryPassword") }
-                : {}),
+              ...(f.get("newPassword")
+                ? { newPassword: f.get("newPassword") }
+                : f.get("temporaryPassword")
+                  ? { temporaryPassword: f.get("temporaryPassword") }
+                  : {}),
             });
-          }, "Şifre kurtarma işlemi başlatıldı.");
+          }, f.get("newPassword") ? "Şifre değiştirildi. Üyenin açık oturumları kapatıldı." : "Şifre kurtarma işlemi başlatıldı.");
         }}
       >
         <PasswordField
@@ -1203,11 +1205,18 @@ function AdminUser({ user, org, revision }: { user: any; org: any; revision: num
           hint="İlk güvenlik işleminde gir; 10 dakika boyunca tekrar gerekmez."
         />
         <PasswordField
+          name="newPassword"
+          label="Yeni şifre (kalıcı, en az 8 karakter)"
+          hint="Üye bu şifreyle hemen giriş yapar; değiştirmeye zorlanmaz."
+          minLength={8}
+          autoComplete="new-password"
+        />
+        <PasswordField
           name="temporaryPassword"
-          label="Geçici şifre (boşsa e-posta gönderilir)"
+          label="Geçici şifre (ilk girişte değiştirilir; ikisi de boşsa e-posta gönderilir)"
           minLength={12}
         />
-        <Button type="submit" disabled={working}>Şifreyi sıfırla</Button>
+        <Button type="submit" disabled={working}>Şifreyi uygula</Button>
       </form>
       </details>
       {feedback && <p className={feedback.error ? "member-form-feedback is-error" : "member-form-feedback"} role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}

@@ -316,6 +316,21 @@ describe("identity boundaries", () => {
     expect(db.prepare("SELECT first_name,last_name FROM users WHERE id='u2'").get()).toMatchObject({ first_name: "Yeni", last_name: "Ad" });
     expect(db.prepare("SELECT revoked FROM families WHERE id='f'").get()).toMatchObject({ revoked: 0 });
   });
+  it("lets an administrator rename a member and set a permanent password", async () => {
+    const fetcher = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    db.prepare("UPDATE families SET reauthenticated_at=? WHERE id='f'").run(now());
+    db.prepare("UPDATE users SET must_change_password=0 WHERE id='u2'").run();
+    const renamed = await call("/admin/users/u2/username", { username: "Yeni.Kullanici" }, "central", "PATCH");
+    expect(renamed.status).toBe(200);
+    expect(db.prepare("SELECT username FROM users WHERE id='u2'").get()).toMatchObject({ username: "yeni.kullanici" });
+    const taken = await call("/admin/users/u2/username", { username: (db.prepare("SELECT username FROM users WHERE id='u1'").get() as any).username }, "central", "PATCH");
+    expect(taken.status).toBe(409);
+    const password = await call("/admin/users/u2/password", { newPassword: "kalici-sifre-1" });
+    expect(password.status).toBe(200);
+    expect(db.prepare("SELECT must_change_password FROM users WHERE id='u2'").get()).toMatchObject({ must_change_password: 0 });
+    expect(JSON.stringify(db.prepare("SELECT * FROM audit").all())).not.toContain("kalici-sifre-1");
+  });
   it("validates all profile fields before saving a batch", async () => {
     db.prepare("INSERT INTO profile_fields(key,label,type,options) VALUES('position','Görev','text','[]')").run();
     const bad = await call("/admin/profile-values/u2/batch", { values: [{ key: "position", value: "Pilot" }, { key: "unknown", value: "x" }] }, "central", "PUT");

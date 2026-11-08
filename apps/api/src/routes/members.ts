@@ -18,7 +18,7 @@ export function register(app: App) {
           .transform((s) => s.toLowerCase()),
         firstName: z.string().trim().min(1).max(80),
         lastName: z.string().trim().min(1).max(80),
-        temporaryPassword: z.string().min(12).max(128),
+        temporaryPassword: z.string().min(8).max(128),
         currentPassword: z.string().min(1).max(128),
         teamId: z.string().min(1).nullable().default(null),
         skipEmailVerification: z.boolean().default(false),

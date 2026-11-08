@@ -306,7 +306,7 @@ export function register(app: App) {
       c,
       z.object({
         currentPassword: z.string(),
-        password: z.string().min(12).max(128),
+        password: z.string().min(8).max(128),
       }),
     );
     try {
@@ -340,7 +340,7 @@ export function register(app: App) {
     await rate(c);
     const b = await body(
       c,
-      z.object({ code: z.string(), password: z.string().min(12).max(128) }),
+      z.object({ code: z.string(), password: z.string().min(8).max(128) }),
     );
     const verified = await firebase(c.env, "resetPassword", {
       oobCode: b.code,

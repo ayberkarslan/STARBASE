@@ -505,13 +505,13 @@ function App() {
                     label={mode === "change" ? "Yeni şifre" : "Şifre"}
                     name="password"
                     required
-                    minLength={12}
+                    minLength={8}
                     autoComplete={
                       mode === "login" ? "current-password" : "new-password"
                     }
                   />
                 )}
-                {["register", "change", "reset"].includes(mode) && <PasswordField label="Şifre tekrarı" name="passwordConfirm" required minLength={12} autoComplete="new-password" />}
+                {["register", "change", "reset"].includes(mode) && <PasswordField label="Şifre tekrarı" name="passwordConfirm" required minLength={8} autoComplete="new-password" />}
                 {mode === "login" && (
                   <Button
                     variant="bare"
@@ -1214,7 +1214,7 @@ function AdminUser({ user, org, revision }: { user: any; org: any; revision: num
         <PasswordField
           name="temporaryPassword"
           label="Geçici şifre (ilk girişte değiştirilir; ikisi de boşsa e-posta gönderilir)"
-          minLength={12}
+          minLength={8}
         />
         <Button type="submit" disabled={working}>Şifreyi uygula</Button>
       </form>

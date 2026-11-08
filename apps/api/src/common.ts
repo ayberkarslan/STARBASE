@@ -143,7 +143,7 @@ export const credentials = z.object({
     .string()
     .transform((s) => s.toLowerCase())
     .refine((s) => usernamePattern.test(s)),
-  password: z.string().min(12).max(128),
+  password: z.string().min(8).max(128),
 });
 export async function reauthenticate(c: any, password?: string) {
   if (!password) {

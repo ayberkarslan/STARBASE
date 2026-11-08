@@ -20,7 +20,7 @@ const errors: Record<string, string> = {
   member_already_exists: "Bu kullanıcı adı veya e-posta zaten kullanılıyor.",
   reauthentication_required: "Yönetici şifren hatalı.",
   invalid_team: "Seçilen ekip artık kullanılamıyor.",
-  invalid_input: "Alanları kontrol et; geçici şifre en az 12 karakter olmalı.",
+  invalid_input: "Alanları kontrol et; geçici şifre en az 8 karakter olmalı.",
   member_creation_failed:
     "Hesap oluşturulamadı. E-posta adresini ve şifreyi kontrol et.",
   member_creation_incomplete:
@@ -125,7 +125,7 @@ export function CreateMember({
           <PasswordField
             label="Geçici şifre"
             name="temporaryPassword"
-            minLength={12}
+            minLength={8}
             maxLength={128}
             autoComplete="new-password"
             required

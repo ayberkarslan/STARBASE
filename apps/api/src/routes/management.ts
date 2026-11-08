@@ -315,7 +315,7 @@ export function register(app: App) {
       c,
       z.object({
         currentPassword: z.string().optional(),
-        temporaryPassword: z.string().min(12).max(128).optional(),
+        temporaryPassword: z.string().min(8).max(128).optional(),
         newPassword: z.string().min(8).max(128).optional(),
       }),
     );

@@ -70,5 +70,6 @@ Tarayıcı testleri için `npx playwright install chromium` çalıştır. Test a
 - [Özel ve ortak serbest pano](docs/board-notes.md)
 - [Ücretsiz üretim kurulumu](docs/deployment.md)
 - [Teslim ve doğrulama durumu](docs/status.md)
+- [Aerodinamik ve uçuş hesaplamaları rehberi](docs/aerodinamik-hesaplamalar.md)
 
 Geliştirici ekranı `/docs`, OpenAPI `/api/openapi.json`. STARBASE protokolü kendi SDK'sıyla kullanılır; genel OAuth/OIDC sağlayıcısı değildir. Uygulama giriş/çıkış tarihleri auth akışında otomatik tutulur; online durum ve kullanım süresi ölçülmez. Özel pano yalnız sahibine, ortak pano takım üyelerine açıktır. SDK arşivi geliştirici ekranından indirilebilir; `npm run pack:sdk` ile ayrıca üretilir.

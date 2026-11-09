@@ -49,7 +49,7 @@ export function OrbitalIdentity({
       aria-label="Yıldız Roket Takımı merkezi yıldızı ve çevresindeki platform yörüngeleri"
     >
       <svg
-        viewBox="0 0 660 480"
+        viewBox="0 0 640 440"
         role="img"
         aria-labelledby="orbital-title"
         className="orbital-constellation-svg"
@@ -59,110 +59,83 @@ export function OrbitalIdentity({
         <defs>
           {/* Deep Stellar Corona Gradients */}
           <radialGradient id="stellar-outer-corona" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.14" />
-            <stop offset="40%" stopColor="#ffffff" stopOpacity="0.05" />
-            <stop offset="75%" stopColor="#ffffff" stopOpacity="0.015" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.12" />
+            <stop offset="45%" stopColor="#ffffff" stopOpacity="0.04" />
+            <stop offset="80%" stopColor="#ffffff" stopOpacity="0.01" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
 
           <radialGradient id="stellar-mid-corona" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32" />
-            <stop offset="45%" stopColor="#ffffff" stopOpacity="0.10" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.28" />
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.08" />
             <stop offset="85%" stopColor="#ffffff" stopOpacity="0.02" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
 
           <radialGradient id="stellar-core-dense" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
-            <stop offset="35%" stopColor="#ffffff" stopOpacity="0.3" />
-            <stop offset="70%" stopColor="#ffffff" stopOpacity="0.06" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+            <stop offset="40%" stopColor="#ffffff" stopOpacity="0.35" />
+            <stop offset="75%" stopColor="#ffffff" stopOpacity="0.08" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
 
-          {/* Optical Diffraction Spike Gradients */}
-          <linearGradient id="spike-vertical" x1="0" y1="0" x2="0" y2="1">
+          {/* Local Flare Diamond Gradients (confined strictly to core zone) */}
+          <linearGradient id="flare-vertical" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="25%" stopColor="#ffffff" stopOpacity="0.18" />
-            <stop offset="50%" stopColor="#ffffff" stopOpacity="1" />
-            <stop offset="75%" stopColor="#ffffff" stopOpacity="0.18" />
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.9" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
 
-          <linearGradient id="spike-horizontal" x1="0" y1="0" x2="1" y2="0">
+          <linearGradient id="flare-horizontal" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="25%" stopColor="#ffffff" stopOpacity="0.18" />
-            <stop offset="50%" stopColor="#ffffff" stopOpacity="1" />
-            <stop offset="75%" stopColor="#ffffff" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-          </linearGradient>
-
-          <linearGradient id="spike-diagonal-1" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="35%" stopColor="#ffffff" stopOpacity="0.15" />
-            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.85" />
-            <stop offset="65%" stopColor="#ffffff" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-          </linearGradient>
-
-          <linearGradient id="spike-diagonal-2" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="35%" stopColor="#ffffff" stopOpacity="0.15" />
-            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.85" />
-            <stop offset="65%" stopColor="#ffffff" stopOpacity="0.15" />
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.9" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
         </defs>
 
-        {/* Ambient Distant Starfield & Navigational Crosshairs */}
+        {/* Ambient Distant Stars (clean, no clutter) */}
         <g className="stellar-starfield" fill="#ffffff">
-          <circle cx="70" cy="190" r="1.1" opacity="0.45" />
-          <circle cx="560" cy="80" r="1.2" opacity="0.6" />
+          <circle cx="70" cy="180" r="1.1" opacity="0.4" />
+          <circle cx="560" cy="75" r="1.2" opacity="0.5" />
           <circle cx="490" cy="380" r="1.0" opacity="0.4" />
-          <circle cx="210" cy="430" r="1.2" opacity="0.5" />
-          <circle cx="230" cy="50" r="1.0" opacity="0.35" />
-          <circle cx="590" cy="310" r="1.1" opacity="0.5" />
-          {/* Micro navigational crosshairs */}
-          <path d="M190 60v8m-4-4h8" stroke="#ffffff" strokeWidth="0.7" opacity="0.35" />
-          <path d="M480 340v8m-4-4h8" stroke="#ffffff" strokeWidth="0.7" opacity="0.35" />
+          <circle cx="210" cy="410" r="1.1" opacity="0.4" />
+          <circle cx="230" cy="50" r="1.0" opacity="0.3" />
+          <circle cx="580" cy="310" r="1.1" opacity="0.45" />
         </g>
 
         {/* Orbital Trajectories (Keplerian Ellipses) */}
         <g className="stellar-orbit-paths" fill="none">
-          {/* Orbit Alpha (tilted -27 deg) */}
           <ellipse
-            cx="330"
-            cy="240"
-            rx="245"
-            ry="92"
-            transform="rotate(-27 330 240)"
+            cx="320"
+            cy="220"
+            rx="230"
+            ry="85"
+            transform="rotate(-25 320 220)"
             className="orbit-path orbit-alpha"
           />
-          {/* Orbit Beta (tilted +27 deg) */}
           <ellipse
-            cx="330"
-            cy="240"
-            rx="245"
-            ry="92"
-            transform="rotate(27 330 240)"
+            cx="320"
+            cy="220"
+            rx="230"
+            ry="85"
+            transform="rotate(25 320 220)"
             className="orbit-path orbit-beta"
           />
-          {/* Orbit Gamma (Polar inclination 90 deg) */}
           <ellipse
-            cx="330"
-            cy="240"
-            rx="195"
-            ry="75"
-            transform="rotate(90 330 240)"
+            cx="320"
+            cy="220"
+            rx="180"
+            ry="70"
+            transform="rotate(90 320 220)"
             className="orbit-path orbit-gamma"
           />
-          {/* Equatorial resonance ring */}
           <ellipse
-            cx="330"
-            cy="240"
-            rx="155"
-            ry="58"
+            cx="320"
+            cy="220"
+            rx="140"
+            ry="52"
             className="orbit-path orbit-inner"
-            strokeDasharray="4 8"
+            strokeDasharray="3 7"
           />
         </g>
 
@@ -170,141 +143,122 @@ export function OrbitalIdentity({
         {/* THE CENTRAL STELLAR CORE ("HARBİDEN YILDIZ")               */}
         {/* ========================================================= */}
         <g className="stellar-core-group" transform="translate(0, 0)">
-          {/* Outer Atmospheric Corona */}
+          {/* Outer Atmospheric Corona Halo */}
           <circle
-            cx="330"
-            cy="240"
-            r="195"
+            cx="320"
+            cy="220"
+            r="150"
             fill="url(#stellar-outer-corona)"
             className="stellar-outer-halo"
           />
 
           {/* Middle Energetic Corona */}
           <circle
-            cx="330"
-            cy="240"
-            r="125"
+            cx="320"
+            cy="220"
+            r="105"
             fill="url(#stellar-mid-corona)"
             className="stellar-mid-halo"
           />
 
-          {/* Astronomical Diffraction Spikes (Telescopic Star Flares) */}
+          {/* Authentic Star Diffraction Flares (Confined within radius <= 85px) */}
           <g className="stellar-diffraction-spikes">
-            {/* Major Vertical Spike */}
-            <line
-              x1="330"
-              y1="30"
-              x2="330"
-              y2="450"
-              stroke="url(#spike-vertical)"
-              strokeWidth="1.5"
-            />
-            {/* Tapered Vertical Diamond Flare */}
+            {/* Cardinal Vertical Diamond Flare */}
             <polygon
-              points="330,140 334,240 330,340 326,240"
-              fill="url(#spike-vertical)"
-              opacity="0.8"
+              points="320,135 323,220 320,305 317,220"
+              fill="url(#flare-vertical)"
+              opacity="0.85"
             />
-
-            {/* Major Horizontal Spike */}
-            <line
-              x1="70"
-              y1="240"
-              x2="590"
-              y2="240"
-              stroke="url(#spike-horizontal)"
-              strokeWidth="1.5"
-            />
-            {/* Tapered Horizontal Diamond Flare */}
+            {/* Cardinal Horizontal Diamond Flare */}
             <polygon
-              points="230,240 330,244 430,240 330,236"
-              fill="url(#spike-horizontal)"
-              opacity="0.8"
+              points="235,220 320,223 405,220 320,217"
+              fill="url(#flare-horizontal)"
+              opacity="0.85"
             />
-
-            {/* Diagonal Secondary Diamond Spikes (45 degrees) */}
+            {/* Subtle Diagonal 45-degree Flare Ticks */}
             <line
-              x1="225"
-              y1="135"
-              x2="435"
-              y2="345"
-              stroke="url(#spike-diagonal-1)"
-              strokeWidth="1"
+              x1="285"
+              y1="185"
+              x2="355"
+              y2="255"
+              stroke="#ffffff"
+              strokeWidth="0.8"
+              opacity="0.35"
             />
             <line
-              x1="225"
-              y1="345"
-              x2="435"
-              y2="135"
-              stroke="url(#spike-diagonal-2)"
-              strokeWidth="1"
+              x1="285"
+              y1="255"
+              x2="355"
+              y2="185"
+              stroke="#ffffff"
+              strokeWidth="0.8"
+              opacity="0.35"
             />
           </g>
 
-          {/* Celestial Telemetry Coordinate Ring (Rotates slowly) */}
-          <g className="stellar-coordinate-ring" transform-origin="330 240">
+          {/* Slow-rotating Celestial Coordinate Ring */}
+          <g className="stellar-coordinate-ring" transform-origin="320 220">
             <circle
-              cx="330"
-              cy="240"
-              r="102"
+              cx="320"
+              cy="220"
+              r="68"
               fill="none"
               stroke="#ffffff"
-              strokeWidth="1"
-              strokeDasharray="2 7"
-              opacity="0.32"
+              strokeWidth="0.9"
+              strokeDasharray="2 6"
+              opacity="0.3"
             />
-            {/* 8 Cardinal Navigation Marks */}
             {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
               <line
                 key={deg}
-                x1="330"
-                y1="134"
-                x2="330"
-                y2="139"
+                x1="320"
+                y1="149"
+                x2="320"
+                y2="153"
                 stroke="#ffffff"
-                strokeWidth="1.2"
-                opacity="0.6"
-                transform={`rotate(${deg} 330 240)`}
+                strokeWidth="1.1"
+                opacity="0.5"
+                transform={`rotate(${deg} 320 220)`}
               />
             ))}
           </g>
 
-          {/* Inner Dense Star Plasma */}
+          {/* Dense White Plasma Core */}
           <circle
-            cx="330"
-            cy="240"
-            r="72"
+            cx="320"
+            cy="220"
+            r="66"
             fill="url(#stellar-core-dense)"
             className="stellar-plasma-core"
           />
 
-          {/* Core Solid Celestial Body & Rim */}
+          {/* Core Solid Celestial Disc & Rim */}
           <circle
-            cx="330"
-            cy="240"
-            r="64"
+            cx="320"
+            cy="220"
+            r="54"
             fill="#000000"
             stroke="#ffffff"
-            strokeWidth="1.6"
+            strokeWidth="1.4"
             className="stellar-core-disc"
           />
           <circle
-            cx="330"
-            cy="240"
-            r="60"
+            cx="320"
+            cy="220"
+            r="50"
             fill="none"
             stroke="#ffffff"
-            strokeWidth="0.8"
-            opacity="0.4"
+            strokeWidth="0.6"
+            opacity="0.3"
           />
 
           {/* Star Core Emblem (YRT Star Icon) */}
           <image
             href="/brand/yrt.png"
-            x="276"
-            y="186"
-            width="108"
-            height="108"
+            x="277"
+            y="177"
+            width="86"
+            height="86"
             preserveAspectRatio="xMidYMid meet"
             className="stellar-emblem"
           />
@@ -316,72 +270,44 @@ export function OrbitalIdentity({
 
         {/* 1. STARDROP (Upper Left) */}
         <OrbitalStationNode
-          x={130}
+          x={125}
           y={105}
           name="STARDROP"
-          subtitle="TASARIM SİSTEMİ"
           isTarget={isStardropTarget}
-          leaderPath="M 0 0 L -25 -25 L -85 -25"
-          labelX={-85}
-          labelY={-34}
-          textAnchor="start"
-          badgeX={-85}
-          badgeY={-60}
+          align="top-left"
           logoUrl={findLogo("STARDROP", 0)}
           iconType="star"
         />
 
         {/* 2. STARLAB (Mid Right) */}
         <OrbitalStationNode
-          x={530}
-          y={180}
+          x={515}
+          y={145}
           name="STARLAB"
-          subtitle="UÇUŞ SİMÜLASYONU"
           isTarget={isStarlabTarget}
-          leaderPath="M 0 0 L 25 -25 L 90 -25"
-          labelX={90}
-          labelY={-34}
-          textAnchor="end"
-          badgeX={-70}
-          badgeY={-60}
+          align="top-right"
           logoUrl={findLogo("STARLAB", 1)}
           iconType="rocket"
         />
 
-        {/* 3. YRT TAKVİM (Bottom Center-Right) */}
+        {/* 3. YRT TAKVİM (Bottom Right) */}
         <OrbitalStationNode
-          x={355}
-          y={415}
+          x={360}
+          y={375}
           name="YRT TAKVİM"
-          subtitle="TEST TAKVİMİ"
           isTarget={isTakvimTarget}
-          leaderPath="M 0 0 L 28 22 L 95 22"
-          labelX={95}
-          labelY={14}
-          textAnchor="end"
-          badgeX={-65}
-          badgeY={-12}
+          align="bottom-right"
           logoUrl={findLogo("TAKVİM", 2) || findLogo("TAKVIM", 2)}
           iconType="calendar"
         />
 
-        {/* 4. SLOT 4: TARGET APP or YRT LATEX (Lower Left) */}
+        {/* 4. ACTIVE TARGET APP or YRT LATEX (Lower Left) */}
         <OrbitalStationNode
-          x={140}
-          y={335}
+          x={125}
+          y={325}
           name={slot4Name}
-          subtitle={
-            isSlot4Target
-              ? "Starbase oturumu ile bağlanılıyor"
-              : "TEKNİK RAPORLAMA"
-          }
           isTarget={isSlot4Target}
-          leaderPath="M 0 0 L -25 24 L -85 24"
-          labelX={-85}
-          labelY={14}
-          textAnchor="start"
-          badgeX={-85}
-          badgeY={-12}
+          align="bottom-left"
           logoUrl={slot4Logo}
           iconType="satellite"
         />
@@ -390,88 +316,91 @@ export function OrbitalIdentity({
   );
 }
 
-/** Individual Orbital Application Node with HUD & Radar Locking */
+/** Individual Orbital Application Node with Non-Colliding Layout & High-Visibility Target Locking */
 function OrbitalStationNode({
   x,
   y,
   name,
-  subtitle,
   isTarget,
-  leaderPath,
-  labelX,
-  labelY,
-  textAnchor,
-  badgeX,
-  badgeY,
+  align,
   logoUrl,
   iconType,
 }: {
   x: number;
   y: number;
   name: string;
-  subtitle: string;
   isTarget: boolean;
-  leaderPath: string;
-  labelX: number;
-  labelY: number;
-  textAnchor: "start" | "end";
-  badgeX: number;
-  badgeY: number;
+  align: "top-left" | "top-right" | "bottom-right" | "bottom-left";
   logoUrl?: string;
   iconType: "star" | "rocket" | "calendar" | "satellite";
 }) {
+  const isLeft = align === "top-left" || align === "bottom-left";
+  const isTop = align === "top-left" || align === "top-right";
+
+  const leaderPath = isTop
+    ? isLeft
+      ? "M 0 0 L -22 -22 H -85"
+      : "M 0 0 L 22 -22 H 85"
+    : isLeft
+      ? "M 0 0 L -22 22 H -85"
+      : "M 0 0 L 22 22 H 85";
+
+  const textAnchor = isLeft ? "start" : "end";
+  const titleX = isLeft ? -85 : 85;
+  const titleY = isTop ? -28 : 16;
+
+  const badgeWidth = 154;
+  const badgeHeight = 18;
+  const badgeX = isLeft ? -85 : 85 - badgeWidth;
+  const badgeY = isTop ? -52 : -8;
+
   return (
     <g
       className={`orbital-station ${isTarget ? "is-target-locked" : ""}`}
       transform={`translate(${x} ${y})`}
     >
-      {/* Sonar Beacon Ring (Target lock animation) */}
-      <circle className="station-beacon" r="24" />
-      {isTarget && (
-        <>
-          <circle className="station-sonar-ping station-sonar-1" r="24" />
-          <circle className="station-sonar-ping station-sonar-2" r="24" />
-        </>
-      )}
-
-      {/* Target Reticle Crosshair & HUD Brackets */}
+      {/* Target Radar Reticle & Glowing Lock Rings */}
       {isTarget && (
         <g className="target-reticle-group">
-          {/* Outer rotating dashed lock ring */}
-          <circle className="reticle-ring-dash" r="35" />
-          {/* Inner counter-rotating ring */}
-          <circle className="reticle-ring-inner" r="30" />
+          {/* Sonar Radar Wave Ripples */}
+          <circle className="station-sonar-ping station-sonar-1" r="20" />
+          <circle className="station-sonar-ping station-sonar-2" r="20" />
+
+          {/* Rotating Dashed Locking Ring */}
+          <circle className="reticle-ring-dash" r="30" />
+          {/* Inner Counter-Rotating Ring */}
+          <circle className="reticle-ring-inner" r="25" />
+
           {/* 4 Crosshair Aim Ticks */}
           <path
-            d="M -41 0 h 7 M 34 0 h 7 M 0 -41 v 7 M 0 34 v 7"
+            d="M -34 0 h 5 M 29 0 h 5 M 0 -34 v 5 M 0 29 v 5"
             className="reticle-cross-ticks"
           />
           {/* 4 Corner L-Brackets */}
           <path
-            d="M -26 -33 h -6 v 6 M 26 -33 h 6 v 6 M -26 33 h -6 v -6 M 26 33 h 6 v -6"
+            d="M -22 -28 h -5 v 5 M 22 -28 h 5 v 5 M -22 28 h -5 v -5 M 22 28 h 5 v -5"
             className="reticle-corner-brackets"
           />
         </g>
       )}
 
-      {/* Connecting Leader Line */}
+      {/* Connecting Leader Line (Shelf) */}
       <path className="station-leader" d={leaderPath} />
 
-      {/* Station Node Body (Dark disc with crisp border) */}
-      <circle className="station-core-node" r="22" />
+      {/* Station Node Disc */}
+      <circle className="station-core-node" r="20" />
 
-      {/* Node Emblem / Icon */}
+      {/* Node Emblem / Logo or Vector Icon */}
       {logoUrl ? (
         <image
           className="station-logo"
           href={logoUrl}
-          x="-15"
-          y="-15"
-          width="30"
-          height="30"
+          x="-13"
+          y="-13"
+          width="26"
+          height="26"
           preserveAspectRatio="xMidYMid meet"
           onError={(e) => {
-            // If image fails to load, hide image and fallback to icon
             e.currentTarget.style.display = "none";
           }}
         />
@@ -479,92 +408,91 @@ function OrbitalStationNode({
         <StationIcon iconType={iconType} />
       )}
 
-      {/* Target Indicator HUD Badge */}
+      {/* High-Visibility Target HUD Badge (Only for active app, cleanly separated) */}
       {isTarget && (
-        <g
-          className="target-hud-badge-group"
-          transform={`translate(${labelX + (textAnchor === "end" ? badgeX : 0)} ${labelY + badgeY})`}
-        >
+        <g className="target-hud-badge-group">
           <rect
             className="target-hud-rect"
-            x="0"
-            y="0"
-            width="168"
-            height="18"
+            x={badgeX}
+            y={badgeY}
+            width={badgeWidth}
+            height={badgeHeight}
             rx="2"
           />
-          <circle className="target-hud-dot" cx="10" cy="9" r="3" />
-          <text className="target-hud-text" x="20" y="12.5">
+          <circle
+            className="target-hud-dot"
+            cx={badgeX + 10}
+            cy={badgeY + badgeHeight / 2}
+            r="2.5"
+          />
+          <text
+            className="target-hud-text"
+            x={badgeX + 19}
+            y={badgeY + badgeHeight / 2 + 3}
+          >
             GİRİŞ YAPILAN UYGULAMA
           </text>
         </g>
       )}
 
-      {/* Labels & Telemetry */}
-      <g
-        className="station-telemetry"
-        transform={`translate(${labelX} ${labelY})`}
+      {/* Application Title ONLY (No subtitles / descriptions) */}
+      <text
+        className="station-title"
+        x={titleX}
+        y={titleY}
         textAnchor={textAnchor}
       >
-        <text className="station-title" x="0" y="0">
-          {name}
-        </text>
-        <text className="station-subtitle" x="0" y="16">
-          {subtitle}
-        </text>
-      </g>
+        {name}
+      </text>
     </g>
   );
 }
 
-/** Vector icons for orbital stations */
+/** Vector icons for orbital stations when custom logo is not present */
 function StationIcon({
   iconType,
 }: {
   iconType: "star" | "rocket" | "calendar" | "satellite";
 }) {
   if (iconType === "star") {
-    // Geometric octagram star
     return (
       <g className="station-vector-icon" fill="none" stroke="#ffffff" strokeWidth="1.2">
-        <polygon points="0,-12 3,-3 12,0 3,3 0,12 -3,3 -12,0 -3,-3" fill="#ffffff" fillOpacity="0.2" />
-        <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+        <polygon points="0,-11 3,-3 11,0 3,3 0,11 -3,3 -11,0 -3,-3" fill="#ffffff" fillOpacity="0.2" />
+        <circle cx="0" cy="0" r="2" fill="#ffffff" />
       </g>
     );
   }
   if (iconType === "rocket") {
-    // Sleek rocket silhouette
     return (
       <g className="station-vector-icon" fill="none" stroke="#ffffff" strokeWidth="1.2">
-        <path d="M 0 -13 C 4 -7 5 3 4 10 L -4 10 C -5 3 -4 -7 0 -13 Z" fill="#ffffff" fillOpacity="0.15" />
-        <path d="M -4 6 L -9 11 L -4 10 M 4 6 L 9 11 L 4 10" />
-        <circle cx="0" cy="-2" r="1.8" fill="#ffffff" />
+        <path d="M 0 -11 C 3.5 -6 4 2 3 8 L -3 8 C -4 2 -3.5 -6 0 -11 Z" fill="#ffffff" fillOpacity="0.2" />
+        <path d="M -3 5 L -7 9 L -3 8 M 3 5 L 7 9 L 3 8" />
+        <circle cx="0" cy="-2" r="1.5" fill="#ffffff" />
       </g>
     );
   }
   if (iconType === "calendar") {
-    // Orbital schedule grid
     return (
       <g className="station-vector-icon" fill="none" stroke="#ffffff" strokeWidth="1.2">
-        <rect x="-9" y="-8" width="18" height="17" rx="1.5" fill="#ffffff" fillOpacity="0.15" />
-        <line x1="-9" y1="-3" x2="9" y2="-3" />
-        <line x1="-5" y1="-11" x2="-5" y2="-8" />
-        <line x1="5" y1="-11" x2="5" y2="-8" />
-        <circle cx="-3" cy="2" r="1" fill="#ffffff" />
-        <circle cx="3" cy="2" r="1" fill="#ffffff" />
-        <circle cx="0" cy="5" r="1" fill="#ffffff" />
+        <rect x="-8" y="-7" width="16" height="15" rx="1.5" fill="#ffffff" fillOpacity="0.2" />
+        <line x1="-8" y1="-3" x2="8" y2="-3" />
+        <line x1="-4" y1="-9" x2="-4" y2="-7" />
+        <line x1="4" y1="-9" x2="4" y2="-7" />
+        <circle cx="-3" cy="1.5" r="1" fill="#ffffff" />
+        <circle cx="3" cy="1.5" r="1" fill="#ffffff" />
+        <circle cx="0" cy="4.5" r="1" fill="#ffffff" />
       </g>
     );
   }
-  // Default: Satellite with solar panels
+  // Satellite
   return (
     <g className="station-vector-icon" fill="none" stroke="#ffffff" strokeWidth="1.2">
-      <rect x="-5" y="-7" width="10" height="14" rx="1" fill="#ffffff" fillOpacity="0.2" />
-      <path d="M -16 -4 h 9 v 8 h -9 Z M 7 -4 h 9 v 8 h -9 Z" fill="#ffffff" fillOpacity="0.1" />
-      <line x1="-5" y1="0" x2="-7" y2="0" />
-      <line x1="5" y1="0" x2="7" y2="0" />
-      <line x1="0" y1="-7" x2="0" y2="-11" />
-      <circle cx="0" cy="-11" r="1" fill="#ffffff" />
+      <rect x="-4.5" y="-6" width="9" height="12" rx="1" fill="#ffffff" fillOpacity="0.25" />
+      <path d="M -14 -3 h 7 v 6 h -7 Z M 7 -3 h 7 v 6 h -7 Z" fill="#ffffff" fillOpacity="0.15" />
+      <line x1="-4.5" y1="0" x2="-7" y2="0" />
+      <line x1="4.5" y1="0" x2="7" y2="0" />
+      <line x1="0" y1="-6" x2="0" y2="-9" />
+      <circle cx="0" cy="-9" r="1" fill="#ffffff" />
     </g>
   );
 }

@@ -76,7 +76,7 @@ export function OrbitalIdentity({
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
 
-          {/* Sharp Star Flare Diamonds (Confined strictly around the central core) */}
+          {/* Sharp Star Flare Diamonds */}
           <linearGradient id="flare-vertical" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
             <stop offset="50%" stopColor="#ffffff" stopOpacity="0.95" />
@@ -90,7 +90,7 @@ export function OrbitalIdentity({
           </linearGradient>
         </defs>
 
-        {/* Ambient Distant Stars (clean & sparse) */}
+        {/* Ambient Distant Stars */}
         <g className="stellar-starfield" fill="#ffffff">
           <circle cx="80" cy="190" r="1" opacity="0.35" />
           <circle cx="600" cy="80" r="1.1" opacity="0.45" />
@@ -100,7 +100,7 @@ export function OrbitalIdentity({
           <circle cx="620" cy="320" r="1.1" opacity="0.4" />
         </g>
 
-        {/* Orbital Trajectories (Keplerian Ellipses) */}
+        {/* Orbital Trajectories */}
         <g className="stellar-orbit-paths" fill="none">
           <ellipse
             cx="340"
@@ -158,7 +158,7 @@ export function OrbitalIdentity({
             className="stellar-mid-halo"
           />
 
-          {/* Sharp Star Flare Diamonds (max radius 75px, strictly inside core zone) */}
+          {/* Sharp Star Flare Diamonds */}
           <g className="stellar-diffraction-spikes">
             <polygon
               points="340,155 342.5,230 340,305 337.5,230"
@@ -237,7 +237,7 @@ export function OrbitalIdentity({
 
         {/* 1. STARDROP (Upper Left) */}
         <OrbitalStationNode
-          x={140}
+          x={150}
           y={115}
           name="STARDROP"
           isTarget={isStardropTarget}
@@ -248,8 +248,8 @@ export function OrbitalIdentity({
 
         {/* 2. STARLAB (Upper Right) */}
         <OrbitalStationNode
-          x={540}
-          y={150}
+          x={530}
+          y={145}
           name="STARLAB"
           isTarget={isStarlabTarget}
           quadrant="top-right"
@@ -270,7 +270,7 @@ export function OrbitalIdentity({
 
         {/* 4. ACTIVE TARGET APP or YRT LATEX (Lower Left) */}
         <OrbitalStationNode
-          x={140}
+          x={150}
           y={335}
           name={slot4Name}
           isTarget={isSlot4Target}
@@ -304,36 +304,29 @@ function OrbitalStationNode({
   const isLeft = quadrant === "top-left" || quadrant === "bottom-left";
   const isTop = quadrant === "top-left" || quadrant === "top-right";
 
-  // Angular leader line extending away from the star:
-  // Node is at (0,0). Leader extends outward 25px diagonally and 100px horizontally.
-  const shelfLength = 100;
-  const diagX = isLeft ? -25 : 25;
-  const diagY = isTop ? -25 : 25;
-  const endX = isLeft ? diagX - shelfLength : diagX + shelfLength;
-  const leaderPath = `M 0 0 L ${diagX} ${diagY} H ${endX}`;
+  // Telemetry leader line starting cleanly from the bracket perimeter:
+  const startX = isLeft ? -20 : 20;
+  const startY = isTop ? -20 : 20;
+  const diagX = isLeft ? -30 : 30;
+  const diagY = isTop ? -28 : 28;
+  const shelfEndX = isLeft ? -135 : 135;
+  const leaderPath = `M ${startX} ${startY} L ${diagX} ${diagY} H ${shelfEndX}`;
 
-  // Text anchor: left-align for left side, right-align for right side.
-  // Both title and tag align at the very end of the shelf (endX).
+  // Left side aligns to shelfEndX, right side aligns to shelfEndX:
   const textAnchor = isLeft ? "start" : "end";
 
-  // Vertical placement strictly stacked with the shelf line:
-  // Top quadrant:
-  //   - Shelf line at y = -25
-  //   - Title at y = -31 (sits 6px above shelf)
-  //   - Tag at y = -47 (sits 16px above title)
-  // Bottom quadrant:
-  //   - Tag at y = 5
-  //   - Title at y = 19
-  //   - Shelf line at y = 25 (sits 6px below title)
-  const titleY = isTop ? -31 : 19;
-  const tagY = isTop ? -47 : 5;
+  // Strict vertical stacking (Zero overlap with node or reticle):
+  // Top: Shelf at y=-28, Title at y=-34, Tag at y=-48
+  // Bottom: Shelf at y=28, Title at y=22, Tag at y=8
+  const titleY = isTop ? -34 : 22;
+  const tagY = isTop ? -48 : 8;
 
   return (
     <g
       className={`orbital-station ${isTarget ? "is-target-locked" : ""}`}
       transform={`translate(${x} ${y})`}
     >
-      {/* Target Aerospace HUD Lock-On Cursor */}
+      {/* Target Aerospace HUD Lock-On Reticle */}
       {isTarget && (
         <g className="target-hud-reticle">
           {/* Subtle radar sonar wave */}
@@ -347,7 +340,7 @@ function OrbitalStationNode({
         </g>
       )}
 
-      {/* Connecting Leader Line (Shelf) */}
+      {/* Connecting Telemetry Shelf Line */}
       <path className="station-leader" d={leaderPath} />
 
       {/* Station Node Disc */}
@@ -374,22 +367,22 @@ function OrbitalStationNode({
         <StationIcon iconType={iconType} />
       )}
 
-      {/* Active Target Indicator Tag (Aerospace typography, NO overlapping box) */}
+      {/* Active Target Indicator Tag (Aerospace typography, cleanly spaced) */}
       {isTarget && (
         <text
           className="station-target-tag"
-          x={endX}
+          x={shelfEndX}
           y={tagY}
           textAnchor={textAnchor}
         >
-          [ GİRİŞ YAPILAN UYGULAMA ]
+          [ HEDEF UYGULAMA ]
         </text>
       )}
 
       {/* Application Title ONLY */}
       <text
         className="station-title"
-        x={endX}
+        x={shelfEndX}
         y={titleY}
         textAnchor={textAnchor}
       >

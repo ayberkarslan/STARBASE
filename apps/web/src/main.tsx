@@ -88,6 +88,7 @@ const messages: Record<string, string> = {
   invalid_credentials: "Kullanıcı adı veya şifre hatalı.",
   email_verification_required: "Devam etmek için e-posta adresini doğrula.",
   registration_unavailable: "Bu bilgilerle kayıt oluşturulamadı.",
+  registration_disabled: "Platformumuz atölyeye özeldir; yeni üye kaydı yalnızca yöneticiler tarafından yapılabilir.",
   password_change_required: "Devam etmeden önce şifreni değiştir.",
   authentication_required: "Önce giriş yap.",
   permission_denied: "Bu işlem için yetkin bulunmuyor.",
@@ -167,6 +168,9 @@ function App() {
     if (user) loadBadges();
   }, [user?.id]);
   useEffect(() => {
+    api("/apps")
+      .then(setApps)
+      .catch(() => {});
     if (path !== "/authorize") return;
     const clientId = params.get("client_id");
     const redirectUri = params.get("redirect_uri");
@@ -260,7 +264,7 @@ function App() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     await act(async () => {
-      if (["register", "change", "reset"].includes(mode) && field(f, "password") !== field(f, "passwordConfirm"))
+      if (["change", "reset"].includes(mode) && field(f, "password") !== field(f, "passwordConfirm"))
         throw new Error("Şifreler eşleşmiyor.");
       if (mode === "login") {
         const r = await api("/auth/login", {
@@ -269,22 +273,6 @@ function App() {
         });
         if (r.passwordChangeRequired) setMode("change");
         else await load();
-      }
-      if (mode === "register") {
-        const registered = await api("/auth/register", {
-          username: field(f, "username"),
-          password: field(f, "password"),
-          email: field(f, "email"),
-          firstName: field(f, "firstName"),
-          lastName: field(f, "lastName"),
-        });
-        setVerificationUrl(registered.developmentVerificationUrl ?? null);
-        setNotice(
-          registered.developmentVerificationUrl
-            ? "Yerel test ortamı gerçek e-posta göndermez. Aşağıdaki düğmeyle doğrulayabilirsin."
-            : "Doğrulama e-postanı kontrol et.",
-        );
-        setMode("login");
       }
       if (mode === "recover") {
         await api("/auth/recover", { email: field(f, "email") });
@@ -398,83 +386,28 @@ function App() {
                 <br />
                 etrafında.
               </h1>
-              <p>
-                Tek hesap ile tüm platformlara kolay erişim.
-                <br />
-                Yıldız Roket Takımının tüm yazılım platformları için ortak bir
-                erişim alanı.
-              </p>
               <OrbitalIdentity apps={apps} activeApp={applicationBrand} />
             </section>
             <section className="auth">
-              {applicationBrand && (
-                <div className="application-login-brand">
-                  <div className="app-brand-badge">
-                    {applicationBrand.logoUrl ? (
-                      <img
-                        src={applicationBrand.logoUrl}
-                        alt=""
-                        referrerPolicy="no-referrer"
-                        onError={(event) => {
-                          event.currentTarget.hidden = true;
-                        }}
-                      />
-                    ) : (
-                      <AppWindow size={24} aria-hidden="true" />
-                    )}
-                  </div>
-                  <span>
-                    <span className="app-brand-status">
-
-                      <small>GİRİŞ YAPILAN UYGULAMA</small>
-                    </span>
-                    <strong>{applicationBrand.name}</strong>
-                    <span className="app-brand-caption">
-                      Starbase merkezi oturumu ile bağlanılıyor
-                    </span>
-                  </span>
-                </div>
-              )}
               <div className="auth-heading">
                 <span className="eyebrow">STARBASE HESABINA</span>
                 <h2>
                   {
                     {
                       login: "Tekrar hoş geldin.",
-                      register: "Yörüngeye katıl.",
                       recover: "Erişimini geri al.",
                       change: "Yeni şifreni belirle.",
                       reset: "Şifreni yenile.",
                       verify: "E-postanı doğrula.",
-                    }[mode]
+                    }[mode] || "Tekrar hoş geldin."
                   }
                 </h2>
                 {mode !== "login" && (
-                  <p>
-                    {mode === "register"
-                      ? "Bir hesapla tüm platformlara bağlan."
-                      : "Hesabının güvenliğini birlikte koruyalım."}
-                  </p>
+                  <p>Hesabının güvenliğini birlikte koruyalım.</p>
                 )}
               </div>
               <form onSubmit={submit}>
-                {mode === "register" && (
-                  <div className="field-pair">
-                    <TextField
-                      label="İsim"
-                      name="firstName"
-                      required
-                      autoComplete="given-name"
-                    />
-                    <TextField
-                      label="Soyisim"
-                      name="lastName"
-                      required
-                      autoComplete="family-name"
-                    />
-                  </div>
-                )}
-                {["login", "register"].includes(mode) && (
+                {mode === "login" && (
                   <TextField
                     label="Kullanıcı adı"
                     name="username"
@@ -483,7 +416,7 @@ function App() {
                     pattern={"[a-zA-Z0-9][a-zA-Z0-9._\\-]{2,31}"}
                   />
                 )}
-                {["register", "recover"].includes(mode) && (
+                {mode === "recover" && (
                   <TextField
                     label="E-posta"
                     name="email"
@@ -500,7 +433,7 @@ function App() {
                     autoComplete="current-password"
                   />
                 )}
-                {["login", "register", "reset", "change"].includes(mode) && (
+                {["login", "reset", "change"].includes(mode) && (
                   <PasswordField
                     label={mode === "change" ? "Yeni şifre" : "Şifre"}
                     name="password"
@@ -511,7 +444,15 @@ function App() {
                     }
                   />
                 )}
-                {["register", "change", "reset"].includes(mode) && <PasswordField label="Şifre tekrarı" name="passwordConfirm" required minLength={8} autoComplete="new-password" />}
+                {["change", "reset"].includes(mode) && (
+                  <PasswordField
+                    label="Şifre tekrarı"
+                    name="passwordConfirm"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                  />
+                )}
                 {mode === "login" && (
                   <Button
                     variant="bare"
@@ -521,7 +462,7 @@ function App() {
                     Şifremi unuttum
                   </Button>
                 )}
-                {["register", "recover"].includes(mode) && (
+                {mode === "recover" && (
                   <Captcha key={mode} />
                 )}
                 {status}
@@ -534,12 +475,11 @@ function App() {
                   {
                     {
                       login: "Giriş yap",
-                      register: "Hesap oluştur",
                       recover: "Kurtarma e-postası gönder",
                       change: "Şifreyi değiştir",
                       reset: "Şifreyi yenile",
                       verify: "E-postayı doğrula",
-                    }[mode]
+                    }[mode] || "Giriş yap"
                   }
                   <ArrowUpRight size={17} />
                 </Button>
@@ -576,13 +516,7 @@ function App() {
                 </Button>
               )}
               <div className="auth-bottom">
-                {mode === "login" ? (
-                  <>
-                    <Button variant="bare" onClick={() => setMode("register")}>
-                      Hesap oluştur <ArrowUpRight size={14} />
-                    </Button>
-                  </>
-                ) : (
+                {mode !== "login" && (
                   <Button variant="bare" onClick={() => setMode("login")}>
                     <ArrowLeft size={14} /> Girişe dön
                   </Button>

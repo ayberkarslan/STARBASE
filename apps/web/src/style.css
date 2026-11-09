@@ -309,22 +309,22 @@ header,
 /* Star Corona & Flare Animations */
 .stellar-outer-halo {
   animation: stellar-breathe 4s ease-in-out infinite alternate;
-  transform-origin: 320px 220px;
+  transform-origin: 340px 230px;
 }
 .stellar-mid-halo {
   animation: stellar-pulse 2.8s ease-in-out infinite alternate;
-  transform-origin: 320px 220px;
+  transform-origin: 340px 230px;
 }
 .stellar-plasma-core {
   animation: stellar-flicker 1.8s ease-in-out infinite alternate;
-  transform-origin: 320px 220px;
+  transform-origin: 340px 230px;
 }
 .stellar-coordinate-ring {
   animation: coordinate-spin 60s linear infinite;
-  transform-origin: 320px 220px;
+  transform-origin: 340px 230px;
 }
 .stellar-emblem {
-  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 4px #ffffff);
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 3px #ffffff);
 }
 
 @keyframes stellar-breathe {
@@ -346,11 +346,11 @@ header,
 
 /* Orbit Lines */
 .stellar-orbit-paths .orbit-path {
-  stroke: #ffffff28;
+  stroke: #ffffff25;
   stroke-width: 1;
 }
 .stellar-orbit-paths .orbit-inner {
-  stroke: #ffffff14;
+  stroke: #ffffff12;
   stroke-width: 0.8;
 }
 
@@ -364,131 +364,97 @@ header,
   stroke-width: 1;
   transition: all 0.25s ease;
 }
+.orbital-station .station-inner-ring {
+  fill: none;
+  stroke: #ffffff18;
+  stroke-width: 0.8;
+}
 .orbital-station .station-leader {
   fill: none;
-  stroke: #ffffff30;
+  stroke: #ffffff28;
   stroke-width: 0.8;
+  transition: stroke 0.25s ease;
 }
 .orbital-station .station-logo {
   clip-path: circle(50%);
+  opacity: 0.65;
+  transition: opacity 0.25s ease;
 }
 .orbital-station .station-title {
   fill: #ffffff65;
-  font: 12.5px Michroma, sans-serif;
-  letter-spacing: 1.2px;
+  font: 12px Michroma, sans-serif;
+  letter-spacing: 1.4px;
   font-weight: 500;
-  transition: fill 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-/* TARGET ACTIVE / LOCKED STATE */
+/* TARGET ACTIVE / LOCKED STATE (Aerospace Telemetry) */
 .orbital-station.is-target-locked .station-core-node {
   fill: #000000;
   stroke: #ffffff;
-  stroke-width: 1.8;
+  stroke-width: 1.6;
   filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95));
+}
+.orbital-station.is-target-locked .station-inner-ring {
+  stroke: rgba(255, 255, 255, 0.45);
 }
 .orbital-station.is-target-locked .station-leader {
   stroke: #ffffff;
   stroke-width: 1.2;
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
 }
+.orbital-station.is-target-locked .station-logo {
+  opacity: 1;
+}
 .orbital-station.is-target-locked .station-title {
   fill: #ffffff;
+  font-size: 13.5px;
   font-weight: 700;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
 }
+.orbital-station .station-target-tag {
+  fill: #ffffff;
+  font: 7.5px Michroma, sans-serif;
+  letter-spacing: 1.6px;
+  font-weight: 600;
+  opacity: 0.85;
+}
 
-/* Sonar radar ping animation */
+/* Aerospace HUD Corner Brackets around target node */
+.target-hud-reticle {
+  pointer-events: none;
+}
+.hud-corner-brackets {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
+}
+
+/* Clean Sonar radar pulse */
 .orbital-station .station-sonar-ping {
   fill: none;
   stroke: #ffffff;
-  animation: sonar-radar-ping 2.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  animation: sonar-radar-ping 2.5s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
   transform-origin: 0 0;
-}
-.orbital-station .station-sonar-2 {
-  animation-delay: 1.2s;
 }
 
 @keyframes sonar-radar-ping {
   0% {
-    r: 20;
-    opacity: 0.9;
-    stroke-width: 1.4;
+    r: 18;
+    opacity: 0.85;
+    stroke-width: 1.2;
   }
-  70% {
-    r: 38;
-    opacity: 0.15;
+  75% {
+    r: 34;
+    opacity: 0.12;
     stroke-width: 0.8;
   }
   100% {
-    r: 46;
+    r: 40;
     opacity: 0;
     stroke-width: 0.4;
   }
-}
-
-/* Reticle Target Lock Ring */
-.target-reticle-group {
-  pointer-events: none;
-}
-.reticle-ring-dash {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 1;
-  stroke-dasharray: 4 3;
-  animation: reticle-spin-cw 12s linear infinite;
-  transform-origin: 0 0;
-}
-.reticle-ring-inner {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.45);
-  stroke-width: 0.8;
-  stroke-dasharray: 2 4;
-  animation: reticle-spin-ccw 16s linear infinite;
-  transform-origin: 0 0;
-}
-.reticle-cross-ticks {
-  stroke: #ffffff;
-  stroke-width: 1.2;
-}
-.reticle-corner-brackets {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 1.2;
-}
-
-@keyframes reticle-spin-cw {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-@keyframes reticle-spin-ccw {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
-}
-
-/* Target HUD Badge (Above Title) */
-.target-hud-badge-group {
-  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.95));
-}
-.target-hud-rect {
-  fill: #000000;
-  stroke: #ffffff;
-  stroke-width: 1;
-}
-.target-hud-dot {
-  fill: #ffffff;
-  animation: hud-dot-blink 1.2s ease-in-out infinite;
-}
-.target-hud-text {
-  fill: #ffffff;
-  font: 8px Michroma, sans-serif;
-  letter-spacing: 0.9px;
-  font-weight: 600;
-}
-
-@keyframes hud-dot-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.2; }
 }
 footer {
   display: flex;

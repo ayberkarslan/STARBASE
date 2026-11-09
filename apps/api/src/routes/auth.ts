@@ -29,67 +29,8 @@ export function register(app: App) {
   app.get("/api/v1/health", (c) =>
     c.json({ service: "STARBASE", version: "0.1.0" }),
   );
-  app.post("/api/v1/auth/register", async (c) => {
-    await rate(c);
-    await captcha(c);
-    const b = await body(
-      c,
-      credentials.extend({
-        email: z.string().email(),
-        firstName: z.string().min(1).max(80),
-        lastName: z.string().min(1).max(80),
-      }),
-    );
-    const uid = crypto.randomUUID();
-    try {
-      await c.env.DB.prepare(
-        "INSERT INTO users(id,username,email,first_name,last_name,created_at) VALUES(?,?,?,?,?,?)",
-      )
-        .bind(
-          uid,
-          b.username,
-          b.email.toLowerCase(),
-          b.firstName,
-          b.lastName,
-          now(),
-        )
-        .run();
-    } catch {
-      return fail(409, "registration_unavailable");
-    }
-    try {
-      const result = await firebase(c.env, "signUp", {
-        email: b.email,
-        password: b.password,
-        returnSecureToken: true,
-      });
-      await c.env.DB.prepare("UPDATE users SET id=? WHERE id=?")
-        .bind(result.localId, uid)
-        .run();
-      let verificationDelivered = true;
-      try {
-        await firebase(c.env, "sendOobCode", {
-          requestType: "VERIFY_EMAIL",
-          idToken: result.idToken,
-        });
-      } catch {
-        verificationDelivered = false;
-      }
-      return c.json(
-        {
-          verificationRequired: true,
-          verificationDelivered,
-          developmentVerificationUrl: await localVerificationUrl(
-            c.env,
-            b.email,
-          ),
-        },
-        201,
-      );
-    } catch {
-      await c.env.DB.prepare("DELETE FROM users WHERE id=?").bind(uid).run();
-      return fail(400, "registration_incomplete");
-    }
+  app.post("/api/v1/auth/register", async () => {
+    return fail(403, "registration_disabled");
   });
   app.post("/api/v1/auth/login", async (c) => {
     await rate(c);

@@ -319,10 +319,26 @@ header,
   stroke: rgba(255, 255, 255, 0.16);
   stroke-width: 1px;
 }
-.stellar-orbit-paths .orbit-path-vertical {
-  stroke: rgba(255, 255, 255, 0.1);
-  stroke-width: 0.9px;
+.stellar-orbit-paths .orbit-path-equatorial {
+  stroke: rgba(255, 255, 255, 0.09);
+  stroke-width: 0.8px;
+  stroke-dasharray: 3 6;
+}
+
+/* Auth Telemetry Guidance Beam */
+.stellar-auth-beam {
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 1px;
   stroke-dasharray: 4 6;
+  animation: auth-beam-flow 1.4s linear infinite;
+}
+@keyframes auth-beam-flow {
+  from {
+    stroke-dashoffset: 20;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* Station Nodes */
@@ -335,23 +351,19 @@ header,
   stroke-width: 1px;
   transition: all 0.25s ease;
 }
-.orbital-station .station-inner-ring {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.12);
-  stroke-width: 0.8px;
-}
 .orbital-station .station-leader {
   fill: none;
   stroke: rgba(255, 255, 255, 0.25);
   stroke-width: 0.8px;
 }
 .orbital-station .station-shelf-line {
-  stroke: rgba(255, 255, 255, 0.35);
-  stroke-width: 0.8px;
-}
-.orbital-station .station-bracket-line {
-  stroke: rgba(255, 255, 255, 0.6);
+  stroke: #ffffff;
   stroke-width: 1px;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));
+}
+.orbital-station .station-shelf-tick {
+  stroke: #ffffff;
+  stroke-width: 1.2px;
 }
 .orbital-station .station-logo {
   clip-path: circle(50%);
@@ -372,18 +384,6 @@ header,
   stroke: #ffffff;
   stroke-width: 1.6px;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
-}
-.orbital-station.is-target-locked .station-inner-ring {
-  stroke: rgba(255, 255, 255, 0.5);
-}
-.orbital-station.is-target-locked .station-leader {
-  stroke: #ffffff;
-  stroke-width: 1px;
-}
-.orbital-station.is-target-locked .station-shelf-line {
-  stroke: #ffffff;
-  stroke-width: 1px;
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.6));
 }
 .orbital-station.is-target-locked .station-logo {
   opacity: 1;

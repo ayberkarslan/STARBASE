@@ -43,101 +43,134 @@ export function OrbitalIdentity({
     ? activeApp?.logoUrl || findLogo("LATEX", 3)
     : findLogo("LATEX", 3);
 
-  // Stations positioned on orbital ellipses in viewBox 0 0 700 460 (Center: 350, 230)
-  const station1 = { x: 195, y: 115 }; // STARDROP (top-left)
-  const station2 = { x: 505, y: 115 }; // STARLAB (top-right)
-  const station3 = { x: 500, y: 345 }; // YRT TAKVİM (bottom-right)
-  const station4 = { x: 200, y: 345 }; // SLOT 4 / ACTIVE APP (bottom-left)
+  // Aerospace Constellation Stations (viewBox: 0 0 660 420, Center: 330 210)
+  const station1 = { x: 155, y: 105 }; // STARDROP (upper-left)
+  const station2 = { x: 505, y: 105 }; // STARLAB (upper-right)
+  const station3 = { x: 495, y: 315 }; // YRT TAKVİM (bottom-right)
+  const station4 = { x: 165, y: 315 }; // ACTIVE APP / YRT LATEX (bottom-left)
+
+  const targetCoord = isStardropTarget
+    ? station1
+    : isStarlabTarget
+    ? station2
+    : isTakvimTarget
+    ? station3
+    : isSlot4Target
+    ? station4
+    : null;
 
   return (
     <figure
       className="orbital-identity"
-      aria-label="Yıldız Roket Takımı merkezi ve çevresindeki platform yörüngeleri"
+      aria-label="Yıldız Roket Takımı platform yörüngeleri"
     >
       <svg
-        viewBox="0 0 700 460"
+        viewBox="0 0 660 420"
         role="img"
         aria-labelledby="orbital-title"
         className="orbital-constellation-svg"
       >
-        <title id="orbital-title">Yıldız Roket Takımı Uygulama Yörüngesi</title>
+        <title id="orbital-title">Yıldız Roket Takımı Yörünge Sistemi</title>
 
-        {/* Ambient subtle stars */}
+        {/* Ambient celestial reference points */}
         <g className="stellar-starfield" fill="#ffffff">
-          <circle cx="80" cy="190" r="1" opacity="0.3" />
-          <circle cx="620" cy="80" r="1.1" opacity="0.35" />
-          <circle cx="530" cy="415" r="1" opacity="0.25" />
-          <circle cx="215" cy="435" r="0.9" opacity="0.25" />
-          <circle cx="260" cy="45" r="1" opacity="0.25" />
-          <circle cx="640" cy="320" r="1" opacity="0.3" />
+          <circle cx="75" cy="180" r="1" opacity="0.35" />
+          <circle cx="585" cy="70" r="1.1" opacity="0.3" />
+          <circle cx="530" cy="390" r="1" opacity="0.25" />
+          <circle cx="210" cy="405" r="0.9" opacity="0.25" />
+          <circle cx="250" cy="45" r="1" opacity="0.25" />
+          <circle cx="615" cy="290" r="1" opacity="0.3" />
         </g>
 
-        {/* Elegant Orbital Paths */}
+        {/* Dynamic Keplerian Orbital Trajectories */}
         <g className="stellar-orbit-paths" fill="none">
+          {/* Inclined Trajectory Alpha */}
           <ellipse
-            cx="350"
-            cy="230"
-            rx="245"
-            ry="95"
-            transform="rotate(-24 350 230)"
+            cx="330"
+            cy="210"
+            rx="230"
+            ry="90"
+            transform="rotate(-22 330 210)"
             className="orbit-path"
           />
+          {/* Inclined Trajectory Beta */}
           <ellipse
-            cx="350"
-            cy="230"
-            rx="245"
-            ry="95"
-            transform="rotate(24 350 230)"
+            cx="330"
+            cy="210"
+            rx="230"
+            ry="90"
+            transform="rotate(22 330 210)"
             className="orbit-path"
           />
+          {/* Equatorial Guidance Track */}
           <ellipse
-            cx="350"
-            cy="230"
-            rx="180"
-            ry="70"
-            transform="rotate(90 350 230)"
-            className="orbit-path orbit-path-vertical"
+            cx="330"
+            cy="210"
+            rx="260"
+            ry="95"
+            className="orbit-path-equatorial"
           />
         </g>
+
+        {/* Active Telemetry Guidance Beam (STARBASE -> Target App) */}
+        {targetCoord && (
+          <g className="stellar-auth-vector">
+            <line
+              x1="330"
+              y1="210"
+              x2={targetCoord.x}
+              y2={targetCoord.y}
+              className="stellar-auth-beam"
+            />
+          </g>
+        )}
 
         {/* ========================================================= */}
-        {/* THE CENTRAL CORE LOGO (PROMINENT & HEROIC)                */}
+        {/* THE CENTRAL STAR EMBLEM (HEROIC & MINIMALIST)             */}
         {/* ========================================================= */}
         <g className="stellar-core-group">
-          {/* Outer orbit boundary */}
+          {/* Outer bezel ring */}
           <circle
-            cx="350"
-            cy="230"
-            r="82"
+            cx="330"
+            cy="210"
+            r="76"
             fill="none"
-            stroke="rgba(255, 255, 255, 0.12)"
+            stroke="rgba(255, 255, 255, 0.14)"
             strokeWidth="1"
           />
 
-          {/* Core Solid Celestial Disc */}
+          {/* 4 Cardinal Azimuth Ticks */}
+          <g stroke="rgba(255, 255, 255, 0.45)" strokeWidth="1">
+            <line x1="330" y1="130" x2="330" y2="135" />
+            <line x1="330" y1="285" x2="330" y2="290" />
+            <line x1="250" y1="210" x2="255" y2="210" />
+            <line x1="405" y1="210" x2="410" y2="210" />
+          </g>
+
+          {/* Solid Core Disc */}
           <circle
-            cx="350"
-            cy="230"
-            r="72"
+            cx="330"
+            cy="210"
+            r="64"
             fill="#000000"
-            stroke="rgba(255, 255, 255, 0.35)"
+            stroke="rgba(255, 255, 255, 0.45)"
             strokeWidth="1.2"
           />
 
-          {/* Star Core Emblem (YRT Star Icon - Large & Crisp) */}
+          {/* Star Core Emblem (YRT Star Icon - Large & Bold) */}
           <image
             href="/brand/yrt.png"
-            x="292"
-            y="172"
-            width="116"
-            height="116"
+            x="280"
+            y="160"
+            width="100"
+            height="100"
             preserveAspectRatio="xMidYMid meet"
             className="stellar-emblem"
           />
         </g>
 
         {/* ========================================================= */}
-        {/* APPLICATION NODES                                         */}
+        {/* ORBITAL SUBSYSTEM STATIONS                                */}
         {/* ========================================================= */}
 
         {/* 1. STARDROP (Upper Left) */}
@@ -188,7 +221,7 @@ export function OrbitalIdentity({
   );
 }
 
-/** Individual Orbital Application Node with Aerospace Telemetry HUD */
+/** Individual Orbital Subsystem Station Node */
 function OrbitalStationNode({
   x,
   y,
@@ -207,10 +240,9 @@ function OrbitalStationNode({
   iconType: "star" | "rocket" | "calendar" | "satellite";
 }) {
   const textAnchor = isLeft ? "end" : "start";
-  const leaderStartX = isLeft ? -22 : 22;
-  const leaderEndX = isLeft ? -42 : 42;
-  const textX = isLeft ? -48 : 48;
-  const shelfEndX = isLeft ? -190 : 190;
+  const shelfStartX = isLeft ? -22 : 22;
+  const shelfEndX = isLeft ? -150 : 150;
+  const textX = isLeft ? -30 : 30;
 
   return (
     <g
@@ -228,35 +260,41 @@ function OrbitalStationNode({
         </g>
       )}
 
-      {/* Leader line and texts */}
+      {/* Telemetry Callout & Labels */}
       {isTarget ? (
         <g className="station-target-callout">
+          {/* Horizontal dividing shelf line */}
           <line
-            x1={leaderStartX}
+            x1={shelfStartX}
             y1="0"
-            x2={leaderEndX}
-            y2="0"
-            className="station-leader"
-          />
-          <line
-            x1={leaderEndX}
-            y1="22"
             x2={shelfEndX}
-            y2="22"
+            y2="0"
             className="station-shelf-line"
           />
+          {/* Shelf end terminator tick */}
+          <line
+            x1={shelfEndX}
+            y1="-3"
+            x2={shelfEndX}
+            y2="3"
+            className="station-shelf-tick"
+          />
+
+          {/* Target Status Tag (Above shelf) */}
           <text
             className="station-target-tag"
             x={textX}
-            y="-4"
+            y="-7"
             textAnchor={textAnchor}
           >
             [ GİRİŞ YAPILAN UYGULAMA ]
           </text>
+
+          {/* Target Application Title (Below shelf) */}
           <text
             className="station-title is-target"
             x={textX}
-            y="14"
+            y="15"
             textAnchor={textAnchor}
           >
             {name}
@@ -267,13 +305,13 @@ function OrbitalStationNode({
           <line
             x1={isLeft ? -18 : 18}
             y1="0"
-            x2={isLeft ? -36 : 36}
+            x2={isLeft ? -32 : 32}
             y2="0"
             className="station-leader"
           />
           <text
             className="station-title"
-            x={isLeft ? -42 : 42}
+            x={isLeft ? -38 : 38}
             y="4"
             textAnchor={textAnchor}
           >

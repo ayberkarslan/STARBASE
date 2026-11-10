@@ -306,52 +306,63 @@ header,
   overflow: visible;
 }
 
-/* Star Corona & Flare Animations */
-.stellar-outer-halo {
-  animation: stellar-breathe 4s ease-in-out infinite alternate;
-  transform-origin: 340px 230px;
+/* Central STARBASE Core */
+.stellar-core-group {
+  cursor: default;
 }
-.stellar-mid-halo {
-  animation: stellar-pulse 2.8s ease-in-out infinite alternate;
-  transform-origin: 340px 230px;
+.stellar-core-disc {
+  fill: #000000;
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 1.2px;
 }
-.stellar-plasma-core {
-  animation: stellar-flicker 1.8s ease-in-out infinite alternate;
-  transform-origin: 340px 230px;
+.stellar-core-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 0.8px;
+  stroke-dasharray: 2 4;
 }
-.stellar-coordinate-ring {
-  animation: coordinate-spin 60s linear infinite;
-  transform-origin: 340px 230px;
+.stellar-core-label {
+  fill: rgba(255, 255, 255, 0.55);
+  font: 7px Michroma, sans-serif;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
 }
 .stellar-emblem {
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 3px #ffffff);
+  pointer-events: none;
 }
 
-@keyframes stellar-breathe {
-  0% { transform: scale(0.96); opacity: 0.85; }
-  100% { transform: scale(1.04); opacity: 1; }
+/* Auth Vector Data Beam */
+.stellar-auth-beam {
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1px;
+  stroke-dasharray: 4 6;
+  animation: auth-beam-flow 1.2s linear infinite;
 }
-@keyframes stellar-pulse {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  100% { transform: scale(1.03); opacity: 1; }
-}
-@keyframes stellar-flicker {
-  0% { opacity: 0.85; }
-  100% { opacity: 1; }
-}
-@keyframes coordinate-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+@keyframes auth-beam-flow {
+  from {
+    stroke-dashoffset: 20;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
-/* Orbit Lines */
-.stellar-orbit-paths .orbit-path {
-  stroke: #ffffff25;
-  stroke-width: 1;
+/* Orbits & Telemetry Guides */
+.stellar-orbit-paths .orbit-primary {
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1px;
+  fill: none;
 }
-.stellar-orbit-paths .orbit-inner {
-  stroke: #ffffff12;
-  stroke-width: 0.8;
+.stellar-orbit-paths .orbit-secondary {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 0.8px;
+  stroke-dasharray: 3 6;
+  fill: none;
+}
+.stellar-crosshairs {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 0.7px;
+  stroke-dasharray: 2 6;
 }
 
 /* Station Nodes */
@@ -360,30 +371,37 @@ header,
 }
 .orbital-station .station-core-node {
   fill: #000000;
-  stroke: #ffffff40;
-  stroke-width: 1;
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1px;
   transition: all 0.25s ease;
 }
 .orbital-station .station-inner-ring {
   fill: none;
-  stroke: #ffffff18;
-  stroke-width: 0.8;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 0.8px;
 }
 .orbital-station .station-leader {
   fill: none;
-  stroke: #ffffff28;
-  stroke-width: 0.8;
-  transition: stroke 0.25s ease;
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 0.8px;
+}
+.orbital-station .station-shelf-line {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 0.8px;
+}
+.orbital-station .station-bracket-line {
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 1px;
 }
 .orbital-station .station-logo {
   clip-path: circle(50%);
-  opacity: 0.65;
-  transition: opacity 0.25s ease;
+  opacity: 0.75;
+  transition: opacity 0.2s ease;
 }
 .orbital-station .station-title {
-  fill: #ffffff65;
-  font: 12px Michroma, sans-serif;
-  letter-spacing: 1.4px;
+  fill: rgba(255, 255, 255, 0.65);
+  font: 11px Michroma, sans-serif;
+  letter-spacing: 1.2px;
   font-weight: 500;
   transition: all 0.2s ease;
 }
@@ -392,32 +410,35 @@ header,
 .orbital-station.is-target-locked .station-core-node {
   fill: #000000;
   stroke: #ffffff;
-  stroke-width: 1.6;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95));
+  stroke-width: 1.6px;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
 }
 .orbital-station.is-target-locked .station-inner-ring {
-  stroke: rgba(255, 255, 255, 0.45);
+  stroke: rgba(255, 255, 255, 0.5);
 }
 .orbital-station.is-target-locked .station-leader {
   stroke: #ffffff;
-  stroke-width: 1.2;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
+  stroke-width: 1px;
+}
+.orbital-station.is-target-locked .station-shelf-line {
+  stroke: #ffffff;
+  stroke-width: 1px;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.6));
 }
 .orbital-station.is-target-locked .station-logo {
   opacity: 1;
 }
-.orbital-station.is-target-locked .station-title {
+.orbital-station .station-title.is-target {
   fill: #ffffff;
-  font-size: 13.5px;
-  font-weight: 700;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
+  font: 700 13px Michroma, sans-serif;
+  letter-spacing: 1.3px;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
 }
 .orbital-station .station-target-tag {
   fill: #ffffff;
-  font: 7.5px Michroma, sans-serif;
-  letter-spacing: 1.6px;
-  font-weight: 600;
-  opacity: 0.85;
+  font: 600 7.5px Michroma, sans-serif;
+  letter-spacing: 1.5px;
+  opacity: 0.95;
 }
 
 /* Aerospace HUD Corner Brackets around target node */
@@ -427,7 +448,7 @@ header,
 .hud-corner-brackets {
   fill: none;
   stroke: #ffffff;
-  stroke-width: 1.2;
+  stroke-width: 1.2px;
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
 }
 
@@ -441,19 +462,19 @@ header,
 
 @keyframes sonar-radar-ping {
   0% {
-    r: 18;
-    opacity: 0.85;
-    stroke-width: 1.2;
+    r: 16px;
+    opacity: 0.8;
+    stroke-width: 1.2px;
   }
   75% {
-    r: 34;
-    opacity: 0.12;
-    stroke-width: 0.8;
+    r: 30px;
+    opacity: 0.1;
+    stroke-width: 0.8px;
   }
   100% {
-    r: 40;
+    r: 36px;
     opacity: 0;
-    stroke-width: 0.4;
+    stroke-width: 0.4px;
   }
 }
 footer {

@@ -306,63 +306,23 @@ header,
   overflow: visible;
 }
 
-/* Central STARBASE Core */
+/* Central Core */
 .stellar-core-group {
   cursor: default;
-}
-.stellar-core-disc {
-  fill: #000000;
-  stroke: rgba(255, 255, 255, 0.5);
-  stroke-width: 1.2px;
-}
-.stellar-core-ring {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.18);
-  stroke-width: 0.8px;
-  stroke-dasharray: 2 4;
-}
-.stellar-core-label {
-  fill: rgba(255, 255, 255, 0.55);
-  font: 7px Michroma, sans-serif;
-  letter-spacing: 2.2px;
-  text-transform: uppercase;
 }
 .stellar-emblem {
   pointer-events: none;
 }
 
-/* Auth Vector Data Beam */
-.stellar-auth-beam {
-  stroke: rgba(255, 255, 255, 0.55);
+/* Orbits */
+.stellar-orbit-paths .orbit-path {
+  stroke: rgba(255, 255, 255, 0.16);
   stroke-width: 1px;
+}
+.stellar-orbit-paths .orbit-path-vertical {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 0.9px;
   stroke-dasharray: 4 6;
-  animation: auth-beam-flow 1.2s linear infinite;
-}
-@keyframes auth-beam-flow {
-  from {
-    stroke-dashoffset: 20;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Orbits & Telemetry Guides */
-.stellar-orbit-paths .orbit-primary {
-  stroke: rgba(255, 255, 255, 0.18);
-  stroke-width: 1px;
-  fill: none;
-}
-.stellar-orbit-paths .orbit-secondary {
-  stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 0.8px;
-  stroke-dasharray: 3 6;
-  fill: none;
-}
-.stellar-crosshairs {
-  stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 0.7px;
-  stroke-dasharray: 2 6;
 }
 
 /* Station Nodes */

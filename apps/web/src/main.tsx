@@ -363,17 +363,6 @@ function App() {
               alt="Yıldız Roket Takımı"
             />
           }
-          end={
-            <Button
-              variant="bare"
-              onClick={() => {
-                history.pushState(null, "", "/docs");
-                location.reload();
-              }}
-            >
-              Geliştiriciler <ArrowUpRight size={14} />
-            </Button>
-          }
         />
         {path === "/docs" ? (
           <Docs />

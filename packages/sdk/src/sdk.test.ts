@@ -59,6 +59,25 @@ describe("SDK contracts", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(storage.setItem).toHaveBeenCalledWith("starbase.starlab", "next");
   });
+  it("reads the latest shared refresh token under a browser lock", async () => {
+    let saved = "first";
+    const storage = { getItem: () => saved, setItem: (_: string, value: string) => { saved = value; }, removeItem: vi.fn() };
+    let chain = Promise.resolve();
+    vi.stubGlobal("navigator", { locks: { request: (_: string, work: () => Promise<void>) => {
+      const next = chain.then(work);
+      chain = next.catch(() => {});
+      return next;
+    } } });
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_: string, init: RequestInit) => {
+      const incoming = JSON.parse(String(init.body)).refreshToken;
+      seen.push(incoming);
+      return Response.json({ accessToken: `access-${seen.length}`, refreshToken: `next-${seen.length}`, expiresIn: 600 });
+    }));
+    const make = () => new Starbase({ baseUrl: "https://base.test", clientId: "starlab", redirectUri: "https://lab.test/callback", storage });
+    await Promise.all([make().getAccessToken(), make().getAccessToken()]);
+    expect(seen).toEqual(["first", "next-1"]);
+  });
   it("returns an expired application session to Starbase login", async () => {
     const assign = vi.fn();
     vi.stubGlobal("location", { assign });

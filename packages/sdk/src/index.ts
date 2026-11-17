@@ -144,6 +144,69 @@ export class Starbase {
     this.tokens = null;
     this.options.storage?.removeItem(`starbase.${this.options.clientId}`);
   }
+  private invalidateRemoteSession() {
+    this.clearSession();
+    for (const listener of this.sessionExpiredListeners) listener();
+  }
+  /** Live presence is a short-lived signal; it never signs out a session on disconnect. */
+  watchSession() {
+    if (typeof WebSocket === "undefined") return () => {};
+    let stopped = false;
+    let socket: WebSocket | null = null;
+    let ping: ReturnType<typeof setInterval> | undefined;
+    let reconnect: ReturnType<typeof setTimeout> | undefined;
+    const storageKey = `starbase.${this.options.clientId}`;
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === storageKey && event.newValue === null) {
+        stopped = true;
+        socket?.close();
+        this.invalidateRemoteSession();
+      }
+    };
+    const connect = async () => {
+      if (stopped) return;
+      try {
+        const accessToken = await this.getAccessToken();
+        if (stopped) return;
+        const url = new URL("/api/v1/me/session/live", this.options.baseUrl);
+        url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+        const current = new WebSocket(url, ["starbase-session", accessToken]);
+        socket = current;
+        current.onopen = () => {
+          current.send("ping");
+          ping = setInterval(() => { if (current.readyState === WebSocket.OPEN) current.send("ping"); }, 20_000);
+        };
+        current.onmessage = (event) => {
+          try {
+            if (JSON.parse(event.data).type === "session.revoked") {
+              stopped = true;
+              this.invalidateRemoteSession();
+              current.close();
+            }
+          } catch { /* Ignore unknown invalidations. */ }
+        };
+        current.onclose = () => {
+          if (socket === current) socket = null;
+          clearInterval(ping);
+          if (!stopped) reconnect = setTimeout(() => { void connect(); }, 5_000);
+        };
+        current.onerror = () => current.close();
+      } catch {
+        if (!stopped) reconnect = setTimeout(() => { void connect(); }, 5_000);
+      }
+    };
+    const verify = setInterval(() => { if (!stopped) void this.getProfile().catch(() => {}); }, 60_000);
+    window.addEventListener("storage", onStorage);
+    void connect();
+    return () => {
+      stopped = true;
+      clearInterval(ping);
+      clearInterval(verify);
+      clearTimeout(reconnect);
+      window.removeEventListener("storage", onStorage);
+      socket?.close();
+    };
+  }
   subscribeSessionExpired(listener: () => void) {
     this.sessionExpiredListeners.add(listener);
     return () => { this.sessionExpiredListeners.delete(listener); };
@@ -177,17 +240,29 @@ export class Starbase {
     }
     if (this.tokens.expiresIn <= Date.now() / 1000) {
       if (!this.refreshing)
-        this.refreshing = this.request<TokenSet>("/auth/refresh", {
-          refreshToken: this.tokens.refreshToken,
-          clientId: this.options.clientId,
-        })
-          .then((t) => {
+        this.refreshing = (async () => {
+          const refresh = async () => {
+            const stored = this.options.storage?.getItem(`starbase.${this.options.clientId}`);
+            if (this.options.storage && !stored) {
+              this.invalidateRemoteSession();
+              throw new StarbaseError("session_revoked", 401);
+            }
+            if (stored && stored !== this.tokens?.refreshToken)
+              this.tokens = { accessToken: "", refreshToken: stored, expiresIn: 0 };
+            const t = await this.request<TokenSet>("/auth/refresh", {
+              refreshToken: this.tokens!.refreshToken,
+              clientId: this.options.clientId,
+            });
             this.tokens = {
               ...t,
               expiresIn: Date.now() / 1000 + t.expiresIn - 30,
             };
             this.save();
-          })
+          };
+          if (typeof navigator !== "undefined" && navigator.locks)
+            await navigator.locks.request(`starbase.refresh.${this.options.clientId}`, refresh);
+          else await refresh();
+        })()
         .catch((error) => {
           if (this.requiresLogin(error)) this.handleExpired();
           throw error;

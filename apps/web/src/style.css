@@ -306,137 +306,21 @@ header,
   overflow: visible;
 }
 
-/* Central Core */
-.stellar-core-group {
-  cursor: default;
-}
-.stellar-emblem {
-  pointer-events: none;
-}
-
-/* Orbits */
-.stellar-orbit-paths .orbit-path {
-  stroke: rgba(255, 255, 255, 0.16);
-  stroke-width: 1px;
-}
-.stellar-orbit-paths .orbit-path-equatorial {
-  stroke: rgba(255, 255, 255, 0.09);
-  stroke-width: 0.8px;
-  stroke-dasharray: 3 6;
-}
-
-/* Auth Telemetry Guidance Beam */
-.stellar-auth-beam {
-  stroke: rgba(255, 255, 255, 0.5);
-  stroke-width: 1px;
-  stroke-dasharray: 4 6;
-  animation: auth-beam-flow 1.4s linear infinite;
-}
-@keyframes auth-beam-flow {
-  from {
-    stroke-dashoffset: 20;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Station Nodes */
-.orbital-station {
-  cursor: default;
-}
-.orbital-station .station-core-node {
-  fill: #000000;
-  stroke: rgba(255, 255, 255, 0.35);
-  stroke-width: 1px;
-  transition: all 0.25s ease;
-}
-.orbital-station .station-leader {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.25);
-  stroke-width: 0.8px;
-}
-.orbital-station .station-shelf-line {
-  stroke: #ffffff;
-  stroke-width: 1px;
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));
-}
-.orbital-station .station-shelf-tick {
-  stroke: #ffffff;
-  stroke-width: 1.2px;
-}
-.orbital-station .station-logo {
-  clip-path: circle(50%);
-  opacity: 0.75;
-  transition: opacity 0.2s ease;
-}
-.orbital-station .station-title {
-  fill: rgba(255, 255, 255, 0.65);
-  font: 11px Michroma, sans-serif;
-  letter-spacing: 1.2px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-/* TARGET ACTIVE / LOCKED STATE (Aerospace Telemetry) */
-.orbital-station.is-target-locked .station-core-node {
-  fill: #000000;
-  stroke: #ffffff;
-  stroke-width: 1.6px;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
-}
-.orbital-station.is-target-locked .station-logo {
-  opacity: 1;
-}
-.orbital-station .station-title.is-target {
-  fill: #ffffff;
-  font: 700 13px Michroma, sans-serif;
-  letter-spacing: 1.3px;
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
-}
-.orbital-station .station-target-tag {
-  fill: #ffffff;
-  font: 600 7.5px Michroma, sans-serif;
-  letter-spacing: 1.5px;
-  opacity: 0.95;
-}
-
-/* Aerospace HUD Corner Brackets around target node */
-.target-hud-reticle {
-  pointer-events: none;
-}
-.hud-corner-brackets {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 1.2px;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
-}
-
-/* Clean Sonar radar pulse */
-.orbital-station .station-sonar-ping {
-  fill: none;
-  stroke: #ffffff;
-  animation: sonar-radar-ping 2.5s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
-  transform-origin: 0 0;
-}
-
-@keyframes sonar-radar-ping {
-  0% {
-    r: 16px;
-    opacity: 0.8;
-    stroke-width: 1.2px;
-  }
-  75% {
-    r: 30px;
-    opacity: 0.1;
-    stroke-width: 0.8px;
-  }
-  100% {
-    r: 36px;
-    opacity: 0;
-    stroke-width: 0.4px;
-  }
-}
+/* One calm orbit; active application is identified by its registered id. */
+.orbital-track { fill: none; stroke: #ffffff42; stroke-width: 1; }
+.orbital-center-ring { fill: none; stroke: #ffffff38; stroke-width: 1; }
+.orbital-center-disc { fill: #000; stroke: #ffffff9c; stroke-width: 1; }
+.orbital-node-disc { fill: #000; stroke: #ffffff80; stroke-width: 1; }
+.orbital-node.is-active .orbital-node-disc { stroke: #fff; stroke-width: 1.6; }
+.orbital-node-fallback { fill: none; stroke: #ffffffa8; stroke-width: 1; }
+.orbital-node image { opacity: .85; }
+.orbital-node.is-active image { opacity: 1; }
+.orbital-node-marker { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: square; }
+.orbital-node-name { fill: #ffffffb8; font: 11px Michroma, sans-serif; letter-spacing: 1px; }
+.orbital-caption { display: grid; justify-items: center; gap: 8px; position: relative; margin-top: -24px; color: #ffffffa8; text-align: center; font-size: 9px; letter-spacing: 1.4px; }
+.orbital-caption strong { max-width: 100%; color: #fff; font-size: 14px; font-weight: 400; overflow-wrap: anywhere; }
+.orbital-caption small { color: #ffffff80; font-size: 8px; }
+@media (max-width: 650px) { .orbital-node-name { display: none; } .orbital-caption { margin-top: -8px; } }
 footer {
   display: flex;
   justify-content: center;
@@ -780,9 +664,6 @@ footer {
     max-width: 340px;
     margin: 4px auto 0;
   }
-  .orbital-station .station-title {
-    font-size: 11px;
-  }
   .auth {
     padding: 36px 24px;
   }
@@ -877,7 +758,7 @@ footer {
     margin: 14px 0;
   }
   .orbital-identity {
-    max-width: 440px;
+    max-width: 560px;
     margin-top: 0;
   }
   .auth {

@@ -8,7 +8,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.setViewportSize(viewport);
     await page.route("**/api/v1/me", (route) => route.fulfill({ json: {
       id: "test-user", username: "stargazer", firstName: "Ada", lastName: "Yıldız",
-      memberships: [{ departmentId: "avionics", department: "Aviyonik" }], owner: false, roles: [],
+      memberships: [{ departmentId: "avionics", department: "Aviyonik" }], owner: false, roles: [{ id: "member", name: "Üye" }],
     } }));
     await page.route("**/api/v1/permissions", (route) => route.fulfill({ json: [] }));
     await page.route("**/api/v1/organization", (route) => route.fulfill({ json: { departments: [], teams: [] } }));

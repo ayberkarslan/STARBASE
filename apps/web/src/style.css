@@ -95,10 +95,12 @@ header,
   line-height: 2;
 }
 .login-page {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
+.login-page > :not(.auth-starfield) { position: relative; z-index: 1; }
 @media (min-width: 651px) {
   .login-page { height: 100dvh; overflow: hidden; }
   .login-main { min-height: 0; overflow: hidden; }

@@ -9,6 +9,7 @@ import { ApplicationDetail } from "./application-detail";
 import { TeamDirectory, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
+import { AuthStarfield } from "./auth-starfield";
 import { FormSelect } from "./form-select";
 import { memberStatus, memberStatusLabel } from "./member-status";
 import { invalidateDirectory, subscribeDirectoryChanges } from "./member-live";
@@ -325,7 +326,7 @@ function App() {
       <span>STARBASE</span>
     </button>
   );
-  const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length);
+  const canBrowseDirectory = Boolean(user?.owner || user?.memberships?.length);
   const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
   const navigation = [
     { id: "home", name: "Ana sayfa", icon: House },
@@ -390,6 +391,7 @@ function App() {
   if (!user)
     return (
       <div className="login-page">
+        <AuthStarfield />
         <DesktopHeader
           brand={brand}
           start={

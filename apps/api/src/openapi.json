@@ -112,6 +112,42 @@
         ]
       }
     },
+    "/api/v1/me/session/live": {
+      "get": {
+        "operationId": "get__api_v1_me_session_live",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/me/applications/live": {
       "get": {
         "operationId": "get__api_v1_me_applications_live",
@@ -256,6 +292,242 @@
     "/api/v1/apps/{id}/overview": {
       "get": {
         "operationId": "get__api_v1_apps__id_overview",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/resources": {
+      "get": {
+        "operationId": "get__api_v1_apps__id_resources",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/sessions": {
+      "get": {
+        "operationId": "get__api_v1_apps__id_sessions",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/sessions/{family}": {
+      "delete": {
+        "operationId": "delete__api_v1_apps__id_sessions__family",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "family",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/access": {
+      "delete": {
+        "operationId": "delete__api_v1_apps__id_access",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post__api_v1_apps__id_access",
         "tags": [
           "applications"
         ],

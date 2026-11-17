@@ -102,9 +102,11 @@ app.use("/api/v1/*", async (c, next) => {
     /^\/api\/v1\/apps\/[a-z0-9-]{3,40}\/(branding|logo)$/.test(c.req.path)
   )
     return next();
-  const protocols = c.req.path === "/api/v1/me/live" && c.req.header("upgrade")?.toLowerCase() === "websocket"
+  const socketProtocol = c.req.path === "/api/v1/me/live" ? "starbase-profile"
+    : c.req.path === "/api/v1/me/session/live" ? "starbase-session" : null;
+  const protocols = socketProtocol && c.req.header("upgrade")?.toLowerCase() === "websocket"
     ? c.req.header("sec-websocket-protocol")?.split(",").map((value) => value.trim()) : undefined;
-  const socketBearer = protocols?.length === 2 && protocols[0] === "starbase-profile" && /^[a-f0-9]{64}$/.test(protocols[1])
+  const socketBearer = protocols?.length === 2 && protocols[0] === socketProtocol && /^[a-f0-9]{64}$/.test(protocols[1])
     ? protocols[1] : undefined;
   const bearer = c.req.header("authorization")?.replace(/^Bearer /, "") ?? socketBearer;
   const raw = bearer ?? getCookie(c, "starbase");
@@ -122,7 +124,7 @@ app.use("/api/v1/*", async (c, next) => {
     fail(401, "invalid_session");
   if (session!.app_id) {
     const enabled = await c.env.DB.prepare(
-      "SELECT co.scopes FROM apps a JOIN consents co ON co.app_id=a.id WHERE a.id=? AND co.user_id=? AND a.disabled=0",
+      "SELECT co.scopes FROM apps a JOIN consents co ON co.app_id=a.id WHERE a.id=? AND co.user_id=? AND a.disabled=0 AND NOT EXISTS(SELECT 1 FROM app_access_blocks b WHERE b.user_id=co.user_id AND b.app_id=a.id)",
     )
       .bind(session!.app_id, session!.user_id)
       .first<{ scopes: string }>();

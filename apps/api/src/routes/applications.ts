@@ -55,6 +55,20 @@ function checkSyncSecret(c: any) {
     return difference === 0;
   });
 }
+async function personalApplication(c: any) {
+  if (c.get("session").kind !== "central") fail(403, "central_session_required");
+  await requireTeamMember(c);
+  const application = await c.env.DB.prepare(
+    "SELECT id,name,logo_url logoUrl,launch_url launchUrl FROM apps WHERE id=? AND disabled=0",
+  ).bind(c.req.param("id")).first() as { id: string; name: string; logoUrl: string; launchUrl: string } | null;
+  if (!application) return fail(404, "application_not_found");
+  return application;
+}
+async function notifySessionRevoked(env: any, families: string[]) {
+  await Promise.allSettled(families.map((family) => env.BOARD_HUB.get(
+    env.BOARD_HUB.idFromName("app-session:" + family),
+  ).fetch("https://board.internal/notify?type=session.revoked", { method: "POST" })));
+}
 async function syncAppResource(
   c: any,
   item: {
@@ -143,6 +157,19 @@ async function syncAppResource(
   }
 }
 export function register(app: App) {
+  app.get("/api/v1/me/session/live", async (c) => {
+    const session = c.get("session");
+    if (session.kind !== "access" || !session.app_id) fail(403, "application_session_required");
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") fail(400, "websocket_required");
+    const origin = c.req.header("origin");
+    const application = await c.env.DB.prepare("SELECT origins FROM apps WHERE id=? AND disabled=0")
+      .bind(session.app_id).first<{ origins: string }>();
+    if (!origin || !application || !(JSON.parse(application.origins) as string[]).includes(origin)) fail(403, "origin_rejected");
+    const hub = c.env.BOARD_HUB.get(c.env.BOARD_HUB.idFromName("app-session:" + session.family));
+    return hub.fetch(new Request(`https://board.internal/connect?expires=${session.expires}&mode=presence`, {
+      headers: { Upgrade: "websocket", "Sec-WebSocket-Protocol": "starbase-session" },
+    }));
+  });
   app.get("/api/v1/me/applications/live", async (c) => {
     if (c.get("session").kind !== "central") fail(403, "central_session_required");
     if (c.req.header("origin") !== new URL(c.req.url).origin) fail(403, "origin_rejected");
@@ -229,21 +256,77 @@ export function register(app: App) {
     return c.json(apps.results.map((item) => ({ ...item, logoUrl: logoUrl(item.id, item.logoUrl) })));
   });
   app.get("/api/v1/apps/:id/overview", async (c) => {
-    if (c.get("session").kind !== "central") fail(403, "central_session_required");
-    await requireTeamMember(c);
-    const id = c.req.param("id");
-    const application = await c.env.DB.prepare(
-      "SELECT id,name,logo_url logoUrl,launch_url launchUrl FROM apps WHERE id=? AND disabled=0",
-    ).bind(id).first<{ id: string; name: string; logoUrl: string; launchUrl: string }>();
-    if (!application) return fail(404, "application_not_found");
+    const application = await personalApplication(c);
+    const id = application.id;
     const userId = c.get("user").id;
-    const [summary, visits, resources, resourceCount] = await Promise.all([
+    const [summary, visits, resources, resourceCount, consent, block] = await Promise.all([
       c.env.DB.prepare("SELECT COUNT(*) totalVisits,MAX(signed_in_at) lastSignInAt FROM application_visits WHERE app_id=? AND user_id=?").bind(id, userId).first(),
       c.env.DB.prepare("SELECT signed_in_at signedInAt,ended_at endedAt,end_reason endReason FROM application_visits WHERE app_id=? AND user_id=? ORDER BY signed_in_at DESC LIMIT 8").bind(id, userId).all(),
       c.env.DB.prepare("SELECT r.app_id applicationId,a.name applicationName,r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r JOIN apps a ON a.id=r.app_id WHERE r.app_id=? AND r.user_id=? ORDER BY r.updated_at DESC,r.created_at DESC LIMIT 30").bind(id, userId).all(),
       c.env.DB.prepare("SELECT COUNT(*) count FROM app_resources WHERE app_id=? AND user_id=?").bind(id, userId).first<{ count: number }>(),
+      c.env.DB.prepare("SELECT scopes FROM consents WHERE user_id=? AND app_id=?").bind(userId, id).first<{ scopes: string }>(),
+      c.env.DB.prepare("SELECT blocked_at blockedAt FROM app_access_blocks WHERE user_id=? AND app_id=?").bind(userId, id).first(),
     ]);
-    return c.json({ application: { ...application, logoUrl: logoUrl(id, application.logoUrl) }, summary, visits: visits.results, resources: resources.results, resourceCount: resourceCount?.count ?? 0 });
+    return c.json({ application: { ...application, logoUrl: logoUrl(id, application.logoUrl) }, summary, visits: visits.results, resources: resources.results, resourceCount: resourceCount?.count ?? 0,
+      access: { connected: !!consent && !block, blocked: !!block, scopes: consent ? JSON.parse(consent.scopes) : [] } });
+  });
+  app.get("/api/v1/apps/:id/resources", async (c) => {
+    const application = await personalApplication(c);
+    const parsed = z.object({ q: z.string().trim().max(80).default(""), page: z.coerce.number().int().min(1).max(10000).default(1) }).safeParse(c.req.query());
+    if (!parsed.success) return fail(400, "invalid_query");
+    const { q, page } = parsed.data;
+    const search = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+    const filter = q ? " AND (r.title LIKE ? ESCAPE '\\' OR r.status LIKE ? ESCAPE '\\')" : "";
+    const bindings = q ? [search, search] : [];
+    const [rows, count] = await Promise.all([
+      c.env.DB.prepare(`SELECT r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r WHERE r.app_id=? AND r.user_id=?${filter} ORDER BY r.updated_at DESC,r.created_at DESC,r.resource_id LIMIT 20 OFFSET ?`)
+        .bind(application.id, c.get("user").id, ...bindings, (page - 1) * 20).all(),
+      c.env.DB.prepare(`SELECT COUNT(*) total FROM app_resources r WHERE r.app_id=? AND r.user_id=?${filter}`)
+        .bind(application.id, c.get("user").id, ...bindings).first<{ total: number }>(),
+    ]);
+    return c.json({ resources: rows.results, page, total: count?.total ?? 0, hasMore: page * 20 < (count?.total ?? 0) });
+  });
+  app.get("/api/v1/apps/:id/sessions", async (c) => {
+    const application = await personalApplication(c);
+    const rows = await c.env.DB.prepare(
+      "SELECT f.id family,v.signed_in_at signedInAt,v.user_agent userAgent,f.expires FROM families f JOIN application_visits v ON v.id=f.id WHERE f.user_id=? AND f.app_id=? AND f.revoked=0 AND f.expires>? AND EXISTS(SELECT 1 FROM sessions s WHERE s.family=f.id AND s.kind='refresh' AND s.used=0 AND s.expires>?) ORDER BY v.signed_in_at DESC LIMIT 30",
+    ).bind(c.get("user").id, application.id, now(), now()).all<{ family: string; signedInAt: number; userAgent: string | null; expires: number }>();
+    const sessions = await Promise.all(rows.results.map(async (row) => {
+      try {
+        const hub = c.env.BOARD_HUB.get(c.env.BOARD_HUB.idFromName("app-session:" + row.family));
+        const status = await hub.fetch("https://board.internal/status");
+        return { ...row, ...(await status.json() as { live: boolean; lastSeenAt: number | null }) };
+      } catch { return { ...row, live: false, lastSeenAt: null, signalUnavailable: true }; }
+    }));
+    return c.json({ sessions });
+  });
+  app.delete("/api/v1/apps/:id/sessions/:family", async (c) => {
+    const application = await personalApplication(c);
+    const family = c.req.param("family");
+    const removed = await c.env.DB.prepare("UPDATE families SET revoked=1 WHERE id=? AND user_id=? AND app_id=? AND revoked=0 RETURNING id")
+      .bind(family, c.get("user").id, application.id).first();
+    if (!removed) fail(404, "session_not_found");
+    await notifySessionRevoked(c.env, [family]);
+    return c.json({ ok: true });
+  });
+  app.delete("/api/v1/apps/:id/access", async (c) => {
+    const application = await personalApplication(c);
+    const userId = c.get("user").id;
+    const families = await c.env.DB.prepare("SELECT id FROM families WHERE user_id=? AND app_id=? AND revoked=0")
+      .bind(userId, application.id).all<{ id: string }>();
+    await c.env.DB.batch([
+      c.env.DB.prepare("INSERT INTO app_access_blocks(user_id,app_id,blocked_at) VALUES(?,?,?) ON CONFLICT(user_id,app_id) DO UPDATE SET blocked_at=excluded.blocked_at").bind(userId, application.id, now()),
+      c.env.DB.prepare("DELETE FROM consents WHERE user_id=? AND app_id=?").bind(userId, application.id),
+      c.env.DB.prepare("UPDATE families SET revoked=1 WHERE user_id=? AND app_id=? AND revoked=0").bind(userId, application.id),
+    ]);
+    await notifySessionRevoked(c.env, families.results.map((item) => item.id));
+    return c.json({ ok: true });
+  });
+  app.post("/api/v1/apps/:id/access", async (c) => {
+    const application = await personalApplication(c);
+    await c.env.DB.prepare("DELETE FROM app_access_blocks WHERE user_id=? AND app_id=?")
+      .bind(c.get("user").id, application.id).run();
+    return c.json({ ok: true });
   });
   app.get("/api/v1/apps/:id/branding", async (c) => {
     const redirect = c.req.query("redirectUri") ?? "";
@@ -285,6 +368,8 @@ export function register(app: App) {
       .bind(id ?? "")
       .first<any>();
     if (!a) fail(400, "unknown_app");
+    if (await c.env.DB.prepare("SELECT 1 FROM app_access_blocks WHERE user_id=? AND app_id=?")
+      .bind(c.get("user").id, a.id).first()) fail(403, "app_access_blocked");
     const redirect = c.req.query("redirect_uri") ?? "";
     const scopes = (c.req.query("scope") ?? "profile")
       .split(" ")
@@ -335,6 +420,8 @@ export function register(app: App) {
       !allowedScopes(b.scopes, JSON.parse(a.scopes))
     )
       fail(400, "invalid_authorization");
+    if (await c.env.DB.prepare("SELECT 1 FROM app_access_blocks WHERE user_id=? AND app_id=?")
+      .bind(c.get("user").id, a.id).first()) fail(403, "app_access_blocked");
     const value = token();
     await c.env.DB.batch([
       c.env.DB.prepare(

@@ -23,14 +23,28 @@ it("broadcasts only an invalidation and closes expired subscriptions", async () 
   expect(expired.send).not.toHaveBeenCalled();
   expect(expired.close).toHaveBeenCalledWith(1008, "Session expired");
 });
-it("does not let clients broadcast websocket messages", () => {
-  const socket = { send: vi.fn(), close: vi.fn() };
-  new BoardHub({} as any).webSocketMessage(socket as any);
+it("does not let clients broadcast websocket messages", async () => {
+  const socket = { deserializeAttachment: () => ({ expires: Date.now() / 1000 + 100 }), send: vi.fn(), close: vi.fn() };
+  await new BoardHub({} as any).webSocketMessage(socket as any, "private content");
   expect(socket.close).toHaveBeenCalledWith(
     1008,
-    "Use the notes API for changes",
+    "Unsupported message",
   );
   expect(socket.send).not.toHaveBeenCalled();
+});
+it("accepts only authenticated presence pings and revocation invalidations", async () => {
+  const socket = {
+    deserializeAttachment: () => ({ expires: Date.now() / 1000 + 100, presence: true }),
+    serializeAttachment: vi.fn(), send: vi.fn(), close: vi.fn(),
+  };
+  const storage = { put: vi.fn(), get: vi.fn().mockResolvedValue(null) };
+  const hub = new BoardHub({ getWebSockets: () => [socket], storage } as any);
+  await hub.webSocketMessage(socket as any, "ping");
+  expect(socket.serializeAttachment).toHaveBeenCalledWith(expect.objectContaining({ presence: true, lastSeenAt: expect.any(Number) }));
+  expect((await (await hub.fetch(new Request("https://board.internal/status"))).json() as any).live).toBe(false);
+  await hub.fetch(new Request("https://board.internal/notify?type=session.revoked", { method: "POST" }));
+  expect(socket.send).toHaveBeenCalledWith('{"type":"session.revoked"}');
+  expect(socket.close).toHaveBeenCalledWith(1008, "Session revoked");
 });
 it("broadcasts a content-free directory invalidation", async () => {
   const socket = {

@@ -50,6 +50,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0021_yrt_latex_app.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0022_board_canvas_widgets.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0023_user_roles_and_badges.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0024_app_access_blocks.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -919,6 +920,35 @@ it("keeps private application updates on a central session", async () => {
   expect((await call("/me/applications/live")).status).toBe(400);
   const token: any = await (await call("/auth/exchange", await loginCode(), "")).json();
   expect((await call("/me/applications/live", undefined, token.accessToken)).status).toBe(403);
+});
+
+it("revokes only the selected app session and keeps explicit sign-out separate", async () => {
+  db.prepare("INSERT INTO consents VALUES(?,?,?)").run("u1", "starlab", '["profile"]');
+  for (const family of ["app-one", "app-two"]) {
+    db.prepare("INSERT INTO families(id,user_id,app_id,expires) VALUES(?,?,?,?)").run(family, "u1", "starlab", now() + 1000);
+    db.prepare("INSERT INTO sessions(hash,user_id,app_id,kind,expires,family,scopes,created_at) VALUES(?,?,?,?,?,?,?,?)")
+      .run(family, "u1", "starlab", "refresh", now() + 1000, family, '["profile"]', now());
+    db.prepare("INSERT INTO application_visits(id,user_id,app_id,signed_in_at,expires_at) VALUES(?,?,?,?,?)")
+      .run(family, "u1", "starlab", now(), now() + 1000);
+  }
+  expect((await call("/apps/starlab/sessions")).status).toBe(200);
+  expect((await call("/apps/starlab/sessions/app-one", undefined, "central", "DELETE")).status).toBe(200);
+  expect(db.prepare("SELECT id,revoked FROM families WHERE id IN ('app-one','app-two') ORDER BY id").all())
+    .toEqual([{ id: "app-one", revoked: 1 }, { id: "app-two", revoked: 0 }]);
+  expect(db.prepare("SELECT last_sign_out_at lastSignOutAt FROM application_usage WHERE user_id='u1' AND app_id='starlab'").get())
+    .toEqual({ lastSignOutAt: null });
+});
+
+it("blocks automatic app reauthorization until the user reopens access", async () => {
+  db.prepare("UPDATE apps SET auto_authorize=1 WHERE id='starlab'").run();
+  db.prepare("INSERT INTO consents VALUES(?,?,?)").run("u1", "starlab", '["profile"]');
+  expect((await call("/apps/starlab/access", undefined, "central", "DELETE")).status).toBe(200);
+  expect((await call("/authorize?client_id=starlab")).status).toBe(403);
+  const overview: any = await (await call("/apps/starlab/overview")).json();
+  expect(overview.access).toMatchObject({ blocked: true, connected: false });
+  expect((await call("/apps/starlab/access", {}, "central")).status).toBe(200);
+  expect(db.prepare("SELECT COUNT(*) count FROM app_access_blocks").get()).toEqual({ count: 0 });
+  expect(db.prepare("SELECT COUNT(*) count FROM consents WHERE user_id='u1'").get()).toEqual({ count: 0 });
 });
 
 describe.skip("archived shared board notes", () => {

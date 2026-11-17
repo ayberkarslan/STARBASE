@@ -15,18 +15,29 @@ export class BoardHub {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       this.state.acceptWebSocket(server);
-      server.serializeAttachment({
-        expires,
-      });
+      const presence = url.searchParams.get("mode") === "presence";
+      server.serializeAttachment({ expires, presence, lastSeenAt: 0 });
       return new Response(null, { status: 101, webSocket: client,
-        headers: request.headers.get("Sec-WebSocket-Protocol") === "starbase-profile"
-          ? { "Sec-WebSocket-Protocol": "starbase-profile" } : undefined });
+        headers: ["starbase-profile", "starbase-session"].includes(request.headers.get("Sec-WebSocket-Protocol") ?? "")
+          ? { "Sec-WebSocket-Protocol": request.headers.get("Sec-WebSocket-Protocol")! } : undefined });
+    }
+    if (url.pathname === "/status") {
+      const timestamp = Date.now() / 1000;
+      let lastSeenAt = 0;
+      for (const socket of this.state.getWebSockets()) {
+        const state = socket.deserializeAttachment() as { expires: number; presence?: boolean; lastSeenAt?: number } | null;
+        if (state?.presence && state.expires > timestamp)
+          lastSeenAt = Math.max(lastSeenAt, state.lastSeenAt ?? 0);
+      }
+      const remembered = await this.state.storage.get<number>("lastSeenAt");
+      return Response.json({ lastSeenAt: Math.max(lastSeenAt, remembered ?? 0) || null, live: lastSeenAt > timestamp - 60 });
     }
     if (url.pathname === "/notify" && request.method === "POST") {
       const type = url.searchParams.get("type") === "directory.changed"
         ? "directory.changed" : url.searchParams.get("type") === "profile.photo.changed"
           ? "profile.photo.changed" : url.searchParams.get("type") === "app.resources.changed"
-            ? "app.resources.changed" : "board.changed";
+            ? "app.resources.changed" : url.searchParams.get("type") === "session.revoked"
+              ? "session.revoked" : "board.changed";
       for (const socket of this.state.getWebSockets()) {
         try {
           const attachment = socket.deserializeAttachment() as {
@@ -41,6 +52,7 @@ export class BoardHub {
             continue;
           }
           socket.send(JSON.stringify({ type }));
+          if (type === "session.revoked") socket.close(1008, "Session revoked");
         } catch {
           try {
             socket.close(1011, "Reconnect required");
@@ -51,8 +63,15 @@ export class BoardHub {
     }
     return new Response("Not found", { status: 404 });
   }
-  webSocketMessage(socket: WebSocket) {
-    socket.close(1008, "Use the notes API for changes");
+  async webSocketMessage(socket: WebSocket, message?: string | ArrayBuffer) {
+    const state = socket.deserializeAttachment() as { expires: number; presence?: boolean; lastSeenAt?: number } | null;
+    if (state?.presence && message === "ping" && state.expires > Date.now() / 1000) {
+      const timestamp = Date.now() / 1000;
+      socket.serializeAttachment({ ...state, lastSeenAt: timestamp });
+      await this.state.storage.put("lastSeenAt", timestamp);
+      return;
+    }
+    socket.close(1008, "Unsupported message");
   }
   webSocketClose(socket: WebSocket, code: number, reason: string) {
     try {

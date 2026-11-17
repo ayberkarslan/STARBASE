@@ -141,7 +141,8 @@ export function register(app: App) {
     )
       .bind(code.user_id)
       .first();
-    if (!a || !u) fail(403, "access_denied");
+    if (!a || !u || await c.env.DB.prepare("SELECT 1 FROM app_access_blocks WHERE user_id=? AND app_id=?")
+      .bind(code.user_id, b.clientId).first()) fail(403, "access_denied");
     const family = crypto.randomUUID();
     const accessToken = await issue(
       c,

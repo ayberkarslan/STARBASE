@@ -25,7 +25,8 @@ export class BoardHub {
     if (url.pathname === "/notify" && request.method === "POST") {
       const type = url.searchParams.get("type") === "directory.changed"
         ? "directory.changed" : url.searchParams.get("type") === "profile.photo.changed"
-          ? "profile.photo.changed" : "board.changed";
+          ? "profile.photo.changed" : url.searchParams.get("type") === "app.resources.changed"
+            ? "app.resources.changed" : "board.changed";
       for (const socket of this.state.getWebSockets()) {
         try {
           const attachment = socket.deserializeAttachment() as {

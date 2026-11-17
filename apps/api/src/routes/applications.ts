@@ -123,7 +123,7 @@ async function syncAppResource(
         const hub = c.env.BOARD_HUB.get(
           c.env.BOARD_HUB.idFromName("private:" + userId),
         );
-        await hub.fetch("https://board.internal/notify", { method: "POST" });
+        await hub.fetch("https://board.internal/notify?type=app.resources.changed", { method: "POST" });
       } catch {
         // non-blocking
       }
@@ -143,6 +143,16 @@ async function syncAppResource(
   }
 }
 export function register(app: App) {
+  app.get("/api/v1/me/applications/live", async (c) => {
+    if (c.get("session").kind !== "central") fail(403, "central_session_required");
+    if (c.req.header("origin") !== new URL(c.req.url).origin) fail(403, "origin_rejected");
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return fail(400, "websocket_required");
+    const hub = c.env.BOARD_HUB.get(c.env.BOARD_HUB.idFromName("private:" + c.get("user").id));
+    return hub.fetch(new Request(
+      `https://board.internal/connect?expires=${c.get("session").expires}`,
+      c.req.raw,
+    ));
+  });
   app.post("/api/v1/internal/app-resources", async (c) => {
     if (!checkSyncSecret(c)) return fail(403, "permission_denied");
     const item = await body(

@@ -24,6 +24,199 @@
     }
   },
   "paths": {
+    "/api/v1/admin/activity": {
+      "get": {
+        "operationId": "get__api_v1_admin_activity",
+        "tags": [
+          "activity-admin"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "starbase",
+                "application"
+              ]
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/me/applications/live": {
+      "get": {
+        "operationId": "get__api_v1_me_applications_live",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/app-resources": {
+      "post": {
+        "operationId": "post__api_v1_internal_app_resources",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/test-formu-resources": {
+      "post": {
+        "operationId": "post__api_v1_internal_test_formu_resources",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/apps": {
       "get": {
         "operationId": "get__api_v1_apps",
@@ -58,6 +251,52 @@
             "description": "Dependency or quota unavailable"
           }
         }
+      }
+    },
+    "/api/v1/apps/{id}/overview": {
+      "get": {
+        "operationId": "get__api_v1_apps__id_overview",
+        "tags": [
+          "applications"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/v1/apps/{id}/branding": {
@@ -101,19 +340,16 @@
     },
     "/api/v1/apps/{id}/logo": {
       "get": {
-        "operationId": "get__api_v1_apps__id__logo",
+        "operationId": "get__api_v1_apps__id_logo",
         "tags": [
           "applications"
         ],
-        "security": [],
-        "parameters": [
+        "security": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "bearer": []
+          },
+          {
+            "central": []
           }
         ],
         "responses": {
@@ -129,16 +365,23 @@
           "403": {
             "description": "Permission denied"
           },
-          "404": {
-            "description": "Logo not found"
-          },
           "429": {
             "description": "Rate limited"
           },
           "503": {
             "description": "Dependency or quota unavailable"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/v1/authorize": {
@@ -401,8 +644,8 @@
         ],
         "security": [],
         "responses": {
-          "201": {
-            "description": "Resource created"
+          "200": {
+            "description": "Successful operation"
           },
           "400": {
             "description": "Invalid input"
@@ -418,50 +661,6 @@
           },
           "503": {
             "description": "Dependency or quota unavailable"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "username": {
-                    "type": "string",
-                    "pattern": "^[a-z0-9][a-z0-9._-]{2,31}$"
-                  },
-                  "password": {
-                    "type": "string",
-                    "minLength": 12,
-                    "maxLength": 128
-                  },
-                  "email": {
-                    "type": "string",
-                    "format": "email",
-                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
-                  },
-                  "firstName": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  },
-                  "lastName": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  }
-                },
-                "required": [
-                  "username",
-                  "password",
-                  "email",
-                  "firstName",
-                  "lastName"
-                ]
-              }
-            }
           }
         }
       }
@@ -799,7 +998,7 @@
                   },
                   "password": {
                     "type": "string",
-                    "minLength": 12,
+                    "minLength": 8,
                     "maxLength": 128
                   }
                 },
@@ -853,7 +1052,7 @@
                   },
                   "password": {
                     "type": "string",
-                    "minLength": 12,
+                    "minLength": 8,
                     "maxLength": 128
                   }
                 },
@@ -999,6 +1198,39 @@
         }
       }
     },
+    "/api/v1/directory/live": {
+      "get": {
+        "operationId": "get__api_v1_directory_live",
+        "tags": [
+          "directory"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/directory/users": {
       "get": {
         "operationId": "get__api_v1_directory_users",
@@ -1070,6 +1302,49 @@
         ]
       }
     },
+    "/api/v1/directory/users/{id}/photo": {
+      "get": {
+        "operationId": "get__api_v1_directory_users__id_photo",
+        "tags": [
+          "directory"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/directory/teams": {
       "get": {
         "operationId": "get__api_v1_directory_teams",
@@ -1101,6 +1376,92 @@
             "description": "Dependency or quota unavailable"
           }
         }
+      }
+    },
+    "/api/v1/directory/departments/{id}/logo": {
+      "get": {
+        "operationId": "get__api_v1_directory_departments__id_logo",
+        "tags": [
+          "directory"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/directory/teams/{id}/logo": {
+      "get": {
+        "operationId": "get__api_v1_directory_teams__id_logo",
+        "tags": [
+          "directory"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/v1/directory/users/{id}": {
@@ -1144,6 +1505,42 @@
             }
           }
         ]
+      }
+    },
+    "/api/v1/me/resources": {
+      "get": {
+        "operationId": "get__api_v1_me_resources",
+        "tags": [
+          "directory"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
       }
     },
     "/api/v1/directory/users/{id}/activity": {
@@ -1249,6 +1646,137 @@
         ]
       }
     },
+    "/api/v1/me/live": {
+      "get": {
+        "operationId": "get__api_v1_me_live",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/photo": {
+      "get": {
+        "operationId": "get__api_v1_me_photo",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post__api_v1_me_photo",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete__api_v1_me_photo",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "get__api_v1_me",
@@ -1281,6 +1809,118 @@
           },
           "503": {
             "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/title": {
+      "put": {
+        "operationId": "put__api_v1_me_title",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/developer-color": {
+      "put": {
+        "operationId": "put__api_v1_me_developer_color",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{3,8}$"
+                  }
+                },
+                "required": [
+                  "color"
+                ]
+              }
+            }
           }
         }
       }
@@ -1477,8 +2117,7 @@
                   "firstName",
                   "lastName",
                   "email",
-                  "disabled",
-                  "currentPassword"
+                  "disabled"
                 ]
               }
             }
@@ -1577,7 +2216,7 @@
                   },
                   "temporaryPassword": {
                     "type": "string",
-                    "minLength": 12,
+                    "minLength": 8,
                     "maxLength": 128
                   },
                   "currentPassword": {
@@ -1609,6 +2248,139 @@
                   "lastName",
                   "temporaryPassword",
                   "currentPassword"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/title": {
+      "patch": {
+        "operationId": "patch__api_v1_admin_users__id_title",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/status": {
+      "patch": {
+        "operationId": "patch__api_v1_admin_users__id_status",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "pending",
+                      "banned"
+                    ]
+                  },
+                  "currentPassword": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
                 ]
               }
             }
@@ -1668,6 +2440,49 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/admin/departments/{id}/logo": {
+      "post": {
+        "operationId": "post__api_v1_admin_departments__id_logo",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/v1/admin/teams": {
@@ -1909,75 +2724,6 @@
           "503": {
             "description": "Dependency or quota unavailable"
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "pattern": "^[a-z0-9-]{3,40}$"
-                  },
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  },
-                  "logoUrl": {
-                    "default": "",
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "const": ""
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 2048,
-                        "format": "uri"
-                      }
-                    ]
-                  },
-                  "redirects": {
-                    "minItems": 1,
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uri"
-                    }
-                  },
-                  "origins": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uri"
-                    }
-                  },
-                  "scopes": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "profile",
-                        "email",
-                        "organization"
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "id",
-                  "name",
-                  "redirects",
-                  "origins",
-                  "scopes"
-                ]
-              }
-            }
-          }
         }
       },
       "get": {
@@ -2010,6 +2756,174 @@
             "description": "Dependency or quota unavailable"
           }
         }
+      }
+    },
+    "/api/v1/admin/apps/{id}/logo": {
+      "post": {
+        "operationId": "post__api_v1_admin_apps__id_logo",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "delete__api_v1_admin_apps__id_logo",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/teams/{id}/logo": {
+      "post": {
+        "operationId": "post__api_v1_admin_teams__id_logo",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "delete__api_v1_admin_teams__id_logo",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/v1/admin/users/{id}/password": {
@@ -2066,12 +2980,150 @@
                   },
                   "temporaryPassword": {
                     "type": "string",
-                    "minLength": 12,
+                    "minLength": 8,
                     "maxLength": 128
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/username": {
+      "patch": {
+        "operationId": "patch__api_v1_admin_users__id_username",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{2,31}$"
+                  },
+                  "currentPassword": {
+                    "type": "string"
                   }
                 },
                 "required": [
-                  "currentPassword"
+                  "username"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/profile": {
+      "patch": {
+        "operationId": "patch__api_v1_admin_users__id_profile",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "firstName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "lastName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "firstName",
+                  "lastName"
                 ]
               }
             }
@@ -2288,8 +3340,7 @@
                 },
                 "required": [
                   "userId",
-                  "roleId",
-                  "currentPassword"
+                  "roleId"
                 ]
               }
             }
@@ -2346,13 +3397,369 @@
                 },
                 "required": [
                   "userId",
-                  "roleId",
-                  "currentPassword"
+                  "roleId"
                 ]
               }
             }
           }
         }
+      }
+    },
+    "/api/v1/badges": {
+      "get": {
+        "operationId": "get__api_v1_badges",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/badges": {
+      "post": {
+        "operationId": "post__api_v1_admin_badges",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_-]{2,60}$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "description": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 250
+                  },
+                  "tier": {
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                  },
+                  "color": {
+                    "default": "#ffffff",
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "icon": {
+                    "default": "shield",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/badges/{id}": {
+      "put": {
+        "operationId": "put__api_v1_admin_badges__id",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "description": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 250
+                  },
+                  "tier": {
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                  },
+                  "color": {
+                    "default": "#ffffff",
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "icon": {
+                    "default": "shield",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete__api_v1_admin_badges__id",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{userId}/badges": {
+      "post": {
+        "operationId": "post__api_v1_admin_users__userId_badges",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "badgeId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "badgeId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{userId}/badges/{badgeId}": {
+      "delete": {
+        "operationId": "delete__api_v1_admin_users__userId_badges__badgeId",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "badgeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/v1/admin/profile-fields": {
@@ -2619,6 +4026,82 @@
             }
           }
         ]
+      }
+    },
+    "/api/v1/admin/profile-values/{id}/batch": {
+      "put": {
+        "operationId": "put__api_v1_admin_profile_values__id_batch",
+        "tags": [
+          "management"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "values": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "value": {}
+                      },
+                      "required": [
+                        "key",
+                        "value"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "values"
+                ]
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/admin/departments/{id}": {
@@ -2932,41 +4415,7 @@
               "type": "string"
             }
           }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "disabled": {
-                    "type": "boolean"
-                  },
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  },
-                  "logoUrl": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "const": ""
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 2048,
-                        "format": "uri"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/api/v1/organization": {
@@ -3058,338 +4507,6 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/admin/users/{id}/status": {
-      "patch": {
-        "operationId": "patch__api_v1_admin_users__id_status",
-        "tags": [
-          "management"
-        ],
-        "security": [
-          {
-            "central": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "description": "Permission denied"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Dependency or quota unavailable"
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "active",
-                      "pending",
-                      "banned"
-                    ]
-                  },
-                  "currentPassword": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "status"
-                ]
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/me/photo": {
-      "get": {
-        "operationId": "get__api_v1_me_photo",
-        "tags": [
-          "identity"
-        ],
-        "security": [
-          {
-            "bearer": []
-          },
-          {
-            "central": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "description": "Permission denied"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Dependency or quota unavailable"
-          }
-        }
-      },
-      "post": {
-        "operationId": "post__api_v1_me_photo",
-        "tags": [
-          "identity"
-        ],
-        "security": [
-          {
-            "central": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "description": "Permission denied"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Dependency or quota unavailable"
-          }
-        }
-      },
-      "delete": {
-        "operationId": "delete__api_v1_me_photo",
-        "tags": [
-          "identity"
-        ],
-        "security": [
-          {
-            "central": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "description": "Permission denied"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Dependency or quota unavailable"
-          }
-        }
-      }
-    },
-    "/api/v1/directory/users/{id}/photo": {
-      "get": {
-        "operationId": "get__api_v1_directory_users__id_photo",
-        "tags": [
-          "directory"
-        ],
-        "security": [
-          {
-            "central": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "description": "Permission denied"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Dependency or quota unavailable"
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
-    "/api/v1/me/live": {
-      "get": {
-        "operationId": "get__api_v1_me_live",
-        "tags": [
-          "identity"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "description": "Permission denied"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Dependency or quota unavailable"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/activity": {
-      "get": {
-        "operationId": "get__api_v1_admin_activity",
-        "tags": [
-          "activity-admin"
-        ],
-        "security": [
-          {
-            "central": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "description": "Permission denied"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Dependency or quota unavailable"
-          }
-        },
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 10000,
-              "default": 1
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 80
-            }
-          },
-          {
-            "name": "source",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "all",
-                "starbase",
-                "application"
-              ]
-            }
-          },
-          {
-            "name": "userId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 100
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 10000,
-              "default": 1
-            }
-          }
-        ]
       }
     }
   }

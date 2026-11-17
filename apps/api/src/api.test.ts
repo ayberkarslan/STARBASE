@@ -915,6 +915,12 @@ it("keeps archived board data while its routes are unavailable", async () => {
     .toEqual({ name: "board_notes" });
 });
 
+it("keeps private application updates on a central session", async () => {
+  expect((await call("/me/applications/live")).status).toBe(400);
+  const token: any = await (await call("/auth/exchange", await loginCode(), "")).json();
+  expect((await call("/me/applications/live", undefined, token.accessToken)).status).toBe(403);
+});
+
 describe.skip("archived shared board notes", () => {
   async function memberRequest(
     path: string,

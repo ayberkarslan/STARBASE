@@ -59,8 +59,7 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
       if (disposed || document.hidden) return;
       if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
       try {
-        const url = new URL("/api/v1/board/live", location.origin);
-        url.searchParams.set("scope", "private");
+        const url = new URL("/api/v1/me/applications/live", location.origin);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
         ws = new WebSocket(url);
         ws.onopen = () => {
@@ -73,7 +72,7 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
         ws.onmessage = (e) => {
           try {
             const data = JSON.parse(e.data);
-            if (data?.type === "board.changed") {
+            if (data?.type === "app.resources.changed") {
               reloadRef.current();
             }
           } catch {}

@@ -328,7 +328,7 @@ function App() {
       <span>STARBASE</span>
     </button>
   );
-  const canBrowseDirectory = Boolean(user?.owner || user?.memberships?.length);
+  const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length);
   const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
   const navigation = [
     { id: "home", name: "Ana sayfa", icon: House },

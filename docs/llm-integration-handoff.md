@@ -7,7 +7,7 @@ Bu belge, bu dizinde (`~/Projects/YRTHUB`) çalışan ve STARBASE'i ilk kez gör
 STARBASE, Yıldız Roket Takımı'nın merkezi hesabı, uygulama izin sistemi ve uygulama vitrini. Login/signup arayüzü ve parola yönetimi STARBASE'tedir. Bağlı uygulama kendi parola formunu veya ayrı bir STARBASE kullanıcısı üretmez. Proje genel OAuth/OIDC sağlayıcısı değil; kendi authorization-code + PKCE protokolüne ve `@starbase/sdk` istemcisine sahiptir.
 
 - Repo: bu dizin. Monorepo: `apps/api` Cloudflare Worker/Hono API, `apps/web` Vite/React arayüz, `packages/sdk` TypeScript/React SDK, `packages/ui` vendored `@stardrop/ui`, `examples/vite` örnek istemci, `examples/tauri/native` native Rust örneği.
-- Canlı STARBASE: `https://starbase.ayberkarslann0.workers.dev`. `starbase.ayberkarslan.com` ayrıca Worker'a bağlı özel alan adıdır. Şu an Worker `PUBLIC_ORIGIN` ve Takvim entegrasyonu **workers.dev** adresini kullanıyor. Yeni uygulamada bir baz URL seç, kayıtlı origin/callback/redirect değerlerini onunla tutarlı tut; alan adını yalnız DNS'ten değiştirip her şeyin otomatik taşınacağını varsayma.
+- Canlı STARBASE: `https://starbase.ayberkarslan.com`. Worker `PUBLIC_ORIGIN` bu özel alan adını kullanır. Yeni uygulamada baz URL, kayıtlı origin/callback/redirect ve açma adresini tutarlı tut; alan adı değişince OAuth kaydını da güncelle.
 - Sağlık: `GET /api/v1/health`; makine okunur sözleşme: `GET /api/openapi.json`; yerleşik geliştirici açıklaması `/docs`.
 - Firebase Auth (`starbase-3ce1f`) yalnız hesap/parola/e-posta doğrulaması için. STARBASE kullanıcı kimlikleri, uygulama kayıtları, izinler ve oturumlar Cloudflare D1 `starbase` veritabanında. Arayüz ve API aynı Worker'da. Firebase Admin özel anahtarı Worker secret'ıdır; frontend'e veya Git'e koyma.
 - Uygulama logo/ismi/açma adresi STARBASE `apps` kaydından gelir. Değişiklikler merkezi vitrin ve yörüngede aynı kaynaktan görünür.
@@ -32,7 +32,7 @@ SDK npm registry'de değil. Bu repoda `npm run pack:sdk` çalıştır; `artifact
 import { Starbase } from "@starbase/sdk";
 
 export const starbase = new Starbase({
-  baseUrl: import.meta.env.VITE_STARBASE_URL ?? "https://starbase.ayberkarslann0.workers.dev",
+  baseUrl: import.meta.env.VITE_STARBASE_URL ?? "https://starbase.ayberkarslan.com",
   clientId: "hedef-uygulama-web",
   redirectUri: `${location.origin}/callback`,
   storage: sessionStorage,
@@ -61,7 +61,7 @@ const accessToken = await client.getAccessToken();
 
 ## 4. YRT Test Takvimi'nde fiilen yapılanlar
 
-Kaynak depo: `~/Projects/TestFormu/Test-Formu`; ayrıntılı yerel belge: `docs/starbase-integration.md`. Canlı Takvim `https://yrt-test-takvimi.web.app`, STARBASE kaydı `test-formu-web`, callback `${location.origin}/callback`, kapsamlar `profile` + `organization`. STARBASE uygulama açma adresi `https://yrt-test-takvimi.web.app/?starbase=1`.
+Kaynak depo: `~/Projects/TestFormu/Test-Formu`; ayrıntılı yerel belge: `docs/starbase-integration.md`. Canlı Takvim `https://test.yildizroket.com`, STARBASE kaydı `test-formu-web`, callback `${location.origin}/callback`, kapsamlar `profile` + `organization`. STARBASE uygulama açma adresi `https://test.yildizroket.com/?starbase=1`.
 
 **Tarayıcı katmanı:**
 

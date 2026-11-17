@@ -4,7 +4,7 @@ Firebase Auth Spark ve Cloudflare Workers/D1 Free kullanılır. R2 aboneliği a�
 
 1. Firebase projesinde email/password sağlayıcısını aç, e-posta enumeration protection ve şifre politikasını etkinleştir. Firebase proje kimliği ve Web API key'i al.
 2. Sunucu kullanıcı yönetimi için yalnız gerekli Firebase Authentication yetkilerine sahip servis hesabı oluştur. Private key'i depoya veya Vite environment'ına koyma.
-3. `npx wrangler d1 create starbase` çalıştır. Dönen database_id değerini `apps/api/wrangler.toml` içine yaz. Bu depo için canlı D1 zaten oluşturulup bağlandı; yeniden oluşturma. PUBLIC_ORIGIN'i gerçek `https://...workers.dev` adresiyle ayarla. FIREBASE_PROJECT_ID ve FIREBASE_API_KEY'i güncelle.
+3. `npx wrangler d1 create starbase` çalıştır. Dönen database_id değerini `apps/api/wrangler.toml` içine yaz. Bu depo için canlı D1 zaten oluşturulup bağlandı; yeniden oluşturma. PUBLIC_ORIGIN'i kanonik STARBASE alan adıyla ayarla. FIREBASE_PROJECT_ID ve FIREBASE_API_KEY'i güncelle.
 4. Worker secret'larını `apps/api` dizininde `npx wrangler secret put FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `TURNSTILE_SECRET` ile yükle. Turnstile site key'ini `TURNSTILE_SITE_KEY` var'ına ekle. Emulator host'u üretime eklenmez.
 5. Firebase Authorized Domains ve e-posta action URL ayarlarını yapılandır. Action URL `https://YOUR-STARBASE.workers.dev/action` olmalı. `/action` ekranı Firebase `mode` ve `oobCode` parametrelerini işler. Emülatörde gerçek mail gönderilmez.
 6. `npm run build`; `apps/api` içinde `npx wrangler d1 migrations apply starbase --remote`, ardından `npx wrangler deploy` çalıştır.

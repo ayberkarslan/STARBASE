@@ -80,7 +80,7 @@ async function syncAppResource(
     "SELECT user_id FROM app_resources WHERE app_id=? AND resource_id=?",
   )
     .bind(item.appId, item.resourceId)
-    .all<{ user_id: string }>();
+    .all() as { results: { user_id: string }[] };
   const affectedUserIds = new Set<string>(
     (existingUsers?.results ?? []).map((r) => r.user_id),
   );

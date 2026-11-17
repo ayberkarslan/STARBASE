@@ -75,6 +75,7 @@ async function syncAppResource(
     appId: string;
     resourceId: string;
     starbaseUserIds: string[];
+    starbaseUserId?: string;
     deleted: boolean;
     title?: string;
     date?: string;
@@ -82,6 +83,7 @@ async function syncAppResource(
     url?: string;
     createdAt?: number;
     updatedAt?: number;
+    visibility?: "team" | "personal";
   },
 ) {
   const application = await c.env.DB.prepare(
@@ -97,13 +99,15 @@ async function syncAppResource(
     .bind(item.appId, item.resourceId)
     .all() as { results: { user_id: string }[] };
   const affectedUserIds = new Set<string>(
-    (existingUsers?.results ?? []).map((r) => r.user_id),
+    (existingUsers?.results ?? []).filter((r) => !item.deleted || !item.starbaseUserId || r.user_id === item.starbaseUserId).map((r) => r.user_id),
   );
   if (item.deleted || userIds.length === 0) {
     await c.env.DB.prepare(
-      "DELETE FROM app_resources WHERE app_id=? AND resource_id=?",
+      item.starbaseUserId && item.deleted
+        ? "DELETE FROM app_resources WHERE app_id=? AND resource_id=? AND user_id=?"
+        : "DELETE FROM app_resources WHERE app_id=? AND resource_id=?",
     )
-      .bind(item.appId, item.resourceId)
+      .bind(item.appId, item.resourceId, ...(item.starbaseUserId && item.deleted ? [item.starbaseUserId] : []))
       .run();
   } else {
     if (!item.title || !item.date || !item.status || !item.createdAt)
@@ -117,7 +121,7 @@ async function syncAppResource(
       ).bind(item.appId, item.resourceId, ...userIds),
       ...userIds.map((userId) =>
         c.env.DB.prepare(
-          "INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at) SELECT ?,u.id,?,?,?,?,?,?,? FROM users u WHERE u.id=? AND u.disabled=0 ON CONFLICT(app_id,user_id,resource_id) DO UPDATE SET title=excluded.title,date=excluded.date,status=excluded.status,url=excluded.url,updated_at=excluded.updated_at",
+          "INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at,visibility) SELECT ?,u.id,?,?,?,?,?,?,?,? FROM users u WHERE u.id=? AND u.disabled=0 ON CONFLICT(app_id,user_id,resource_id) DO UPDATE SET title=excluded.title,date=excluded.date,status=excluded.status,url=excluded.url,updated_at=excluded.updated_at,visibility=excluded.visibility",
         ).bind(
           item.appId,
           item.resourceId,
@@ -127,6 +131,7 @@ async function syncAppResource(
           item.url ?? "",
           item.createdAt,
           timestamp,
+          item.visibility ?? "team",
           userId,
         ),
       ),
@@ -208,6 +213,7 @@ export function register(app: App) {
           .optional(),
         createdAt: z.number().int().positive().optional(),
         updatedAt: z.number().int().positive().optional(),
+        visibility: z.enum(["team", "personal"]).optional(),
       }),
     );
     const starbaseUserIds = item.starbaseUserIds ?? (item.starbaseUserId ? [item.starbaseUserId] : []);
@@ -235,6 +241,7 @@ export function register(app: App) {
           .optional(),
         createdAt: z.number().int().positive().optional(),
         updatedAt: z.number().int().positive().optional(),
+        visibility: z.enum(["team", "personal"]).optional(),
       }),
     );
     if (item.deleted) {
@@ -306,7 +313,7 @@ export function register(app: App) {
     if (!scope || !projectId || projectId !== c.req.param("resourceId")) fail(404, "preview_not_found");
     const upstream = await fetch(new URL("/internal-preview", compilerOrigin), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-app-sync-key": previewSecret },
+      headers: { "Content-Type": "application/json", "x-app-sync-key": previewSecret! },
       body: JSON.stringify({ scope, projectId }),
       signal: AbortSignal.timeout(8000),
     });

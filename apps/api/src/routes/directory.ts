@@ -24,11 +24,11 @@ async function usedApplications(env: Env, userId: string) {
     logoUrl: row.logoUrl ? `/api/v1/apps/${encodeURIComponent(row.applicationId)}/logo` : "",
   }));
 }
-async function userResources(env: Env, userId: string) {
+async function userResources(env: Env, userId: string, viewerId: string) {
   const rows = await env.DB.prepare(
-    "SELECT r.app_id applicationId,a.name applicationName,r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r JOIN apps a ON a.id=r.app_id WHERE r.user_id=? AND a.disabled=0 ORDER BY r.updated_at DESC,r.created_at DESC LIMIT 30",
+    "SELECT r.app_id applicationId,a.name applicationName,r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r JOIN apps a ON a.id=r.app_id WHERE r.user_id=? AND a.disabled=0 AND (r.visibility='team' OR r.user_id=?) ORDER BY r.updated_at DESC,r.created_at DESC LIMIT 30",
   )
-    .bind(userId)
+    .bind(userId, viewerId)
     .all<{
       applicationId: string;
       applicationName: string;
@@ -230,7 +230,7 @@ export function register(app: App) {
     const { avatarUrl, avatarVersion, owner, ...profile } = user;
     const [applications, resources, badges, roles] = await Promise.all([
       usedApplications(c.env, c.req.param("id")),
-      userResources(c.env, c.req.param("id")),
+      userResources(c.env, c.req.param("id"), c.get("user").id),
       c.env.DB.prepare(
         "SELECT b.id, b.name, b.description, b.tier, b.color, b.icon, ub.assigned_at assignedAt FROM user_badges ub JOIN badges b ON b.id=ub.badge_id WHERE ub.user_id=? ORDER BY b.tier DESC, b.name",
       ).bind(c.req.param("id")).all().then((r) => r.results),
@@ -252,7 +252,7 @@ export function register(app: App) {
   });
   app.get("/api/v1/me/resources", async (c) => {
     const s = c.get("session");
-    return c.json(await userResources(c.env, s.user_id));
+    return c.json(await userResources(c.env, s.user_id, s.user_id));
   });
   app.get("/api/v1/directory/users/:id/activity", async (c) => {
     await requireDirectory(c);

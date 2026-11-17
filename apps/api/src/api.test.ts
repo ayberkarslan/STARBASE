@@ -51,6 +51,8 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0022_board_canvas_widgets.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0023_user_roles_and_badges.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0024_app_access_blocks.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0025_application_domains.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0026_resource_visibility.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -963,6 +965,18 @@ it("searches only the signed-in user's application resources", async () => {
   expect(literal.total).toBe(0);
   const folded: any = await (await call("/apps/starlab/resources?q=itki%20testi")).json();
   expect(folded.resources.map((item: any) => item.resourceId)).toEqual(["own"]);
+});
+
+it("keeps personal documents out of other members' profiles", async () => {
+  db.prepare("INSERT INTO user_roles VALUES(?,?)").run("u2", "member");
+  db.prepare("INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at,visibility) VALUES(?,?,?,?,?,?,?,?,?,?)")
+    .run("starlab", "u2", "private-doc", "Kişisel belge", "2026-11-17", "active", "", now(), now(), "personal");
+  db.prepare("INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at,visibility) VALUES(?,?,?,?,?,?,?,?,?,?)")
+    .run("starlab", "u2", "team-doc", "Ortak belge", "2026-11-17", "active", "", now(), now(), "team");
+  const response = await call("/directory/users/u2");
+  expect(response.status).toBe(200);
+  const profile: any = await response.json();
+  expect(profile.resources.map((item: any) => item.resourceId)).toEqual(["team-doc"]);
 });
 
 describe.skip("archived shared board notes", () => {

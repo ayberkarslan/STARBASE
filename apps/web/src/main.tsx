@@ -1,9 +1,9 @@
 import {
   WorkspaceMenu,
   WorkspaceStarfield,
-  ApplicationOrbit,
 } from "./workspace-shell";
-import { BoardNotes } from "./board-notes";
+import { WorkspaceHome } from "./workspace-home";
+import { CommandPalette } from "./command-palette";
 import { DeveloperDocs } from "./developer-docs";
 import { ApplicationDetail } from "./application-detail";
 import { TeamDirectory, MyApplicationHistory } from "./directory";
@@ -56,11 +56,11 @@ import {
   Clock3,
   Camera,
   Trash2,
+  House,
 } from "lucide-react";
 import "@stardrop/ui/styles.css";
 import "./style.css";
 import "./workspace-shell.css";
-import "./board-notes.css";
 let resolveStartupReady: (() => void) | undefined;
 const startupReady = new Promise<void>((resolve) => {
   resolveStartupReady = resolve;
@@ -106,11 +106,10 @@ function App() {
         ? "docs"
         : new URLSearchParams(location.search).get("view") === "sessions"
           ? "account"
-          : "board",
+          : "home",
     ),
-    [boardScope, setBoardScope] = useState<"home" | "private" | "shared">(
-      () => (localStorage.getItem("starbase.board.default") as "home" | "private" | "shared") || "home",
-    ),
+    [paletteOpen, setPaletteOpen] = useState(false),
+    [directoryTarget, setDirectoryTarget] = useState<{ id: string; revision: number } | null>(null),
     [mode, setMode] = useState("login"),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -319,16 +318,53 @@ function App() {
     <button
       type="button"
       className="brand workspace-home"
-      aria-label="STARBASE panoya dön"
-      onClick={() => {
-        setTab("board");
-        setBoardScope((localStorage.getItem("starbase.board.default") as "home" | "private" | "shared") || "home");
-      }}
+      aria-label="STARBASE ana sayfaya dön"
+      onClick={() => setTab("home")}
     >
       <img src="/brand/yrt.png" alt="" />
       <span>STARBASE</span>
     </button>
   );
+  const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length);
+  const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
+  const navigation = [
+    { id: "home", name: "Ana sayfa", icon: House },
+    { id: "applications", name: "Uygulamalar", icon: AppWindow },
+    ...(canBrowseDirectory ? [
+      { id: "directory", name: "Takım dizini", icon: Users },
+      { id: "teams", name: "Departmanlar", icon: Layers },
+    ] : []),
+    { id: "account", name: "Hesabım", icon: Orbit },
+    ...(canManage("users.manage") ? [
+      { id: "members", name: "Üyeler", icon: Users },
+      { id: "activity", name: "Erişim geçmişi", icon: Clock3 },
+    ] : []),
+    ...(canManage("roles.manage") ? [{ id: "roles", name: "Roller ve izinler", icon: Shield }] : []),
+    ...(canManage("apps.manage") ? [{ id: "application_management", name: "Uygulama yönetimi", icon: AppWindow }] : []),
+    { id: "docs", name: "Geliştiriciler", icon: BookOpen },
+  ];
+  const shortcuts = navigation.filter((item) => !["home", "applications", "teams"].includes(item.id));
+  const openPage = (id: string) => {
+    if (id === "applications") setSelectedApplication(null);
+    if (id === "directory") setDirectoryTarget(null);
+    setTab(id);
+  };
+  const openApplication = (id: string) => { setSelectedApplication(id); setTab("applications"); };
+  const openMember = (id: string) => {
+    setDirectoryTarget((current) => ({ id, revision: (current?.revision ?? 0) + 1 }));
+    setTab("directory");
+  };
+  useEffect(() => {
+    if (!user?.id) return;
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  }, [user?.id]);
   const status = (
     <>
       {error && (
@@ -568,49 +604,11 @@ function App() {
         brand={brand}
         start={
           <WorkspaceMenu>
-            {[
-              { id: "board", name: "Pano", icon: Users },
-              { id: "directory", name: "Takım dizini", icon: Users },
-              { id: "account", name: "Hesabım", icon: Orbit },
-              { id: "teams", name: "Departmanlar", icon: Layers },
-              { id: "applications", name: "Uygulamalar", icon: AppWindow },
-              ...(user.owner || permissions.some((p) => p.endsWith(".manage"))
-                ? [
-                    { id: "members", name: "Üyeler", icon: Users },
-                    { id: "activity", name: "Erişim geçmişi", icon: Clock3 },
-                    { id: "roles", name: "Roller ve izinler", icon: Shield },
-                    { id: "application_management", name: "Uygulama yönetimi", icon: AppWindow },
-                  ]
-                : []),
-              { id: "docs", name: "Geliştiriciler", icon: BookOpen },
-            ]
-              .filter(
-                (n) =>
-                  user.owner ||
-                  !(
-                    {
-                      members: "users.manage",
-                      activity: "users.manage",
-                      roles: "roles.manage",
-                      application_management: "apps.manage",
-                    } as Record<string, string>
-                  )[n.id] ||
-                  permissions.includes(
-                    (
-                      {
-                        members: "users.manage",
-                        roles: "roles.manage",
-                        application_management: "apps.manage",
-                        audit: "users.manage",
-                      } as Record<string, string>
-                    )[n.id],
-                  ),
-              )
-              .map((n) => (
+            {navigation.map((n) => (
                 <button
                   key={n.id}
                   className={tab === n.id ? "active" : ""}
-                  onClick={() => { if (n.id === "applications") setSelectedApplication(null); setTab(n.id); }}
+                  onClick={() => openPage(n.id)}
                 >
                   <n.icon size={17} />
                   {n.name}
@@ -639,24 +637,16 @@ function App() {
         }
       />
       <div className="workspace-body">
-        <main
-          className={"content" + (tab === "board" ? " canvas-content" : "")}
-        >
+        <main className="content">
           {status}
-          {tab === "board" && (
-            <BoardNotes
-              currentUserId={user.id}
-              teams={org.teams}
-              scope={boardScope}
-              onScopeChange={setBoardScope}
-            />
-          )}
+          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
-              key={tab}
+              key={`${tab}-${directoryTarget?.revision ?? 0}`}
               revision={directoryRevision}
               currentUserId={user.id}
               teamsOnly={tab === "teams"}
+              initialSelectedUserId={tab === "directory" ? directoryTarget?.id : undefined}
               canManageOrganization={user.owner || permissions.includes("organization.manage")}
             />
           )}
@@ -1023,7 +1013,7 @@ function App() {
           {tab === "docs" && <Docs />}
         </main>
       </div>
-      <ApplicationOrbit apps={apps} onApplications={() => { setSelectedApplication(null); setTab("applications"); }} />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} apps={apps} pages={navigation} canSearchMembers={canBrowseDirectory} onPage={openPage} onApplication={openApplication} onMember={openMember} />
     </div>
   );
 }

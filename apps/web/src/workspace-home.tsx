@@ -1,0 +1,68 @@
+import { useEffect, useState } from "react";
+import { AppWindow, ArrowUpRight, Search } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { request } from "./management";
+import "./workspace-home.css";
+
+export type HomeApp = { id: string; name: string; logoUrl?: string; launchUrl?: string };
+export type HomeShortcut = { id: string; name: string; icon: LucideIcon };
+
+export function WorkspaceHome({ name, apps, shortcuts, onPage, onApplication, onSearch }: {
+  name: string;
+  apps: HomeApp[];
+  shortcuts: HomeShortcut[];
+  onPage: (id: string) => void;
+  onApplication: (id: string) => void;
+  onSearch: () => void;
+}) {
+  const [recentId, setRecentId] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    request("/me/applications?page=1")
+      .then((history: { applications: { applicationId: string; lastSignInAt: number; applicationDisabled: number }[] }) => {
+        if (!active) return;
+        const latest = [...history.applications]
+          .filter((item) => !item.applicationDisabled)
+          .sort((a, b) => b.lastSignInAt - a.lastSignInAt)[0];
+        setRecentId(latest?.applicationId ?? null);
+      })
+      .catch(() => { if (active) setRecentId(null); });
+    return () => { active = false; };
+  }, []);
+  const recent = apps.find((app) => app.id === recentId);
+
+  return <section className="workspace-home-page">
+    <div className="workspace-home-intro">
+      <div><span className="eyebrow">YILDIZ ROKET TAKIMI / STARBASE</span>
+        <h1>Merhaba, {name}.</h1>
+        <p>Çalışma alanın hazır.</p>
+      </div>
+      <button type="button" className="workspace-home-search" onClick={onSearch} aria-label="Uygulama veya üye ara">
+        <Search size={17} /><span>Uygulama veya üye ara</span><kbd>Ctrl K</kbd>
+      </button>
+    </div>
+
+    {recent && <section className="workspace-home-recent" aria-label="Son kullanılan uygulama">
+      <div><span className="eyebrow">KALDIĞIN YER</span><p>Son giriş yaptığın uygulamaya dön.</p></div>
+      <button type="button" onClick={() => onApplication(recent.id)}>
+        {recent.logoUrl ? <img src={recent.logoUrl} alt="" /> : <AppWindow size={22} />}
+        <strong>{recent.name}</strong><ArrowUpRight size={18} />
+      </button>
+    </section>}
+
+    <section className="workspace-home-section" aria-labelledby="home-apps-title">
+      <div className="workspace-home-section-head"><span className="eyebrow">PLATFORMLAR</span><button type="button" onClick={() => onPage("applications")}>Tüm uygulamalar <ArrowUpRight size={14} /></button></div>
+      <h2 id="home-apps-title">Uygulamalar</h2>
+      {apps.length ? <div className="workspace-home-apps">{apps.map((app) => <button type="button" className="workspace-home-app" key={app.id} onClick={() => onApplication(app.id)} aria-label={`${app.name} ayrıntılarını aç`}>
+        {app.logoUrl && <img className="workspace-home-app-watermark" src={app.logoUrl} alt="" />}
+        <span className="workspace-home-app-icon">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={22} />}</span>
+        <strong>{app.name}</strong><span className="workspace-home-app-action">Uygulama ayrıntıları <ArrowUpRight size={16} /></span>
+      </button>)}</div> : <p className="workspace-home-empty">Henüz kayıtlı uygulama yok.</p>}
+    </section>
+
+    <section className="workspace-home-section" aria-labelledby="home-shortcuts-title">
+      <span className="eyebrow">HIZLI ERİŞİM</span><h2 id="home-shortcuts-title">Çalışma alanları</h2>
+      <div className="workspace-home-shortcuts">{shortcuts.map(({ id, name: label, icon: Icon }) => <button type="button" key={id} onClick={() => onPage(id)}><Icon size={17} /><span>{label}</span><ArrowUpRight size={14} /></button>)}</div>
+    </section>
+  </section>;
+}

@@ -8,8 +8,6 @@ import {
 import { IconButton } from "@stardrop/ui";
 import {
   Menu,
-  ArrowUpRight,
-  AppWindow,
 } from "lucide-react";
 
 const workspaceStars = Array.from({ length: 14 }, () => ({
@@ -112,46 +110,6 @@ export function WorkspaceMenu({ children }: { children: ReactNode }) {
           {children}
         </aside>
       )}
-    </div>
-  );
-}
-
-export function ApplicationOrbit({
-  onApplications,
-  apps,
-}: {
-  onApplications: () => void;
-  apps: { id: string; name: string; logoUrl?: string; launchUrl?: string }[];
-}) {
-  const orbitApps = apps.slice(0, 5);
-  return (
-    <div className="application-orbit" aria-label="Yıldız platformları">
-      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0 200 Q500 -100 1000 200" />
-        <path className="orbit-echo" d="M0 200 Q500 -78 1000 200" />
-      </svg>
-      <span className="orbit-caption">YILDIZDAN YILDIZLARA</span>
-      {orbitApps.map((a, index) => {
-        const spread = Math.min(0.62, 0.18 * (orbitApps.length - 1));
-        const t = orbitApps.length === 1 ? 0.5 : 0.5 - spread / 2 + (index / (orbitApps.length - 1)) * spread;
-        return (
-        <button
-          key={a.id}
-          className="orbit-application"
-          style={{
-            left: `${t * 100}%`,
-            top: `${(200 - 600 * t * (1 - t)) / 2}%`,
-          }}
-          onClick={() => a.launchUrl ? window.location.assign(a.launchUrl) : onApplications()}
-          title={`${a.name} · ${a.launchUrl ? "Yüklü uygulamayı aç" : "Bağlı uygulamaları görüntüle"}`}
-        >
-          <span className="orbit-node">
-            {a.logoUrl ? <img src={a.logoUrl} alt="" /> : <AppWindow size={18} />}
-          </span>
-          <span>{a.name}</span>
-          <ArrowUpRight className="orbit-arrow" size={12} />
-        </button>
-      )})}
     </div>
   );
 }

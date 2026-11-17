@@ -240,11 +240,13 @@ export function TeamDirectory({
   teamsOnly = false,
   canManageOrganization = false,
   revision = 0,
+  initialSelectedUserId = null,
 }: {
   currentUserId: string;
   teamsOnly?: boolean;
   canManageOrganization?: boolean;
   revision?: number;
+  initialSelectedUserId?: string | null;
 }) {
   const [query, setQuery] = useState(""),
     [department, setDepartment] = useState(""),
@@ -252,7 +254,7 @@ export function TeamDirectory({
     [page, setPage] = useState(1),
     [result, setResult] = useState<DirectoryPage | null>(null),
     [org, setOrg] = useState<DirectoryTeams>({ departments: [], teams: [] }),
-    [selected, setSelected] = useState<string | null>(null),
+    [selected, setSelected] = useState<string | null>(initialSelectedUserId),
     [selectedTeam, setSelectedTeam] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),

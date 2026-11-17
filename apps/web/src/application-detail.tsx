@@ -1,286 +1,181 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, AppWindow, FileText, FolderOpen, RefreshCw } from "lucide-react";
-import { Button, Panel } from "@stardrop/ui";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, ArrowUpRight, AppWindow, FileText, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Button, Dialog, Panel } from "@stardrop/ui";
 import "./application-detail.css";
 
+type Resource = { resourceId: string; title: string; date: string; status: string; url?: string; createdAt: number; updatedAt?: number };
+type Visit = { signedInAt: number; endedAt: number | null; endReason: string | null };
 type Overview = {
   application: { id: string; name: string; logoUrl: string; launchUrl: string };
   summary: { totalVisits: number; lastSignInAt: number | null };
-  visits: { signedInAt: number; endedAt: number | null; endReason: string | null }[];
-  resources: { resourceId: string; title: string; date: string; status: string; url?: string; createdAt: number; updatedAt?: number }[];
+  visits: Visit[];
   resourceCount: number;
+  access?: { connected: boolean; blocked: boolean; scopes: string[] };
 };
+type Session = { family: string; signedInAt: number; userAgent: string | null; expires: number; live: boolean; lastSeenAt: number | null; signalUnavailable?: boolean };
+type ResourcePage = { resources: Resource[]; page: number; total: number; hasMore: boolean };
 
-const dateTime = (value: number | null) => value
+const dateTime = (value: number | null | undefined) => value
   ? new Date(value * 1000).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })
   : "Kayıt yok";
+const statusLabel = (status: string) => ({ test_pending: "Test bekliyor", report_pending: "Rapor bekliyor", completed: "Tamamlandı", cancelled: "İptal edildi" })[status as "test_pending"] ?? status;
+const deviceLabel = (agent: string | null) => {
+  if (!agent) return "Bilinmeyen cihaz";
+  const browser = /Edg\//.test(agent) ? "Edge" : /Firefox\//.test(agent) ? "Firefox" : /Chrome\//.test(agent) ? "Chrome" : /Safari\//.test(agent) ? "Safari" : "Tarayıcı";
+  const system = /Android/.test(agent) ? "Android" : /iPhone|iPad/.test(agent) ? "iOS" : /Windows/.test(agent) ? "Windows" : /Mac OS/.test(agent) ? "macOS" : /Linux/.test(agent) ? "Linux" : "Cihaz";
+  return `${browser} · ${system}`;
+};
 
 export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [resourcePage, setResourcePage] = useState(1);
+  const [resourceTotal, setResourceTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [query, setQuery] = useState("");
+  const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
+  const [resourceError, setResourceError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const overviewRef = useRef<Overview | null>(null);
-  overviewRef.current = overview;
-  const reloadRef = useRef<() => void>(() => {});
+  const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState<{ kind: "session" | "access"; family?: string } | null>(null);
+  const supportsLive = id === "test-formu-web" || id === "yrt-latex-web";
+  const isCalendar = id === "test-formu-web";
+  const isLatex = id === "yrt-latex-web";
 
-  const loadOverview = useCallback(async (silent = false) => {
-    if (!silent && !overviewRef.current) {
-      setOverview(null);
-    }
-    if (!silent) setRefreshing(true);
-    try {
-      const response = await fetch(`/api/v1/apps/${encodeURIComponent(id)}/overview`);
-      if (!response.ok) throw new Error("Uygulama bilgileri yüklenemedi.");
-      const data = (await response.json()) as Overview;
-      setOverview(data);
-      setError("");
-    } catch (cause: any) {
-      if (!silent || !overviewRef.current) {
-        setError(String(cause?.message ?? cause));
-      }
-    } finally {
-      setRefreshing(false);
-    }
+  const loadOverview = useCallback(async () => {
+    const response = await fetch(`/api/v1/apps/${encodeURIComponent(id)}/overview`);
+    if (!response.ok) throw new Error("Uygulama bilgileri yüklenemedi.");
+    setOverview(await response.json() as Overview);
   }, [id]);
-
-  reloadRef.current = () => {
-    void loadOverview(true);
-  };
-
+  const loadSessions = useCallback(async () => {
+    if (!supportsLive) return;
+    const response = await fetch(`/api/v1/apps/${encodeURIComponent(id)}/sessions`);
+    if (!response.ok) throw new Error("Oturum bilgileri yüklenemedi.");
+    setSessions((await response.json() as { sessions: Session[] }).sessions);
+  }, [id, supportsLive]);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await Promise.all([loadOverview(), loadSessions()]); setError(""); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Bilgiler yüklenemedi."); }
+    finally { setRefreshing(false); }
+  }, [loadOverview, loadSessions]);
+  useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
-    let disposed = false;
-    let reconnectTimer: ReturnType<typeof setTimeout>;
-    let ws: WebSocket | null = null;
-    let attempts = 0;
-
-    void loadOverview(false);
-
-    function connect() {
-      if (disposed || document.hidden) return;
-      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+    let active = true;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
       try {
-        const url = new URL("/api/v1/me/applications/live", location.origin);
-        url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-        ws = new WebSocket(url);
-        ws.onopen = () => {
-          if (disposed) {
-            ws?.close();
-            return;
-          }
-          attempts = 0;
-        };
-        ws.onmessage = (e) => {
-          try {
-            const data = JSON.parse(e.data);
-            if (data?.type === "app.resources.changed") {
-              reloadRef.current();
-            }
-          } catch {}
-        };
-        ws.onclose = () => {
-          ws = null;
-          if (!disposed && !document.hidden) {
-            reconnectTimer = setTimeout(
-              connect,
-              Math.min(30000, 1000 * 2 ** Math.min(attempts++, 5)) + Math.random() * 500,
-            );
-          }
-        };
-        ws.onerror = () => ws?.close();
-      } catch {}
-    }
-
-    function onVisibility() {
-      clearTimeout(reconnectTimer);
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-      if (!document.hidden) {
-        reloadRef.current();
-        connect();
-      }
-    }
-
-    function onFocus() {
-      if (!document.hidden) {
-        reloadRef.current();
-      }
-    }
-
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", onFocus);
-    const pollInterval = setInterval(() => {
-      if (!document.hidden) reloadRef.current();
-    }, 15000);
-
-    connect();
-
-    return () => {
-      disposed = true;
-      clearTimeout(reconnectTimer);
-      clearInterval(pollInterval);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", onFocus);
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
+        const params = new URLSearchParams({ q: query.trim(), page: String(resourcePage) });
+        const response = await fetch(`/api/v1/apps/${encodeURIComponent(id)}/resources?${params}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Kayıtlar yüklenemedi.");
+        const data = await response.json() as ResourcePage;
+        if (active) {
+          setResources((current) => resourcePage === 1 ? data.resources : [...current, ...data.resources]);
+          setResourceTotal(data.total);
+          setHasMore(data.hasMore);
+          setResourceError("");
+        }
+      } catch (cause) { if (active) setResourceError(cause instanceof Error ? cause.message : "Kayıtlar yüklenemedi."); }
+    }, query ? 250 : 0);
+    return () => { active = false; controller.abort(); clearTimeout(timer); };
+  }, [id, query, resourcePage, revision]);
+  useEffect(() => {
+    const update = () => { if (!document.hidden) void refresh(); };
+    const timer = window.setInterval(update, 20_000);
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", update);
+    return () => { clearInterval(timer); window.removeEventListener("focus", update); document.removeEventListener("visibilitychange", update); };
+  }, [refresh]);
+  useEffect(() => {
+    let socket: WebSocket | null = null;
+    let timer: ReturnType<typeof setTimeout>;
+    let stopped = false;
+    const connect = () => {
+      if (stopped || document.hidden) return;
+      const url = new URL("/api/v1/me/applications/live", location.origin);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      socket = new WebSocket(url);
+      socket.onmessage = (event) => {
+        try { if (JSON.parse(event.data).type === "app.resources.changed") { setResourcePage(1); setRevision((value) => value + 1); void refresh(); } } catch { /* Ignore unknown frames. */ }
+      };
+      socket.onclose = () => { socket = null; if (!stopped) timer = setTimeout(connect, 10_000); };
     };
-  }, [id, loadOverview]);
+    connect();
+    return () => { stopped = true; clearTimeout(timer); socket?.close(); };
+  }, [refresh]);
 
-  const latestResource = overview?.resources[0];
+  async function mutate(path: string, method: "POST" | "DELETE") {
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/v1/apps/${encodeURIComponent(id)}${path}`, { method, headers: { "Content-Type": "application/json" }, body: method === "POST" ? "{}" : undefined });
+      if (!response.ok) throw new Error("İşlem tamamlanamadı. Tekrar dene.");
+      setConfirm(null);
+      await refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "İşlem tamamlanamadı."); }
+    finally { setBusy(false); }
+  }
+
+  const application = overview?.application;
+  const connected = overview?.access?.connected;
+  const blocked = overview?.access?.blocked;
+  const title = confirm?.kind === "access" ? "Erişimi kapat" : "Oturumu kapat";
 
   return <div className="application-detail">
     <div className="application-detail-nav">
       <Button variant="bare" onClick={onBack}><ArrowLeft size={16} /> Uygulamalara dön</Button>
-      <button
-        type="button"
-        className={`application-detail-refresh ${refreshing ? "is-spinning" : ""}`}
-        onClick={() => void loadOverview(false)}
-        disabled={refreshing}
-        title="Verileri ve son dosyaları yenile"
-        aria-label="Verileri ve son dosyaları yenile"
-      >
-        <RefreshCw size={13} aria-hidden="true" />
-      </button>
+      <span>{application?.name ?? "Uygulama"}</span>
     </div>
-    {error && <p role="alert">{error}</p>}
+    {error && <p role="alert" className="application-detail-error">{error}</p>}
     {!overview && !error && <p>Uygulama yükleniyor…</p>}
     {overview && <>
       <section className="application-detail-hero">
-        <div className="application-detail-logo" aria-hidden="true">
-          {overview.application.logoUrl ? <img src={overview.application.logoUrl} alt="" /> : <AppWindow size={140} />}
-        </div>
-        <div className="application-detail-hero__main">
-          <div className="application-detail-hero__copy">
-            <div className="application-detail-hero__top">
-              <span className="eyebrow">STARBASE UYGULAMASI</span>
-              <div className="application-detail-telemetry" aria-label="Uygulama özeti">
-                <span>
-                  <em>GİRİŞ</em>
-                  <strong>{overview.summary.totalVisits ?? 0}</strong>
-                </span>
-                <i aria-hidden="true" />
-                <span>
-                  <em>SON GİRİŞ</em>
-                  <strong>{dateTime(overview.summary.lastSignInAt)}</strong>
-                </span>
-                <i aria-hidden="true" />
-                <span>
-                  <em>KAYITLAR</em>
-                  <strong>{overview.resourceCount}</strong>
-                </span>
-                <i aria-hidden="true" />
-                <button
-                  type="button"
-                  className={`application-detail-refresh ${refreshing ? "is-spinning" : ""}`}
-                  onClick={() => void loadOverview(false)}
-                  disabled={refreshing}
-                  title="Verileri ve son dosyaları yenile"
-                  aria-label="Verileri ve son dosyaları yenile"
-                >
-                  <RefreshCw size={11} aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-            <h1>{overview.application.name}</h1>
-            <p>Yıldız Roket Takımı hesabınla bağlı uygulama.</p>
-            <div className="application-detail-hero__actions">
-              {overview.application.launchUrl && (
-                <a className="sd-button sd-button--primary sd-button--sm" href={overview.application.launchUrl}>
-                  {overview.application.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={14} />
-                </a>
-              )}
-              {latestResource?.url && (
-                <a className="sd-button sd-button--sm" href={latestResource.url}>
-                  Son dosyadan devam et ({latestResource.title}) <ArrowUpRight size={14} />
-                </a>
-              )}
-            </div>
-          </div>
+        <div className="application-detail-logo" aria-hidden="true">{application?.logoUrl ? <img src={application.logoUrl} alt="" /> : <AppWindow size={160} />}</div>
+        <span className="eyebrow">STARBASE / UYGULAMALAR</span>
+        <h1>{application?.name}</h1>
+        <p>{isLatex ? "Belgelerin ve ortak projelerin." : isCalendar ? "Oluşturduğun testlerin ve takvim çalışmaların." : "Yıldız Roket Takımı hesabınla bağlı çalışma alanı."}</p>
+        <div className="application-detail-hero-actions">
+          {application?.launchUrl && <a className="sd-button sd-button--primary sd-button--sm" href={application.launchUrl}>{application.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={14} /></a>}
+          <button type="button" className="application-detail-refresh" onClick={() => { setResourcePage(1); setRevision((value) => value + 1); void refresh(); }} disabled={refreshing} aria-label="Bilgileri yenile"><RefreshCw size={15} className={refreshing ? "is-spinning" : ""} /></button>
         </div>
       </section>
+      <div className="application-detail-metrics" aria-label="Uygulama özeti">
+        <span><small>SON GİRİŞ</small><strong>{dateTime(overview.summary.lastSignInAt)}</strong></span>
+        <span><small>TOPLAM GİRİŞ</small><strong>{overview.summary.totalVisits ?? 0}</strong></span>
+        <span><small>{isCalendar ? "TESTLERİM" : isLatex ? "BELGELERİM" : "KAYITLAR"}</small><strong>{overview.resourceCount}</strong></span>
+      </div>
 
-      <Panel
-        title="Dahil olduğum kayıtlar ve dosyalar"
-        description="Uygulama içindeki çalışmaların ve belgelerin. En son uğraştığın dosya ilk sırada işaretlidir."
-        className="application-detail-files"
-      >
-        {overview.resources.length ? (
-          <div className="application-file-grid" role="list">
-            {overview.resources.map((item, index) => {
-              const isLatest = index === 0;
-              const editedTime = dateTime(item.updatedAt ?? item.createdAt);
-              const content = (
-                <>
-                  <div className="application-file-card__preview" aria-hidden="true">
-                    {isLatest && <span className="application-file-card__badge">EN SON UĞRAŞILAN · KALDIĞIN YER</span>}
-                    <div className="application-file-sheet">
-                      <div className="application-file-sheet__head">
-                        <span className="application-file-sheet__org">YILDIZ ROKET TAKIMI</span>
-                        <span className="application-file-sheet__kind">{item.status || "Belge"}</span>
-                      </div>
-                      <strong className="application-file-sheet__title">{item.title}</strong>
-                      <div className="application-file-sheet__lines">
-                        <i /><i /><i /><i />
-                      </div>
-                      <div className="application-file-sheet__foot">
-                        <span>{item.date}</span>
-                        <span>TEX / PDF</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="application-file-card__meta">
-                    <div className="application-file-card__title-row">
-                      {isLatest ? <FolderOpen size={14} className="application-file-card__icon" /> : <FileText size={14} className="application-file-card__icon" />}
-                      <strong title={item.title}>{item.title}</strong>
-                      {item.url && <ArrowUpRight size={14} className="application-file-card__arrow" aria-hidden="true" />}
-                    </div>
-                    <div className="application-file-card__sub">
-                      <span>{item.status || "Kayıt"}</span>
-                      <span>Son düzenleme: {editedTime}</span>
-                    </div>
-                  </div>
-                </>
-              );
-              return item.url ? (
-                <a
-                  key={item.resourceId}
-                  role="listitem"
-                  className={`application-file-card ${isLatest ? "application-file-card--latest" : ""}`}
-                  href={item.url}
-                >
-                  {content}
-                </a>
-              ) : (
-                <div
-                  key={item.resourceId}
-                  role="listitem"
-                  className={`application-file-card ${isLatest ? "application-file-card--latest" : ""}`}
-                >
-                  {content}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="application-file-empty">STARBASE hesabınla oluşturduğun veya katkı verdiğin içerikler burada klasör/dosya görünümünde listelenecek.</p>
-        )}
-      </Panel>
+      {supportsLive && <section className="application-detail-access" aria-labelledby="application-access-title">
+        <div><span className="eyebrow">HESAP BAĞLANTISI</span><h2 id="application-access-title">Erişim ve oturumlar</h2></div>
+        <div className="application-detail-access-row">
+          <span className="application-detail-access-state"><ShieldCheck size={17} />{blocked ? "Erişim kapalı" : connected ? "Uygulama bağlı" : "Henüz bağlanmadı"}</span>
+          {blocked ? <Button variant="secondary" size="sm" onClick={() => void mutate("/access", "POST")} disabled={busy}>Erişimi yeniden aç</Button>
+            : connected ? <Button variant="bare" size="sm" onClick={() => setConfirm({ kind: "access" })}>Erişimi kapat</Button>
+            : <span className="application-detail-muted">Bağlanmak için uygulamayı aç.</span>}
+        </div>
+        {sessions.length ? <div className="application-detail-sessions" role="list" aria-label="Uygulama oturumları">{sessions.map((session) => <div className="application-detail-session" role="listitem" key={session.family}>
+          <span className={`application-detail-presence${session.live ? " is-live" : ""}`} aria-hidden="true" />
+          <div><strong>{deviceLabel(session.userAgent)}</strong><small>Giriş: {dateTime(session.signedInAt)} · {session.signalUnavailable ? "Durum alınamadı" : session.live ? `Canlı · Son sinyal ${dateTime(session.lastSeenAt)}` : "Canlı bağlantı yok"}</small></div>
+          <Button variant="bare" size="sm" onClick={() => setConfirm({ kind: "session", family: session.family })}>Oturumu kapat</Button>
+        </div>)}</div> : <p className="application-detail-muted">Açık uygulama oturumu bulunmuyor.</p>}
+      </section>}
 
-      <Panel title="Son girişlerim" className="application-detail-list">
-        {overview.visits.length ? (
-          <div className="application-visits-compact">
-            {overview.visits.slice(0, 6).map((visit, index) => (
-              <div className="application-detail-row" key={`${visit.signedInAt}-${index}`}>
-                <strong>{dateTime(visit.signedInAt)}</strong>
-                <span>{visit.endReason === "logout" ? `Çıkış: ${dateTime(visit.endedAt)}` : visit.endReason === "revoked" ? "Oturum sonlandırıldı" : visit.endReason === "expired" ? "Oturum süresi doldu" : "Çıkış kaydı yok"}</span>
-              </div>
-            ))}
-          </div>
-        ) : <p>Henüz giriş kaydı yok.</p>}
+      <section className="application-detail-resources" aria-labelledby="application-resources-title">
+        <div className="application-detail-section-head"><div><span className="eyebrow">ÇALIŞMALARIN</span><h2 id="application-resources-title">{isLatex ? "Belgelerim" : isCalendar ? "Oluşturduğum testler" : "Kayıtlarım"}</h2></div>{resourceTotal > 0 && <small>{resourceTotal} kayıt</small>}</div>
+        {(isLatex || isCalendar) && <label className="application-detail-search"><Search size={16} /><input value={query} onChange={(event) => { setQuery(event.target.value); setResourcePage(1); }} placeholder={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} aria-label={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} /></label>}
+        {resourceError && <p role="alert">{resourceError}</p>}
+        {resources.length ? <div className="application-detail-resource-list" role="list">{resources.map((item, index) => {
+          const content = <><span className="application-detail-paper"><FileText size={19} /></span><span className="application-detail-resource-copy"><strong>{item.title}</strong><small>{isCalendar ? `Test tarihi: ${item.date || "Belirtilmedi"} · ${statusLabel(item.status)}` : `${statusLabel(item.status || "Belge")} · Son düzenleme: ${dateTime(item.updatedAt ?? item.createdAt)}`}</small></span>{index === 0 && resourcePage === 1 && !query && <span className="application-detail-latest">SON ÇALIŞMA</span>}{item.url && <ArrowUpRight size={16} aria-hidden="true" />}</>;
+          return item.url ? <a href={item.url} key={item.resourceId} className="application-detail-resource" role="listitem">{content}</a> : <div key={item.resourceId} className="application-detail-resource" role="listitem">{content}</div>;
+        })}</div> : <p className="application-detail-muted">{query ? "Aramana uygun kayıt bulunamadı." : isCalendar ? "Henüz hesabınla oluşturulmuş test yok." : isLatex ? "Henüz bağlı belge yok." : "Bu uygulama için kayıt yok."}</p>}
+        {hasMore && <Button variant="bare" onClick={() => setResourcePage((page) => page + 1)}>Daha fazla göster</Button>}
+      </section>
+
+      <Panel title="Son girişlerim" className="application-detail-visits">
+        {overview.visits.length ? overview.visits.slice(0, 6).map((visit, index) => <div className="application-detail-visit" key={`${visit.signedInAt}-${index}`}><strong>{dateTime(visit.signedInAt)}</strong><span>{visit.endReason === "logout" ? `Çıkış: ${dateTime(visit.endedAt)}` : visit.endReason === "revoked" ? "Oturum iptal edildi" : visit.endReason === "expired" ? "Oturum süresi doldu" : "Çıkış kaydı yok"}</span></div>) : <p>Henüz giriş kaydı yok.</p>}
       </Panel>
     </>}
+    <Dialog open={!!confirm} onClose={() => { if (!busy) setConfirm(null); }} title={title} description={confirm?.kind === "access" ? "Bu uygulamanın erişimi kapanacak ve tüm mevcut oturumları iptal edilecek. Erişimi sonra yeniden açabilirsin." : "Yalnız seçtiğin tarayıcı veya cihaz oturumu kapanacak. Aynı oturumu paylaşan sekmeler de çıkacak."} actions={<><Button variant="bare" onClick={() => setConfirm(null)} disabled={busy}>Vazgeç</Button><Button variant="primary" onClick={() => void mutate(confirm?.kind === "access" ? "/access" : `/sessions/${encodeURIComponent(confirm?.family ?? "")}`, "DELETE")} disabled={busy}>{busy ? "İşleniyor…" : title}</Button></>} />
   </div>;
 }

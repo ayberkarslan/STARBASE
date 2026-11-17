@@ -25,7 +25,7 @@ STARBASE, Yıldız Roket Takımı'nın merkezi hesabı, uygulama izin sistemi ve
 
 ## 3. En kısa Vite/React bağlantısı
 
-SDK npm registry'de değil. Bu repoda `npm run pack:sdk` çalıştır; `artifacts/starbase-sdk-0.2.0.tgz` veya `/docs` indirme bağlantısındaki paketi hedef projeye kur (`npm install /path/to/starbase-sdk-0.2.0.tgz`). Takvim paketi `vendor/starbase-sdk-0.2.0.tgz` içinde sürümlüyor. Sadece SDK bağlantısı için hedef uygulamada Firebase Auth SDK'sı gerekmez.
+SDK npm registry'de değil. Bu repoda `npm run pack:sdk` çalıştır; `artifacts/starbase-sdk-0.2.1.tgz` veya `/docs` indirme bağlantısındaki paketi hedef projeye kur (`npm install /path/to/starbase-sdk-0.2.1.tgz`). Takvim paketi `vendor/starbase-sdk-0.2.1.tgz` içinde sürümlüyor. Sadece SDK bağlantısı için hedef uygulamada Firebase Auth SDK'sı gerekmez.
 
 ```ts
 // src/lib/starbase.ts — tek instance

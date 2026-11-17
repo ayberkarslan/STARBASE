@@ -420,6 +420,19 @@
 .department-logo-upload:hover { border-color: #fff; color: #fff; }
 .department-logo-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .member-profile.sd-drawer { position: relative; z-index: 101; }
+.member-profile-page { width: min(100%, 1080px); margin: 0 auto; padding-bottom: 70px; }
+.member-profile-page__nav { display: flex; justify-content: space-between; align-items: center; gap: 18px; min-height: 54px; border-bottom: 1px solid #ffffff38; }
+.member-profile-page__nav .sd-button { display: inline-flex; align-items: center; gap: 9px; padding-left: 0; }
+.member-profile-page__nav > span { color: #ffffff8f; font-size: 9px; letter-spacing: .12em; }
+.member-profile-page .directory-profile { padding: 34px 0; }
+.member-profile-page .directory-profile__hero { gap: clamp(22px,4vw,50px); padding: 12px 0 40px; }
+.member-profile-page .directory-profile__avatar { width: clamp(104px,13vw,158px); height: clamp(104px,13vw,158px); flex: none; overflow: hidden; font-size: 32px; }
+.member-profile-page .directory-profile__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.member-profile-page .directory-profile__hero h3 { margin-top: 14px; font-size: clamp(25px,4vw,48px); line-height: 1.25; }
+.member-profile-page .directory-profile__hero p { margin-top: 10px; color: #ffffffaa; font-size: 12px; }
+.member-profile-page .directory-profile__hero .sd-button { margin-top: 17px; }
+.member-profile-page .directory-profile__section,.member-profile-page .profile-activity { padding: 28px 0; border-bottom: 1px solid #ffffff2d; }
+@media (max-width: 620px) { .member-profile-page__nav > span { display: none; } .member-profile-page .directory-profile__hero { align-items: flex-start; gap: 20px; } .member-profile-page .directory-profile__avatar { width: 88px; height: 88px; font-size: 20px; } }
 .usage-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .usage-app { display: flex; align-items: center; gap: 9px; min-width: 150px; padding: 11px 13px; border: 1px solid var(--ui-border, #303030); border-radius: 8px; }
 .usage-app img { width: 23px; height: 23px; object-fit: contain; }

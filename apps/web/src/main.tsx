@@ -6,7 +6,7 @@ import { WorkspaceHome } from "./workspace-home";
 import { CommandPalette } from "./command-palette";
 import { DeveloperDocs } from "./developer-docs";
 import { ApplicationDetail } from "./application-detail";
-import { TeamDirectory, MyApplicationHistory } from "./directory";
+import { TeamDirectory, MemberProfilePage, MyApplicationHistory } from "./directory";
 import { CreateMember } from "./create-member";
 import { OrbitalIdentity } from "./orbital-identity";
 import { AuthStarfield } from "./auth-starfield";
@@ -101,7 +101,9 @@ function App() {
   const [user, setUser] = useState<any>(null),
     [loading, setLoading] = useState(true),
     [tab, setTab] = useState(
-      location.pathname === "/account"
+      /^\/profiles\/[a-zA-Z0-9_-]+$/.test(location.pathname)
+        ? "profile"
+        : location.pathname === "/account"
         ? "account"
         : location.pathname === "/docs"
         ? "docs"
@@ -110,7 +112,7 @@ function App() {
           : "home",
     ),
     [paletteOpen, setPaletteOpen] = useState(false),
-    [directoryTarget, setDirectoryTarget] = useState<{ id: string; revision: number } | null>(null),
+    [profileId, setProfileId] = useState(() => /^\/profiles\/[a-zA-Z0-9_-]+$/.test(location.pathname) ? location.pathname.split("/")[2] : ""),
     [mode, setMode] = useState("login"),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -326,7 +328,7 @@ function App() {
       <span>STARBASE</span>
     </button>
   );
-  const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length);
+  const canBrowseDirectory = Boolean(user?.owner || user?.memberships?.length);
   const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
   const navigation = [
     { id: "home", name: "Ana sayfa", icon: House },
@@ -347,14 +349,24 @@ function App() {
   const shortcuts = navigation.filter((item) => !["home", "applications", "teams"].includes(item.id));
   const openPage = (id: string) => {
     if (id === "applications") setSelectedApplication(null);
-    if (id === "directory") setDirectoryTarget(null);
+    if (tab === "profile") history.pushState({}, "", "/");
     setTab(id);
   };
   const openApplication = (id: string) => { setSelectedApplication(id); setTab("applications"); };
   const openMember = (id: string) => {
-    setDirectoryTarget((current) => ({ id, revision: (current?.revision ?? 0) + 1 }));
-    setTab("directory");
+    setProfileId(id);
+    history.pushState({}, "", `/profiles/${encodeURIComponent(id)}`);
+    setTab("profile");
   };
+  useEffect(() => {
+    const restore = () => {
+      const match = location.pathname.match(/^\/profiles\/([a-zA-Z0-9_-]+)$/);
+      if (match) { setProfileId(match[1]); setTab("profile"); }
+      else if (tab === "profile") setTab("home");
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, [tab]);
   useEffect(() => {
     if (!user?.id) return;
     const shortcut = (event: KeyboardEvent) => {
@@ -644,14 +656,15 @@ function App() {
           {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
-              key={`${tab}-${directoryTarget?.revision ?? 0}`}
+              key={tab}
               revision={directoryRevision}
               currentUserId={user.id}
               teamsOnly={tab === "teams"}
-              initialSelectedUserId={tab === "directory" ? directoryTarget?.id : undefined}
+              onOpenProfile={openMember}
               canManageOrganization={user.owner || permissions.includes("organization.manage")}
             />
           )}
+          {tab === "profile" && profileId && <MemberProfilePage id={profileId} revision={directoryRevision} onBack={() => { history.pushState({}, "", "/"); setTab("directory"); }} onEdit={profileId === user.id ? () => { history.pushState({}, "", "/account"); setTab("account"); } : undefined} />}
           {tab === "account" && (
             <section className="profile-page">
               <div className="profile-hero">
@@ -717,6 +730,7 @@ function App() {
                   <span className="eyebrow">STARBASE PROFİLİ</span>
                   <h1>{user.firstName} {user.lastName}</h1>
                   <p>@{user.username} · {user.customTitle || (user.username === "ayberkarslan" ? "Geliştirici Hesabı" : (user.owner ? "Takım sahibi" : "Yıldız Roket Takımı"))}</p>
+                  <Button variant="bare" onClick={() => openMember(user.id)}>Profilimi görüntüle <ArrowUpRight size={14} /></Button>
                   {user.badges?.length ? (
                     <div style={{ marginTop: "10px" }}>
                       <BadgeList badges={user.badges} size="md" />

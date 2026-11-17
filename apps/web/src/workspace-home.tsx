@@ -38,7 +38,7 @@ export function WorkspaceHome({ name, apps, shortcuts, onPage, onApplication, on
         <p>Çalışma alanın hazır.</p>
       </div>
       <button type="button" className="workspace-home-search" onClick={onSearch} aria-label="Uygulama veya üye ara">
-        <Search size={17} /><span>Uygulama veya üye ara</span><kbd>Ctrl K</kbd>
+        <Search size={17} /><span>Uygulama veya üye ara</span>
       </button>
     </div>
 

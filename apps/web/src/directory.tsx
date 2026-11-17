@@ -5,7 +5,6 @@ import {
   EmptyState,
   SearchField,
   SelectMenu,
-  Drawer,
 } from "@stardrop/ui";
 import {
   ArrowUpRight,
@@ -134,13 +133,15 @@ export function UserResourcesView({
     </section>
   );
 }
-function MemberProfile({
+export function MemberProfilePage({
   id,
-  onClose,
+  onBack,
+  onEdit,
   revision,
 }: {
-  id: string | null;
-  onClose: () => void;
+  id: string;
+  onBack: () => void;
+  onEdit?: () => void;
   revision: number;
 }) {
   const [profile, setProfile] = useState<DirectoryProfile | null>(null),
@@ -170,15 +171,8 @@ function MemberProfile({
     };
   }, [id, attempt, revision]);
   return (
-    <Drawer
-      open={!!id}
-      onClose={onClose}
-      title={
-        profile ? profile.firstName + " " + profile.lastName : "Üye profili"
-      }
-      eyebrow={profile ? "@" + profile.username : "TAKIM DİZİNİ"}
-      className="member-profile"
-    >
+    <section className="member-profile-page">
+      <div className="member-profile-page__nav"><Button variant="bare" onClick={onBack}><ArrowLeft size={15} /> Takım dizinine dön</Button><span>STARBASE / TAKIM PROFİLİ</span></div>
       {error && (
         <div role="alert">
           <p>{error}</p>
@@ -204,8 +198,10 @@ function MemberProfile({
               {profile.photoUrl ? <img src={profile.photoUrl} alt="" /> : <>{profile.firstName[0]}{profile.lastName[0]}</>}
             </span>
             <div>
+              <span className="eyebrow">YILDIZ ROKET TAKIMI</span>
               <h3>{profile.firstName} {profile.lastName}</h3>
               <p>@{profile.username}{(profile as any).customTitle && !(profile as any).badges?.length ? ` · ${(profile as any).customTitle}` : ""}</p>
+              {onEdit && <Button variant="bare" onClick={onEdit}>Hesabımı düzenle <ArrowUpRight size={14} /></Button>}
             </div>
           </section>
           {(profile as any).badges?.length ? (
@@ -232,7 +228,7 @@ function MemberProfile({
           <UserResourcesView resources={profile.resources} />
         </div>
       )}
-    </Drawer>
+    </section>
   );
 }
 export function TeamDirectory({
@@ -240,13 +236,13 @@ export function TeamDirectory({
   teamsOnly = false,
   canManageOrganization = false,
   revision = 0,
-  initialSelectedUserId = null,
+  onOpenProfile,
 }: {
   currentUserId: string;
   teamsOnly?: boolean;
   canManageOrganization?: boolean;
   revision?: number;
-  initialSelectedUserId?: string | null;
+  onOpenProfile: (id: string) => void;
 }) {
   const [query, setQuery] = useState(""),
     [department, setDepartment] = useState(""),
@@ -254,7 +250,6 @@ export function TeamDirectory({
     [page, setPage] = useState(1),
     [result, setResult] = useState<DirectoryPage | null>(null),
     [org, setOrg] = useState<DirectoryTeams>({ departments: [], teams: [] }),
-    [selected, setSelected] = useState<string | null>(initialSelectedUserId),
     [selectedTeam, setSelectedTeam] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -351,7 +346,7 @@ export function TeamDirectory({
           <span className="eyebrow">YILDIZ ROKET TAKIMI</span>
           <h1>{selectedTeam ? org.teams.find((t) => t.id === selectedTeam)?.name ?? "Ekip" : teamsOnly ? "Departmanlar" : "Takım dizini"}</h1>
         </div>
-        <Button variant="bare" onClick={() => setSelected(currentUserId)}>
+        <Button variant="bare" onClick={() => onOpenProfile(currentUserId)}>
           Profilimi görüntüle <ArrowUpRight size={15} />
         </Button>
       </div>
@@ -422,7 +417,7 @@ export function TeamDirectory({
                   <Button
                     key={u.id}
                     className="member-card"
-                    onClick={() => setSelected(u.id)}
+                    onClick={() => onOpenProfile(u.id)}
                   >
                     <div className="member-card__top">
                       <span
@@ -531,7 +526,6 @@ export function TeamDirectory({
           ))}
         </div>
       )}
-      <MemberProfile id={selected} onClose={() => setSelected(null)} revision={revision} />
     </div>
   );
 }

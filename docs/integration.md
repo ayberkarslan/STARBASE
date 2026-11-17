@@ -1,6 +1,6 @@
 # STARBASE uygulama entegrasyonu
 
-Bu belge Vite, React, Tauri ve kaynak API geliştiricileri içindir. Giriş/çıkış geçmişi auth akışında otomatik oluşur; ayrı olay gönderme, heartbeat veya analiz servisi kurulmaz. STARBASE kendi SDK protokolünü kullanır; genel OAuth/OIDC sağlayıcısı değildir.
+Bu belge Vite, React, Tauri ve kaynak API geliştiricileri içindir. Giriş/çıkış geçmişi auth akışında otomatik oluşur; ayrı olay gönderme veya analiz servisi kurulmaz. Canlı tarayıcı bağlantısı için SDK `watchSession()` kullanılır. STARBASE kendi SDK protokolünü kullanır; genel OAuth/OIDC sağlayıcısı değildir.
 
 ## 1. Yönetimden uygulama kaydı
 
@@ -136,6 +136,12 @@ const user = await requireStarbasePermission(
 İzin anahtarı kaydedilen uygulama kimliğiyle başlamalıdır. Yönetici izni tanımlar, role ekler ve rolü kişiye atar. Yardımcı hem izni hem dönen `applicationId` değerini kontrol eder. `hasPermission()` yalnız arayüz davranışı içindir; kaynak API'de bu doğrulama zorunludur. STARBASE erişilemiyorsa korunan veriyi döndürme. Offline JWT doğrulaması yoktur; tokenlar opaque oturum anahtarlarıdır.
 
 ## 5. Oturum ve uygulama geçmişi
+
+Web uygulamasında kimlik doğrulandıktan sonra `const stop = starbase.watchSession()` çağır ve bileşen kapanırken `stop()` çağır. SDK açıkken her 20 saniyede bir kısa canlılık sinyali gönderir, bağlantı koparsa yeniden bağlanır ve uzaktan oturum iptalini uygulamaya iletir. Birden fazla sekme aynı tarayıcı oturumunu paylaşır. Ağ kesintisi veya sekmenin kapanması oturum çıkışı sayılmaz; canlı bağlantı yoksa panel bunu açıkça gösterir. `sessionExpiryMode: "stay"` uygulamanın kendi giriş ekranına dönmesini sağlar. Kaynak API, her korumalı istekte STARBASE tokenını yeniden doğrulamalıdır; canlılık sinyali tek başına yetki kanıtı değildir.
+
+Merkezi panelde `GET /api/v1/apps/:id/sessions` tarayıcı/cihaz oturumlarını ve son sinyallerini döndürür. `DELETE /api/v1/apps/:id/sessions/:family` yalnız seçilen oturumu iptal eder. `DELETE /api/v1/apps/:id/access` uygulama erişimini kalıcı olarak kapatır ve tüm oturumları iptal eder. `POST /api/v1/apps/:id/access` engeli kaldırır; yeniden yetki vermek için uygulamanın giriş akışını açmak gerekir. Bu uçlar merkezi oturum ve takım üyeliği ister. IP adresi arayüzde gösterilmez.
+
+Takvim ve LaTeX uygulamaları güncel çalışma kayıtlarını `POST /api/v1/internal/resources/sync` ile kullanıcı kimliğine bağlı olarak eşitler. Merkezi panel `GET /api/v1/apps/:id/resources?q=&page=1` üzerinden yalnız oturum sahibinin kayıtlarını sıralı ve sayfalı gösterir. Kaynak `url` alanı uygulamanın gerçek kaydına gider; uygulama, giriş yönlendirmesinden sonra hedef kaydı açmalıdır. `updatedAt` Unix saniyesi olarak gönderilir, böylece tekrar eşitleme sıralamayı değiştirmez. Kaynaklar uygulamanın gerçek veritabanında kalır; STARBASE yalnız bağlantı ve liste özeti tutar.
 
 ```ts
 const history = await starbase.getApplicationHistory(1);

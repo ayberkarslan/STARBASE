@@ -26,6 +26,15 @@ const deviceLabel = (agent: string | null) => {
   return `${browser} · ${system}`;
 };
 
+function DocumentCover({ id, resourceId, title }: { id: string; resourceId: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  return <span className="application-detail-cover">
+    {!failed && <img loading="lazy" src={`/api/v1/apps/${encodeURIComponent(id)}/resources/${encodeURIComponent(resourceId)}/preview`} alt="" onError={() => setFailed(true)} />}
+    {failed && <FileText size={35} aria-hidden="true" />}
+    <span className="application-detail-cover-label" aria-hidden="true">{title}</span>
+  </span>;
+}
+
 export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -146,6 +155,17 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
         <span><small>{isCalendar ? "TESTLERİM" : isLatex ? "BELGELERİM" : "KAYITLAR"}</small><strong>{overview.resourceCount}</strong></span>
       </div>
 
+      <section className="application-detail-resources" aria-labelledby="application-resources-title">
+        <div className="application-detail-section-head"><div><span className="eyebrow">ÇALIŞMALARIN</span><h2 id="application-resources-title">{isLatex ? "Belgelerim" : isCalendar ? "Oluşturduğum testler" : "Kayıtlarım"}</h2></div>{resourceTotal > 0 && <small>{resourceTotal} kayıt</small>}</div>
+        {(isLatex || isCalendar) && <label className="application-detail-search"><Search size={16} /><input value={query} onChange={(event) => { setQuery(event.target.value); setResourcePage(1); }} placeholder={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} aria-label={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} /></label>}
+        {resourceError && <p role="alert">{resourceError}</p>}
+        {resources.length ? <div className="application-detail-resource-list">{resources.map((item, index) => {
+          const content = <>{isLatex ? <DocumentCover id={id} resourceId={item.resourceId} title={item.title} /> : <span className="application-detail-cover application-detail-cover--test"><FileText size={38} aria-hidden="true" /><span className="application-detail-cover-label">YRT / TEST</span></span>}<span className="application-detail-resource-copy"><strong>{item.title}</strong><small>{isCalendar ? `Test tarihi: ${item.date || "Belirtilmedi"} · ${statusLabel(item.status)}` : `${statusLabel(item.status || "Belge")} · ${dateTime(item.updatedAt ?? item.createdAt)}`}</small></span>{index === 0 && resourcePage === 1 && !query && <span className="application-detail-latest">SON ÇALIŞMA</span>}{item.url && <ArrowUpRight size={16} aria-hidden="true" />}</>;
+          return item.url ? <a href={item.url} key={item.resourceId} className="application-detail-resource">{content}</a> : <div key={item.resourceId} className="application-detail-resource">{content}</div>;
+        })}</div> : <p className="application-detail-muted">{query ? "Aramana uygun kayıt bulunamadı." : isCalendar ? "Henüz hesabınla oluşturulmuş test yok." : isLatex ? "Henüz bağlı belge yok." : "Bu uygulama için kayıt yok."}</p>}
+        {hasMore && <Button variant="bare" onClick={() => setResourcePage((page) => page + 1)}>Daha fazla göster</Button>}
+      </section>
+
       {supportsLive && <section className="application-detail-access" aria-labelledby="application-access-title">
         <div><span className="eyebrow">HESAP BAĞLANTISI</span><h2 id="application-access-title">Erişim ve oturumlar</h2></div>
         <div className="application-detail-access-row">
@@ -160,17 +180,6 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
           <Button variant="bare" size="sm" onClick={() => setConfirm({ kind: "session", family: session.family })}>Oturumu kapat</Button>
         </div>)}</div> : <p className="application-detail-muted">Açık uygulama oturumu bulunmuyor.</p>}
       </section>}
-
-      <section className="application-detail-resources" aria-labelledby="application-resources-title">
-        <div className="application-detail-section-head"><div><span className="eyebrow">ÇALIŞMALARIN</span><h2 id="application-resources-title">{isLatex ? "Belgelerim" : isCalendar ? "Oluşturduğum testler" : "Kayıtlarım"}</h2></div>{resourceTotal > 0 && <small>{resourceTotal} kayıt</small>}</div>
-        {(isLatex || isCalendar) && <label className="application-detail-search"><Search size={16} /><input value={query} onChange={(event) => { setQuery(event.target.value); setResourcePage(1); }} placeholder={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} aria-label={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} /></label>}
-        {resourceError && <p role="alert">{resourceError}</p>}
-        {resources.length ? <div className="application-detail-resource-list">{resources.map((item, index) => {
-          const content = <><span className="application-detail-paper"><FileText size={19} /></span><span className="application-detail-resource-copy"><strong>{item.title}</strong><small>{isCalendar ? `Test tarihi: ${item.date || "Belirtilmedi"} · ${statusLabel(item.status)}` : `${statusLabel(item.status || "Belge")} · Son düzenleme: ${dateTime(item.updatedAt ?? item.createdAt)}`}</small></span>{index === 0 && resourcePage === 1 && !query && <span className="application-detail-latest">SON ÇALIŞMA</span>}{item.url && <ArrowUpRight size={16} aria-hidden="true" />}</>;
-          return item.url ? <a href={item.url} key={item.resourceId} className="application-detail-resource">{content}</a> : <div key={item.resourceId} className="application-detail-resource">{content}</div>;
-        })}</div> : <p className="application-detail-muted">{query ? "Aramana uygun kayıt bulunamadı." : isCalendar ? "Henüz hesabınla oluşturulmuş test yok." : isLatex ? "Henüz bağlı belge yok." : "Bu uygulama için kayıt yok."}</p>}
-        {hasMore && <Button variant="bare" onClick={() => setResourcePage((page) => page + 1)}>Daha fazla göster</Button>}
-      </section>
 
       <Panel title="Son girişlerim" className="application-detail-visits">
         {overview.visits.length ? overview.visits.slice(0, 6).map((visit, index) => <div className="application-detail-visit" key={`${visit.signedInAt}-${index}`}><strong>{dateTime(visit.signedInAt)}</strong><span>{visit.endReason === "logout" ? `Çıkış: ${dateTime(visit.endedAt)}` : visit.endReason === "revoked" ? "Oturum iptal edildi" : visit.endReason === "expired" ? "Oturum süresi doldu" : "Çıkış kaydı yok"}</span></div>) : <p>Henüz giriş kaydı yok.</p>}

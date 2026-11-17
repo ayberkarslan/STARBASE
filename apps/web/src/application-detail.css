@@ -3,7 +3,7 @@
 .application-detail-nav > span { max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 11px; letter-spacing: .09em; }
 .application-detail-nav .sd-button { display: inline-flex; align-items: center; gap: 9px; padding-left: 0; }
 .application-detail-error { color: #ffb9b9; }
-.application-detail-hero { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: center; min-height: 288px; overflow: hidden; padding: clamp(26px,4vw,54px) 0; }
+.application-detail-hero { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: center; min-height: 218px; overflow: hidden; padding: 25px 0; }
 .application-detail-hero::before { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg,#000 0%,#000 44%,#151515 100%); opacity: .75; }
 .application-detail-hero > :not(.application-detail-logo) { position: relative; z-index: 1; }
 .application-detail-logo { position: absolute; right: -4%; top: -38%; width: min(50%,530px); height: 175%; display: grid; place-items: center; opacity: .15; filter: grayscale(1); pointer-events: none; }
@@ -16,13 +16,14 @@
 .application-detail-refresh:hover,.application-detail-refresh:focus-visible { color: #fff; }
 .application-detail-refresh .is-spinning { animation: application-refresh-spin .8s linear infinite; }
 @keyframes application-refresh-spin { to { transform: rotate(360deg); } }
-.application-detail-metrics { display: flex; flex-wrap: wrap; gap: 15px 0; border-top: 1px solid #ffffff35; border-bottom: 1px solid #ffffff35; padding: 20px 0; }
+.application-detail-metrics { display: flex; flex-wrap: wrap; gap: 15px 0; border-top: 1px solid #ffffff35; border-bottom: 1px solid #ffffff35; padding: 14px 0; }
 .application-detail-metrics > span { display: grid; gap: 6px; min-width: 180px; padding: 0 28px; border-right: 1px solid #ffffff28; }
 .application-detail-metrics > span:first-child { padding-left: 0; }
 .application-detail-metrics > span:last-child { border: 0; }
 .application-detail-metrics small { color: #ffffff89; font-size: 8px; letter-spacing: .13em; }
 .application-detail-metrics strong { font-size: 11px; font-weight: 400; font-variant-numeric: tabular-nums; }
-.application-detail-access,.application-detail-resources { padding-top: clamp(34px,4vw,60px); }
+.application-detail-access { padding-top: clamp(34px,4vw,60px); }
+.application-detail-resources { padding-top: 23px; }
 .application-detail h2 { margin: 8px 0 20px; font-size: clamp(18px,2vw,24px); font-weight: 400; }
 .application-detail-access-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 14px 0; border-top: 1px solid #ffffff3a; border-bottom: 1px solid #ffffff3a; }
 .application-detail-access-state { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; }
@@ -36,19 +37,27 @@
 .application-detail-presence.is-live { background: #fff; border-color: #fff; }
 .application-detail-section-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
 .application-detail-section-head > small { margin-bottom: 24px; color: #ffffff8c; font-size: 9px; }
-.application-detail-search { display: flex; align-items: center; gap: 12px; width: min(360px,100%); min-height: 42px; margin: 0 0 23px; padding: 0 13px; border: 1px solid #ffffff55; border-radius: 5px; color: #ffffffa0; }
+.application-detail-search { display: flex; align-items: center; gap: 12px; width: min(360px,100%); min-height: 38px; margin: 0 0 13px; padding: 0 13px; border: 1px solid #ffffff55; border-radius: 5px; color: #ffffffa0; }
 .application-detail-search:focus-within { border-color: #fff; color: #fff; }
 .application-detail-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #fff; font: 10px Michroma,sans-serif; }
 .application-detail-search input::placeholder { color: #ffffff8e; }
-.application-detail-resource-list { border-top: 1px solid #ffffff40; }
-.application-detail-resource { display: flex; align-items: center; gap: 16px; min-height: 76px; padding: 12px 2px; border-bottom: 1px solid #ffffff32; color: #fff; text-decoration: none; }
-a.application-detail-resource:hover,a.application-detail-resource:focus-visible { box-shadow: inset 2px 0 #fff; padding-left: 12px; }
+.application-detail-resource-list { display: flex; gap: 18px; overflow-x: auto; overflow-y: hidden; padding: 3px 0 15px; scrollbar-width: thin; scrollbar-color: #ffffff5c #000; scroll-snap-type: x proximity; }
+.application-detail-resource { position: relative; display: flex; flex: 0 0 190px; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; color: #fff; text-decoration: none; scroll-snap-align: start; }
+a.application-detail-resource:hover .application-detail-cover,a.application-detail-resource:focus-visible .application-detail-cover { border-color: #fff; transform: translateY(-3px); }
+a.application-detail-resource:focus-visible { outline: 1px solid #fff; outline-offset: 3px; }
+.application-detail-cover { position: relative; display: grid; place-items: center; height: 210px; overflow: hidden; border: 1px solid #ffffff59; border-radius: 3px; background: #f5f4ef; color: #111; transition: border-color .2s,transform .2s; }
+.application-detail-cover img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.application-detail-cover-label { position: absolute; right: 10px; bottom: 10px; left: 10px; overflow: hidden; color: #222; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.application-detail-cover img + .application-detail-cover-label { display: none; }
+.application-detail-cover--test { background: linear-gradient(150deg,#131313,#050505); color: #fff; }
+.application-detail-cover--test .application-detail-cover-label { color: #ffffff9b; letter-spacing: .12em; }
 .application-detail-paper { position: relative; display: grid; place-items: center; width: 34px; height: 42px; flex: none; border: 1px solid #ffffff9c; color: #fff; }
 .application-detail-paper::after { content: ""; position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; border-left: 1px solid #ffffff9c; border-bottom: 1px solid #ffffff9c; background: #000; }
-.application-detail-resource-copy { display: grid; gap: 6px; flex: 1; min-width: 0; }
-.application-detail-resource-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; }
-.application-detail-resource-copy small { color: #ffffff98; font-size: 9px; line-height: 1.5; }
-.application-detail-latest { color: #ffffffaf; font-size: 8px; letter-spacing: .08em; white-space: nowrap; }
+.application-detail-resource-copy { display: grid; gap: 6px; min-width: 0; }
+.application-detail-resource-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 400; }
+.application-detail-resource-copy small { color: #ffffff98; font-size: 8px; line-height: 1.5; }
+.application-detail-latest { position: absolute; top: 10px; left: 10px; padding: 6px; background: #000; color: #fff; font-size: 7px; letter-spacing: .08em; white-space: nowrap; }
+.application-detail-resource > svg { position: absolute; right: 7px; bottom: 31px; }
 .application-detail-resources > .sd-button { margin-top: 14px; }
 .application-detail-visits { margin-top: clamp(48px,6vw,88px); }
 .application-detail-visit { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 22px; padding: 14px 0; border-bottom: 1px solid #ffffff2b; font-size: 10px; }
@@ -56,12 +65,13 @@ a.application-detail-resource:hover,a.application-detail-resource:focus-visible 
 .application-detail-visit strong { font-weight: 400; font-variant-numeric: tabular-nums; }
 .application-detail-visit span { color: #ffffffa3; }
 @media (max-width: 650px) {
-  .application-detail-hero { min-height: 250px; }
+  .application-detail-hero { min-height: 205px; }
   .application-detail-logo { right: -29%; width: 88%; opacity: .1; }
   .application-detail-hero h1 { max-width: 100%; }
   .application-detail-metrics > span { flex: 1; min-width: 110px; padding: 0 12px; }
   .application-detail-session { flex-wrap: wrap; padding: 13px 0; }
   .application-detail-session .sd-button { margin-left: 20px; }
-  .application-detail-latest { display: none; }
+  .application-detail-resource { flex-basis: 155px; }
+  .application-detail-cover { height: 186px; }
 }
 @media (prefers-reduced-motion: reduce) { .application-detail-refresh .is-spinning { animation: none; } }

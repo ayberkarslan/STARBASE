@@ -18,6 +18,7 @@ export type Env = AdminEnv & {
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
   APP_SYNC_SECRET?: string;
+  LATEX_COMPILER_ORIGIN?: string;
   TEST_FORMU_SYNC_SECRET?: string;
   ASSETS: Fetcher;
 };

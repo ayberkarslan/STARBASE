@@ -291,6 +291,30 @@ export function register(app: App) {
     ]);
     return c.json({ resources: rows.results, page, total: count?.total ?? 0, hasMore: page * 20 < (count?.total ?? 0) });
   });
+  app.get("/api/v1/apps/:id/resources/:resourceId/preview", async (c) => {
+    const application = await personalApplication(c);
+    if (application.id !== "yrt-latex-web") fail(404, "preview_not_found");
+    const resource = await c.env.DB.prepare("SELECT url FROM app_resources WHERE app_id=? AND user_id=? AND resource_id=?")
+      .bind(application.id, c.get("user").id, c.req.param("resourceId")).first<{ url: string }>();
+    const previewSecret = c.env.APP_SYNC_SECRET;
+    const compilerOrigin = c.env.LATEX_COMPILER_ORIGIN;
+    if (!resource || !previewSecret || !compilerOrigin) fail(404, "preview_not_found");
+    let link: URL;
+    try { link = new URL(resource!.url); } catch { return fail(404, "preview_not_found"); }
+    const scope = link.searchParams.get("scope") ?? "public";
+    const projectId = link.searchParams.get("project");
+    if (!scope || !projectId || projectId !== c.req.param("resourceId")) fail(404, "preview_not_found");
+    const upstream = await fetch(new URL("/internal-preview", compilerOrigin), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-app-sync-key": previewSecret },
+      body: JSON.stringify({ scope, projectId }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!upstream.ok) fail(upstream.status === 404 ? 404 : 503, "preview_unavailable");
+    const bytes = await upstream.arrayBuffer();
+    if (bytes.byteLength > 4 * 1024 * 1024) fail(503, "preview_too_large");
+    return new Response(bytes, { headers: { "Content-Type": "image/webp", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+  });
   app.get("/api/v1/apps/:id/sessions", async (c) => {
     const application = await personalApplication(c);
     const rows = await c.env.DB.prepare(

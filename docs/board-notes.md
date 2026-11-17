@@ -1,5 +1,12 @@
 # Özel ve ortak serbest pano
 
+> Arşivlendi: pano arayüzü ve `/api/v1/board/*` uçları yayında kapalıdır. Bu
+> dosya, `apps/web/src/board-notes.tsx`, `apps/web/src/board-notes.css` ve
+> `apps/api/src/routes/board.ts` olası geri dönüş için saklanır. D1 notları ve
+> konumları silinmedi. `BoardHub` profil fotoğrafı ve dizin bildirimlerinde de
+> kullanıldığı için çalışmaya devam eder. Aşağıdaki açıklama arşivlenmiş
+> davranışı belgeler; mevcut canlı API sözleşmesi değildir.
+
 Ana ekran kendi panonla açılır. Üst ortadaki **Kendi panom / Ortak pano** düğmeleri iki alanı değiştirir. Menü sol üstteki ikonun üzerine gelince açılır, üzerinden ayrılınca kapanır; dokunarak ve klavyeyle de kullanılabilir. Üye arama ve profiller **Takım dizini**, ekipten üyeye gezinti **Ekipler** menüsündedir.
 
 Alt yörünge ekranın iki alt köşesini birleştirir. STARDROP, STARLAB ve YRT TAKVİM düğmeleri bağlı uygulamalar ekranını açar; henüz bağlanmamış uygulamalara sahte bir giriş bağlantısı verilmez.

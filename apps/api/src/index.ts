@@ -1,5 +1,4 @@
 export { BoardHub } from "./board-hub";
-import { register as board } from "./routes/board";
 import { register as directory } from "./routes/directory";
 import { register as members } from "./routes/members";
 import spec from "./openapi.json";
@@ -160,7 +159,6 @@ organization(app);
 management(app);
 members(app);
 directory(app);
-board(app);
 applications(app);
 activityAdmin(app);
 app.notFound((c) =>

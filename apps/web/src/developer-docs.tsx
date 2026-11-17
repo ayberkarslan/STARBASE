@@ -216,31 +216,8 @@ export function DeveloperDocs() {
             değildir. Tarihler UTC Unix saniyesidir; gösterimde yerel saate
             dönüştür.
           </p>
-          <h2>Özel ve ortak serbest pano</h2>
-          <p>
-            Varsayılan kapsam private: özel notları yalnız sahibi görebilir;
-            yönetici izni bu sınırı aşmaz. Ortak pano için listeleme, oluşturma
-            ve canlı abonelikte scope=shared gönder. Kapsam sonradan
-            değiştirilemez. Notların x/y konumları kalıcıdır; PATCH
-            /board/notes/:id/position için x, y ve layoutVersion gönder. Konum
-            sürümü içerik version alanından bağımsızdır; eski konum sürümü 409
-            note_position_conflict döndürür.
-          </p>
-          <p>
-            Notlar yalnız merkezi oturumla erişilir; ortak pano ayrıca takım
-            üyeliği gerektirir. Uygulama SDK tokenlarına açılmaz. GET
-            /board/notes ile oku; POST ile oluştur; PATCH ve DELETE işlemlerinde
-            notun version değerini gönder. 409 note_conflict, notun başka bir
-            yerde değiştiğini belirtir. board.manage izni diğer üyelerin ortak
-            notlarını yönetme ve sabitleme yetkisi verir.
-          </p>
-          <p>
-            GET /board/live?scope=shared aynı origin cookie ile WebSocket
-            aboneliğidir. Yalnız board.changed bildirimi taşır; notlar daima
-            yetkili HTTP API’den yeniden okunur. Ek SDK entegrasyonu gerekmez.
-            Kapsamlı kurulum ve fikirler depodaki docs/board-notes.md
-            belgesindedir.
-          </p>
+          <h2>Arşivlenmiş pano</h2>
+          <p>Pano arayüzü ve API uçları kapalıdır. Kod ve mevcut notlar geri dönüş için korunur; eski sözleşme docs/board-notes.md dosyasında arşivlidir.</p>
           <h2>Sık karşılaşılan hatalar</h2>
           <Disclosure title="Giriş ekranından geri dönemiyorum">
             <p>

@@ -908,7 +908,14 @@ describe("team directory and application history", () => {
   });
 });
 
-describe("shared board notes", () => {
+it("keeps archived board data while its routes are unavailable", async () => {
+  expect((await call("/board/notes?scope=private")).status).toBe(404);
+  expect((await call("/board/live?scope=shared")).status).toBe(404);
+  expect(db.prepare("SELECT name FROM sqlite_master WHERE name='board_notes'").get())
+    .toEqual({ name: "board_notes" });
+});
+
+describe.skip("archived shared board notes", () => {
   async function memberRequest(
     path: string,
     payload?: unknown,

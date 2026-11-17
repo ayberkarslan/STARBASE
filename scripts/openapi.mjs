@@ -31,7 +31,7 @@ const spec = {
 };
 for (const f of fs
   .readdirSync("apps/api/src/routes")
-  .filter((f) => f.endsWith(".ts"))) {
+  .filter((f) => f.endsWith(".ts") && f !== "board.ts")) {
   const source = fs.readFileSync("apps/api/src/routes/" + f, "utf8");
   const ast = ts.createSourceFile(f, source, ts.ScriptTarget.Latest, true);
   function visit(n) {

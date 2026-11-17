@@ -951,6 +951,20 @@ it("blocks automatic app reauthorization until the user reopens access", async (
   expect(db.prepare("SELECT COUNT(*) count FROM consents WHERE user_id='u1'").get()).toEqual({ count: 0 });
 });
 
+it("searches only the signed-in user's application resources", async () => {
+  db.prepare("INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+    .run("starlab", "u1", "own", "İtki Testi", "2026-11-17", "completed", "", now(), now());
+  db.prepare("INSERT INTO app_resources(app_id,user_id,resource_id,title,date,status,url,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+    .run("starlab", "u2", "private", "Gizli Test", "2026-11-17", "completed", "", now(), now());
+  const result: any = await (await call("/apps/starlab/resources?q=Test")).json();
+  expect(result.total).toBe(1);
+  expect(result.resources.map((item: any) => item.resourceId)).toEqual(["own"]);
+  const literal: any = await (await call("/apps/starlab/resources?q=%25")).json();
+  expect(literal.total).toBe(0);
+  const folded: any = await (await call("/apps/starlab/resources?q=itki%20testi")).json();
+  expect(folded.resources.map((item: any) => item.resourceId)).toEqual(["own"]);
+});
+
 describe.skip("archived shared board notes", () => {
   async function memberRequest(
     path: string,

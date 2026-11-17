@@ -81,6 +81,7 @@ async function syncAppResource(
     status?: string;
     url?: string;
     createdAt?: number;
+    updatedAt?: number;
   },
 ) {
   const application = await c.env.DB.prepare(
@@ -108,7 +109,7 @@ async function syncAppResource(
     if (!item.title || !item.date || !item.status || !item.createdAt)
       return fail(400, "invalid_input");
     for (const uid of userIds) affectedUserIds.add(uid);
-    const timestamp = now();
+    const timestamp = item.updatedAt ?? now();
     const placeholders = userIds.map(() => "?").join(",");
     await c.env.DB.batch([
       c.env.DB.prepare(
@@ -206,6 +207,7 @@ export function register(app: App) {
           .refine(validResourceUrl)
           .optional(),
         createdAt: z.number().int().positive().optional(),
+        updatedAt: z.number().int().positive().optional(),
       }),
     );
     const starbaseUserIds = item.starbaseUserIds ?? (item.starbaseUserId ? [item.starbaseUserId] : []);
@@ -232,14 +234,11 @@ export function register(app: App) {
           .refine(validResourceUrl)
           .optional(),
         createdAt: z.number().int().positive().optional(),
+        updatedAt: z.number().int().positive().optional(),
       }),
     );
     if (item.deleted) {
-      await c.env.DB.prepare(
-        "DELETE FROM app_resources WHERE app_id='test-formu-web' AND resource_id=? AND user_id=?",
-      )
-        .bind(item.resourceId, item.starbaseUserId)
-        .run();
+      await syncAppResource(c, { ...item, appId: "test-formu-web", starbaseUserIds: [], deleted: true });
     } else {
       await syncAppResource(c, {
         ...item,
@@ -275,8 +274,14 @@ export function register(app: App) {
     const parsed = z.object({ q: z.string().trim().max(80).default(""), page: z.coerce.number().int().min(1).max(10000).default(1) }).safeParse(c.req.query());
     if (!parsed.success) return fail(400, "invalid_query");
     const { q, page } = parsed.data;
-    const search = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
-    const filter = q ? " AND (r.title LIKE ? ESCAPE '\\' OR r.status LIKE ? ESCAPE '\\')" : "";
+    const search = `%${q.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").toLowerCase().replace(/[!%_]/g, "!$&")}%`;
+    const foldColumn = (field: string) => {
+      let column = field;
+      for (const [from, to] of [["İ", "i"], ["ı", "i"], ["Ç", "c"], ["ç", "c"], ["Ğ", "g"], ["ğ", "g"], ["Ö", "o"], ["ö", "o"], ["Ş", "s"], ["ş", "s"], ["Ü", "u"], ["ü", "u"]])
+        column = `replace(${column},'${from}','${to}')`;
+      return `lower(${column})`;
+    };
+    const filter = q ? ` AND (${foldColumn("r.title")} LIKE ? ESCAPE '!' OR ${foldColumn("r.status")} LIKE ? ESCAPE '!')` : "";
     const bindings = q ? [search, search] : [];
     const [rows, count] = await Promise.all([
       c.env.DB.prepare(`SELECT r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r WHERE r.app_id=? AND r.user_id=?${filter} ORDER BY r.updated_at DESC,r.created_at DESC,r.resource_id LIMIT 20 OFFSET ?`)

@@ -24,6 +24,6 @@ Oturum, kod ve rate limit tablolarının eski satırlarını günlük temizle; c
 
 Canlı dağıtım bu depoda otomatik yapılmaz; gerçek Firebase/Cloudflare hesap ayarları ve secret'lar kurulumda sağlanır. Canlı mail teslimi, sağlayıcı kotası ve Cloudflare CPU bütçesi hedef hesapta smoke test ile doğrulanmalıdır.
 
-## Canlı ortak notlar
+## Arşivlenmiş notlar ve canlı uygulama verileri
 
-0005 D1 migration ve `BOARD_HUB` Durable Object binding/sınıf migration'ı yapılandırmada hazırdır. Workers Free ile uyumlu SQLite-backed sınıf kullanılır. Yayında WebSocket yükseltmesi ve tam `PUBLIC_ORIGIN` kontrolü ayrıca doğrulanmalıdır. Ayrıntılar [ortak pano belgesinde](board-notes.md).
+0005 D1 migration ile eski notlar saklanır; pano API'si kapalıdır. `BOARD_HUB` Durable Object, uygulama kaynakları, dizin ve profil fotoğrafı için yalnız içeriksiz değişiklik bildirimleri taşımaya devam eder. Yayında WebSocket yükseltmesi ve tam origin kontrolü ayrıca doğrulanmalıdır. Eski pano sözleşmesi [arşiv belgesindedir](board-notes.md).

@@ -160,7 +160,7 @@ Tarihler UTC Unix **saniyesidir**. Gösterim için `new Date(timestamp * 1000)` 
 
 Geçmiş bu özelliğin devreye alınmasından itibaren oluşur; eski giriş tarihleri tahmin edilmez. Ayrıntılı oturumlar 90 gün tutulur. Uygulama başına son giriş/çıkış özeti, kullanıcı/uygulama silinene kadar korunur. Günlük cron süre dolumlarını ve eski ayrıntıları temizler. Son çıkış önceki oturuma ait olabilir; sonraki giriş yapılmış olması bu tarihi silmez.
 
-## 6. Takım panosu ve dizin API'si
+## 6. Takım dizini ve uygulama geçmişi API'si
 
 Bu uçlar **yalnız merkezi oturum ve takım üyeliği** gerektirir; uygulama Bearer tokenları erişemez. Kaydolan fakat takıma davet edilmemiş hesaplar dizini göremez. Hesap devre dışıysa listeden ve profilden çıkarılır. Üyelerin e-postaları, yönetim yetkileri ve özel profil alanları paylaşılmaz.
 

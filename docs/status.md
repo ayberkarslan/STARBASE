@@ -11,8 +11,9 @@
 - Kullanıcı yönetimi, mevcut şifreyi göstermeden geçici şifre belirleme, zorunlu şifre değişimi, e-posta güncelleme ve hesap kapatma.
 - Özel profil alanı tanımı ve tipli değerler; özel alanlar bu sürümde yönetimle sınırlı.
 - stardrop-ui tabanlı giriş/kayıt, hesap, yönetim ve geliştirici ekranları; OpenAPI çıktısı.
-- Özel/ortak serbest not panosu: sürükle-bırak ve kalıcı konumlar, özel notlarda yalnız sahip erişimi, bağımsız konum sürümleri; not/duyuru, ekip etiketi, son tarih, moderatör sabitlemesi, arşiv, düzenleme/silme ve sürüm çakışması kontrolü.
-- Varsayılan özel pano, üzerine gelince açılan menü ve uygulama yörüngesi. Takım dizininde Türkçe üye araması, departman/ekip filtreleri, ekipten üyeye gezinti ve özel alanları içermeyen takım profilleri.
+- Uygulama odaklı ana sayfa, son kullanılan uygulama, yetkiye göre hızlı bağlantılar ve uygulama/üye araması. Giriş ekranında tek yörünge ve düşük hareket tercihine uyan yıldız alanı.
+- Önceki özel/ortak pano arşivlendi: arayüz ve API kapalı, kaynak kodu ile D1 notları korunuyor.
+- Takım dizininde Türkçe üye araması, departman/ekip filtreleri, ekipten üyeye gezinti ve özel alanları içermeyen takım profilleri.
 - Auth akışında otomatik uygulama giriş/çıkış geçmişi; süre dolumu ve iptal, gerçek çıkıştan ayrı tutulur.
 - İndirilebilir, bağımsız SDK arşivi ve kopyalanabilir örneklerle beş bölümlü geliştirici ekranı.
 - TypeScript/React SDK (ayrı contracts paketi gerektirmeyen derlenmiş arşiv), Vite örneği ve derlenebilir Rust native istemcisi; mevcut Tauri uygulamasına komut köprüsü örneği.

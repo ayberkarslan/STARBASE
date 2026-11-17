@@ -136,7 +136,7 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
         <h1>{application?.name}</h1>
         <p>{isLatex ? "Belgelerin ve ortak projelerin." : isCalendar ? "Oluşturduğun testlerin ve takvim çalışmaların." : "Yıldız Roket Takımı hesabınla bağlı çalışma alanı."}</p>
         <div className="application-detail-hero-actions">
-          {application?.launchUrl && <a className="sd-button sd-button--primary sd-button--sm" href={application.launchUrl}>{application.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={14} /></a>}
+          {application?.launchUrl && !blocked && <a className="sd-button sd-button--primary sd-button--sm" href={application.launchUrl}>{application.launchUrl.startsWith("https:") ? "Uygulamayı aç" : "Yüklüyse aç"} <ArrowUpRight size={14} /></a>}
           <button type="button" className="application-detail-refresh" onClick={() => { setResourcePage(1); setRevision((value) => value + 1); void refresh(); }} disabled={refreshing} aria-label="Bilgileri yenile"><RefreshCw size={15} className={refreshing ? "is-spinning" : ""} /></button>
         </div>
       </section>
@@ -165,9 +165,9 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
         <div className="application-detail-section-head"><div><span className="eyebrow">ÇALIŞMALARIN</span><h2 id="application-resources-title">{isLatex ? "Belgelerim" : isCalendar ? "Oluşturduğum testler" : "Kayıtlarım"}</h2></div>{resourceTotal > 0 && <small>{resourceTotal} kayıt</small>}</div>
         {(isLatex || isCalendar) && <label className="application-detail-search"><Search size={16} /><input value={query} onChange={(event) => { setQuery(event.target.value); setResourcePage(1); }} placeholder={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} aria-label={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} /></label>}
         {resourceError && <p role="alert">{resourceError}</p>}
-        {resources.length ? <div className="application-detail-resource-list" role="list">{resources.map((item, index) => {
+        {resources.length ? <div className="application-detail-resource-list">{resources.map((item, index) => {
           const content = <><span className="application-detail-paper"><FileText size={19} /></span><span className="application-detail-resource-copy"><strong>{item.title}</strong><small>{isCalendar ? `Test tarihi: ${item.date || "Belirtilmedi"} · ${statusLabel(item.status)}` : `${statusLabel(item.status || "Belge")} · Son düzenleme: ${dateTime(item.updatedAt ?? item.createdAt)}`}</small></span>{index === 0 && resourcePage === 1 && !query && <span className="application-detail-latest">SON ÇALIŞMA</span>}{item.url && <ArrowUpRight size={16} aria-hidden="true" />}</>;
-          return item.url ? <a href={item.url} key={item.resourceId} className="application-detail-resource" role="listitem">{content}</a> : <div key={item.resourceId} className="application-detail-resource" role="listitem">{content}</div>;
+          return item.url ? <a href={item.url} key={item.resourceId} className="application-detail-resource">{content}</a> : <div key={item.resourceId} className="application-detail-resource">{content}</div>;
         })}</div> : <p className="application-detail-muted">{query ? "Aramana uygun kayıt bulunamadı." : isCalendar ? "Henüz hesabınla oluşturulmuş test yok." : isLatex ? "Henüz bağlı belge yok." : "Bu uygulama için kayıt yok."}</p>}
         {hasMore && <Button variant="bare" onClick={() => setResourcePage((page) => page + 1)}>Daha fazla göster</Button>}
       </section>

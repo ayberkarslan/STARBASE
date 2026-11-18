@@ -78,7 +78,7 @@ export class TransferLink {
       }
     };
     channel.onbufferedamountlow = () => this.wake();
-    channel.onclose = () => this.fail("Bağlantı kesildi.");
+    channel.onclose = () => { if (!this.closed) this.fail("Bağlantı kesildi."); };
   }
 
   get ready() { return this.channel?.readyState === "open"; }
@@ -196,12 +196,12 @@ export class TransferLink {
   }
 
   private wake() { for (const resolve of this.drainWaiters.splice(0)) resolve(); }
-  private fail(message: string) {
+  private fail(message: string, report = true) {
     if (this.sender) { this.sender.reject(new Error(message)); this.sender = undefined; }
     if (this.receiver?.writer) void this.receiver.writer.abort();
     this.receiver = undefined;
     this.wake();
-    this.events.error?.(message);
+    if (report) this.events.error?.(message);
   }
-  close() { this.closed = true; this.channel?.close(); this.peer.close(); this.wake(); }
+  close() { if (this.closed) return; this.closed = true; this.fail("Bağlantı kapatıldı.", false); this.channel?.close(); this.peer.close(); }
 }

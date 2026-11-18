@@ -168,7 +168,10 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
     if (!link?.ready) { setError("Alıcının doğrudan bağlantısı henüz hazır değil."); return; }
     void link.sendFile(file).catch((cause) => setError(messageOf(cause)));
   };
-  const addFiles = (files: FileList | File[]) => setStaged((items) => [...items, ...Array.from(files, (file) => ({ id: crypto.randomUUID(), file }))]);
+  const addFiles = (files: FileList | File[]) => {
+    const added = Array.from(files, (file) => ({ id: crypto.randomUUID(), file }));
+    setStaged((items) => [...items, ...added]);
+  };
   const filteredRooms = rooms.filter((room) => `${room.name} ${room.ownerName}`.toLocaleLowerCase("tr-TR").includes(filter.toLocaleLowerCase("tr-TR")));
 
   return <section className="share-page">

@@ -5,15 +5,17 @@ type Participant = { connectionId: string; userId: string; name: string; expires
 export class ShareRoom {
   constructor(private readonly state: DurableObjectState, private readonly env: Env) {}
 
-  private participants() {
+  private participants(excluded?: WebSocket) {
     return this.state.getWebSockets().map((socket) => ({ socket, info: socket.deserializeAttachment() as Participant | null }))
-      .filter((entry): entry is { socket: WebSocket; info: Participant } => !!entry.info && entry.info.expires > Date.now() / 1000);
+      .filter((entry): entry is { socket: WebSocket; info: Participant } => entry.socket !== excluded && !!entry.info && entry.info.expires > Date.now() / 1000);
   }
 
-  private async publish(roomId: string) {
-    const participants = this.participants();
+  private async publish(roomId: string, excluded?: WebSocket) {
+    const participants = this.participants(excluded);
     const members = participants.map(({ info }) => ({ connectionId: info.connectionId, userId: info.userId, name: info.name }));
-    for (const { socket } of participants) socket.send(JSON.stringify({ type: "members", members }));
+    for (const { socket } of participants) {
+      try { socket.send(JSON.stringify({ type: "members", members })); } catch { /* Socket closed during broadcast. */ }
+    }
     await this.env.DB.prepare("UPDATE share_rooms SET participant_count=? WHERE id=?").bind(new Set(members.map((member) => member.userId)).size, roomId).run();
     const hub = this.env.BOARD_HUB.get(this.env.BOARD_HUB.idFromName("team-directory"));
     await hub.fetch("https://board.internal/notify?type=share.rooms.changed", { method: "POST" });
@@ -86,13 +88,15 @@ export class ShareRoom {
     if (target) target.socket.send(JSON.stringify({ type: "signal", from: source.connectionId, signal: message.signal }));
   }
 
-  async webSocketClose(socket: WebSocket) {
+  async webSocketClose(socket: WebSocket, code: number, reason: string) {
     const info = socket.deserializeAttachment() as Participant | null;
-    if (info) await this.publish(info.roomId);
+    try { socket.close(code === 1005 || code < 1000 ? 1000 : code, reason); } catch {}
+    if (info) await this.publish(info.roomId, socket);
   }
   async webSocketError(socket: WebSocket) {
     const info = socket.deserializeAttachment() as Participant | null;
-    if (info) await this.publish(info.roomId);
+    try { socket.close(1011, "Reconnect required"); } catch {}
+    if (info) await this.publish(info.roomId, socket);
   }
   async alarm() {
     if (this.state.getWebSockets().length) return;

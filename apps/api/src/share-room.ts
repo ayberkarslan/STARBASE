@@ -45,7 +45,7 @@ export class ShareRoom {
       for (const { socket, info } of this.participants()) {
         if (info.userId !== targetId) continue;
         socket.send(JSON.stringify({ type: banned ? "banned" : "kicked" }));
-        socket.close(1008, "Removed by room owner");
+        socket.close(banned ? 4003 : 4002, banned ? "Banned by room owner" : "Removed by room owner");
       }
       await this.publish(roomId);
       return new Response(null, { status: 204 });

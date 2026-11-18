@@ -13,7 +13,7 @@ type StagedFile = { id: string; file: File };
 type QueuedFile = { id: string; peerId: string; file: File };
 type SearchMember = { id: string; firstName: string; lastName: string; username: string; photoUrl: string };
 const errorText: Record<string, string> = {
-  room_password_invalid: "Oda şifresi yanlış.", room_locked: "Oda yeni katılımlara kapalı.", room_access_denied: "Bu odaya erişimin kaldırıldı.",
+  room_password_invalid: "Oda kodu yanlış.", room_locked: "Oda yeni katılımlara kapalı.", room_access_denied: "Bu odada engellendin.",
   room_not_found: "Oda artık açık değil.", try_later: "Çok fazla deneme. Biraz bekle.", authentication_required: "Oturumun sona erdi.",
 };
 const messageOf = (error: unknown) => errorText[error instanceof Error ? error.message : ""] ?? (error instanceof Error ? error.message : "İşlem tamamlanamadı.");
@@ -207,6 +207,8 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, onBac
     socket.onclose = (event) => {
       if (!active) return;
       if (event.code === 4001 || replaced || event.reason.includes("Newer connection")) setError("Bu hesap başka bir sekmede odaya girdi. Bu bağlantı kapatıldı.");
+      else if (event.code === 4002) setError("Odadan çıkarıldın. Yeniden katılabilirsin.");
+      else if (event.code === 4003) setError("Bu odada engellendin.");
       else setError("Canlı bağlantı kesildi. Odaya yeniden katılabilirsin.");
       setRoomId(null);
       void refresh();

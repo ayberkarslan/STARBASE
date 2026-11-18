@@ -45,11 +45,13 @@
 .share-canvas-file strong { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 400; pointer-events: none; }
 .share-canvas-file small { color: #ffffff93; font-size: 8px; pointer-events: none; }
 .share-canvas-file > button { position: absolute; top: -11px; right: -11px; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #ffffff90; border-radius: 50%; background: #000; color: #fff; cursor: pointer; }
-.share-canvas-zone { z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 205px; height: 165px; border: 1px dashed #ffffff82; border-radius: 50%; text-align: center; background: #000; }
+.share-canvas-zone { z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px dashed #ffffff82; border-radius: 7px; transform: none; text-align: center; background: #000; transition: border-color .2s ease; }
 .share-canvas-zone.is-target { border-style: solid; border-color: #fff; }
 .share-canvas-zone > span { display: flex; align-items: center; gap: 7px; font-size: 9px; letter-spacing: .12em; pointer-events: none; }
 .share-canvas-zone small { max-width: 130px; color: #ffffff8a; font-size: 8px; line-height: 1.7; pointer-events: none; }
-.share-canvas-zone button { position: absolute; top: 7px; right: 13px; border: 0; background: #000; color: #fff; cursor: pointer; }
+.share-canvas-zone .share-zone-remove { position: absolute; top: 7px; right: 8px; border: 0; background: #000; color: #fff; cursor: pointer; }
+.share-canvas-zone .share-zone-resize { position: absolute; right: 3px; bottom: 3px; display: grid; place-items: center; width: 23px; height: 23px; border: 0; background: #000; color: #fff; cursor: nwse-resize; touch-action: none; }
+.share-zone-resize span { width: 11px; height: 11px; border-right: 1px solid #fff; border-bottom: 1px solid #fff; pointer-events: none; }
 .share-canvas-empty { position: absolute; left: 50%; bottom: 8%; display: flex; flex-direction: column; align-items: center; gap: 8px; transform: translateX(-50%); min-width: 240px; padding: 15px; border: 1px dashed #ffffff75; border-radius: 7px; background: #000; color: #fff; cursor: pointer; font-size: 10px; }
 .share-canvas-empty small { color: #ffffff86; font-size: 8px; }
 .share-canvas-hint { position: absolute; z-index: 20; bottom: 12px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 10px 15px; border: 1px solid #fff; border-radius: 5px; background: #000; font-size: 9px; text-align: center; cursor: pointer; }
@@ -63,7 +65,7 @@
 .share-preview-targets button:disabled { color: #ffffff70; cursor: default; }
 .share-page:has(.share-room-layout) .share-title { margin: 20px 0; }
 @media(max-width:920px) { .share-canvas { height: 500px; }.share-canvas-head { align-items: start; }.share-canvas-peer { width: 112px; }.share-canvas-peer > span { width: 56px; height: 56px; } }
-@media(max-width:600px) { .share-canvas-head { flex-direction: column; }.share-canvas-head > div:last-child { justify-content: flex-start; }.share-canvas { height: 520px; }.share-canvas-file { width: 86px; min-height: 110px; }.share-canvas-file-preview { height: 54px; }.share-canvas-zone { width: 150px; height: 125px; }.share-canvas-zone small { display: none; } }
+@media(max-width:600px) { .share-canvas-head { flex-direction: column; }.share-canvas-head > div:last-child { justify-content: flex-start; }.share-canvas { height: 520px; }.share-canvas-file { width: 86px; min-height: 110px; }.share-canvas-file-preview { height: 54px; }.share-canvas-zone small { display: none; } }
 
 .share-owner-controls { gap: 0; }
 .share-owner-controls > .eyebrow { margin-bottom: 13px; }

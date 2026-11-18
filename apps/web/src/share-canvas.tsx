@@ -7,6 +7,8 @@ type StagedFile = { id: string; file: File };
 type TransferRow = { id: string; name: string; peer: string; status: string; percent: number };
 type Point = { x: number; y: number };
 type Drag = { kind: "file" | "member" | "zone"; id: string; pointerId: number; startX: number; startY: number; origin: Point; moved: boolean };
+type Zone = { id: string; width: number; height: number };
+type Resize = { id: string; pointerId: number; startX: number; startY: number; width: number; height: number };
 
 function FilePreview({ file }: { file: File }) {
   const [url, setUrl] = useState("");
@@ -32,8 +34,9 @@ export function ShareCanvas({ files, members, currentUserId, readyPeers, transfe
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
+  const resize = useRef<Resize | null>(null);
   const [positions, setPositions] = useState<Record<string, Point>>({});
-  const [zones, setZones] = useState<Array<{ id: string; position: Point }>>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [activeTarget, setActiveTarget] = useState("");
   const [draggingFile, setDraggingFile] = useState("");
   const [preview, setPreview] = useState<StagedFile | null>(null);
@@ -45,7 +48,7 @@ export function ShareCanvas({ files, members, currentUserId, readyPeers, transfe
     const key = `${kind}:${id}`;
     if (positions[key]) return positions[key];
     if (kind === "file") return { x: 20 + (index % 5) * 15, y: 77 - Math.floor(index / 5) * 18 };
-    if (kind === "zone") return { x: 76, y: 35 };
+    if (kind === "zone") return { x: (surface.current?.clientWidth ?? 800) < 500 ? 24 + (index % 3) * 6 : 62 - (index % 3) * 8, y: 18 + (index % 3) * 7 };
     const angle = -Math.PI / 2 + (index * 2 * Math.PI / Math.max(peers.length, 1));
     return { x: 50 + 33 * Math.cos(angle), y: 39 + 25 * Math.sin(angle) };
   };
@@ -64,7 +67,10 @@ export function ShareCanvas({ files, members, currentUserId, readyPeers, transfe
     if (Math.hypot(dx, dy) > 5) current.moved = true;
     if (!current.moved) return;
     const key = `${current.kind}:${current.id}`;
-    setPositions((before) => ({ ...before, [key]: { x: Math.max(8, Math.min(92, current.origin.x + dx / bounds.width * 100)), y: Math.max(10, Math.min(90, current.origin.y + dy / bounds.height * 100)) } }));
+    const zone = current.kind === "zone" ? zones.find((item) => item.id === current.id) : null;
+    const maxX = zone ? 100 - zone.width / bounds.width * 100 - 1 : 92;
+    const maxY = zone ? 100 - zone.height / bounds.height * 100 - 1 : 90;
+    setPositions((before) => ({ ...before, [key]: { x: Math.max(zone ? 1 : 8, Math.min(maxX, current.origin.x + dx / bounds.width * 100)), y: Math.max(zone ? 1 : 10, Math.min(maxY, current.origin.y + dy / bounds.height * 100)) } }));
     if (current.kind === "file") {
       const elements = document.elementsFromPoint(event.clientX, event.clientY);
       const target = elements.find((element) => element.hasAttribute("data-share-peer") || element.hasAttribute("data-share-zone"));
@@ -105,11 +111,25 @@ export function ShareCanvas({ files, members, currentUserId, readyPeers, transfe
     for (const target of targets) onSend(target.connectionId, entry.file);
     setHint(`${targets.length} kişiye gönderim başlatıldı.`);
   };
+  const beginResize = (event: PointerEvent<HTMLButtonElement>, zone: Zone) => {
+    event.stopPropagation(); event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resize.current = { id: zone.id, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, width: zone.width, height: zone.height };
+  };
+  const moveResize = (event: PointerEvent<HTMLButtonElement>) => {
+    const current = resize.current;
+    const bounds = surface.current?.getBoundingClientRect();
+    if (!current || current.pointerId !== event.pointerId || !bounds) return;
+    const point = pointFor("zone", current.id, zones.findIndex((item) => item.id === current.id));
+    const maxWidth = bounds.width * (1 - point.x / 100) - 10;
+    const maxHeight = bounds.height * (1 - point.y / 100) - 10;
+    setZones((items) => items.map((item) => item.id === current.id ? { ...item, width: Math.max(140, Math.min(maxWidth, current.width + event.clientX - current.startX)), height: Math.max(130, Math.min(maxHeight, current.height + event.clientY - current.startY)) } : item));
+  };
   return <div className="share-canvas-shell">
-    <div className="share-canvas-head"><div><span className="eyebrow">CANLI PAYLAŞIM ALANI</span><p>Dosyayı kişiye sürükle ve bırak. Kişileri de alanda taşıyabilirsin.</p></div><div><Button variant="bare" onClick={() => setZones((items) => [...items, { id: crypto.randomUUID(), position: { x: 76, y: 38 } }])}><Plus size={14} /> Toplu alan</Button><Button variant="primary" onClick={onChooseFiles}><Plus size={14} /> Dosya ekle</Button></div></div>
+    <div className="share-canvas-head"><div><span className="eyebrow">CANLI PAYLAŞIM ALANI</span><p>Dosyayı kişiye sürükle ve bırak. Kişileri de alanda taşıyabilirsin.</p></div><div><Button variant="bare" onClick={() => setZones((items) => [...items, { id: crypto.randomUUID(), width: 190, height: 170 }])}><Plus size={14} /> Toplu alan</Button><Button variant="primary" onClick={onChooseFiles}><Plus size={14} /> Dosya ekle</Button></div></div>
     <div ref={surface} className="share-canvas" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer.files.length) onAddFiles(event.dataTransfer.files); }}>
       <div className="share-canvas-axis" aria-hidden="true" />
-      {zones.map((zone, index) => { const point = pointFor("zone", zone.id, index); return <div key={zone.id} className={`share-canvas-zone ${activeTarget === zone.id ? "is-target" : ""}`} data-share-zone={zone.id} style={{ left: `${point.x}%`, top: `${point.y}%` }} onPointerDown={(event) => begin(event, "zone", zone.id, index)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}><span><Users size={17} /> TOPLU ALAN</span><small>Kişileri buraya taşı, dosyayı alana bırak.</small><button type="button" aria-label="Alanı kaldır" onClick={() => setZones((items) => items.filter((item) => item.id !== zone.id))}><X size={13} /></button></div>; })}
+      {zones.map((zone, index) => { const point = pointFor("zone", zone.id, index); return <div key={zone.id} className={`share-canvas-zone ${activeTarget === zone.id ? "is-target" : ""}`} data-share-zone={zone.id} style={{ left: `${point.x}%`, top: `${point.y}%`, width: zone.width, height: zone.height }} onPointerDown={(event) => begin(event, "zone", zone.id, index)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}><span><Users size={17} /> TOPLU ALAN</span><small>Kişileri buraya taşı, dosyayı alana bırak.</small><button type="button" className="share-zone-remove" aria-label="Alanı kaldır" onClick={() => setZones((items) => items.filter((item) => item.id !== zone.id))}><X size={13} /></button><button type="button" className="share-zone-resize" aria-label="Toplu alanı yeniden boyutlandır" title="Boyutlandır" onPointerDown={(event) => beginResize(event, zone)} onPointerMove={moveResize} onPointerUp={() => { resize.current = null; }} onPointerCancel={() => { resize.current = null; }}><span /></button></div>; })}
       <div className="share-canvas-self" style={{ left: "50%", top: "39%" }}><span>{me?.name.slice(0, 1) ?? "Y"}</span><strong>Sen</strong></div>
       {peers.map((member, index) => { const point = pointFor("member", member.connectionId, index); return <div key={member.connectionId} className={`share-canvas-peer ${ready.has(member.connectionId) ? "is-ready" : ""} ${activeTarget === member.connectionId ? "is-target" : ""}`} data-share-peer={member.connectionId} style={{ left: `${point.x}%`, top: `${point.y}%` }} onPointerDown={(event) => begin(event, "member", member.connectionId, index)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}><span>{member.name.slice(0, 1)}</span><strong>{member.name}</strong><small>{ready.has(member.connectionId) ? "DOSYA ALABİLİR" : "BAĞLANIYOR"}</small></div>; })}
       {files.map((entry, index) => { const point = pointFor("file", entry.id, index); return <div key={entry.id} className={`share-canvas-file ${draggingFile === entry.id ? "is-dragging" : ""}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} onPointerDown={(event) => begin(event, "file", entry.id, index)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}><div className="share-canvas-file-preview"><FilePreview file={entry.file} /></div><strong title={entry.file.name}>{entry.file.name}</strong><small>{(entry.file.size / 1024 / 1024).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} MB</small><button type="button" aria-label={`${entry.file.name} dosyasını kaldır`} onClick={() => onRemoveFile(entry.id)}><X size={13} /></button></div>; })}

@@ -1,4 +1,4 @@
-.application-test-cover { display: flex; flex-direction: column; justify-content: space-between; align-items: stretch; padding: 13px; background: #050505; color: #fff; }
+.application-detail-cover.application-test-cover { display: flex; flex-direction: column; justify-content: space-between; align-items: stretch; padding: 13px; background: #050505; color: #fff; }
 .application-test-cover::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .38; background: linear-gradient(90deg,transparent calc(50% - .5px),#ffffff25 50%,transparent calc(50% + .5px)),linear-gradient(0deg,transparent calc(50% - .5px),#ffffff1c 50%,transparent calc(50% + .5px)); }
 .application-test-cover-top,.application-test-cover-bottom,.application-test-cover-mark { position: relative; z-index: 1; }
 .application-test-cover-top { display: flex; justify-content: space-between; gap: 9px; align-items: start; font-size: 7px; letter-spacing: .08em; }

@@ -328,7 +328,7 @@ function App() {
       <span>STARBASE</span>
     </button>
   );
-  const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length);
+  const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length || user?.memberships?.length);
   const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
   const canViewDocs = Boolean(user?.owner || user?.roles?.some((role: { id: string }) => role.id === "admin"));
   useEffect(() => {

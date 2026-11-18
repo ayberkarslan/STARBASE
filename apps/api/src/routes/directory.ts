@@ -11,7 +11,7 @@ import { applicationHistory } from "../activity";
 import { imageResponse, userPhotoUrl } from "../image-assets";
 type C = Context<{ Bindings: Env; Variables: { session: Session; user: any } }>;
 const member = (alias: string) =>
-  `(${alias}.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=${alias}.id))`;
+  `(${alias}.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=${alias}.id) OR EXISTS(SELECT 1 FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=${alias}.id AND d.archived=0 AND (t.id IS NULL OR t.archived=0)))`;
 const requireDirectory = requireTeamMember;
 async function usedApplications(env: Env, userId: string) {
   const rows = await env.DB.prepare(
@@ -55,7 +55,7 @@ export function register(app: App) {
   app.get("/api/v1/directory/calendar-members", async (c) => {
     const session = c.get("session");
     if (session.kind !== "access" || session.app_id !== "test-formu-web") fail(403, "access_denied");
-    const memberAccess = await c.env.DB.prepare("SELECT 1 FROM user_roles WHERE user_id=?").bind(c.get("user").id).first();
+    const memberAccess = await c.env.DB.prepare("SELECT 1 FROM user_roles WHERE user_id=? UNION SELECT 1 FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=? AND d.archived=0 AND (t.id IS NULL OR t.archived=0)").bind(c.get("user").id, c.get("user").id).first();
     if (!c.get("user").owner && !memberAccess) fail(403, "team_membership_required");
     const q = (c.req.query("q") ?? "").trim().slice(0, 80);
     if (q.length < 2) return c.json({ users: [] });

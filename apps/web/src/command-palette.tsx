@@ -21,18 +21,20 @@ export function CommandPalette({ open, onClose, apps, pages, canSearchMembers, o
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
+  const [memberSearchState, setMemberSearchState] = useState<"idle" | "loading" | "error">("idle");
   const [active, setActive] = useState(0);
   useEffect(() => {
     if (open) requestAnimationFrame(() => input.current?.focus());
-    else { setQuery(""); setMembers([]); setActive(0); }
+    else { setQuery(""); setMembers([]); setActive(0); setMemberSearchState("idle"); }
   }, [open]);
   useEffect(() => {
-    if (!open || !canSearchMembers || query.trim().length < 2) { setMembers([]); return; }
+    if (!open || !canSearchMembers || query.trim().length < 2) { setMembers([]); setMemberSearchState("idle"); return; }
     let current = true;
+    setMemberSearchState("loading");
     const timer = window.setTimeout(() => {
       request(`/directory/users?q=${encodeURIComponent(query.trim())}&page=1`)
-        .then((result: { users: Member[] }) => { if (current) setMembers(result.users.slice(0, 5)); })
-        .catch(() => { if (current) setMembers([]); });
+        .then((result: { users: Member[] }) => { if (current) { setMembers(result.users.slice(0, 8)); setMemberSearchState("idle"); } })
+        .catch(() => { if (current) { setMembers([]); setMemberSearchState("error"); } });
     }, 250);
     return () => { current = false; window.clearTimeout(timer); };
   }, [open, query, canSearchMembers]);
@@ -61,6 +63,8 @@ export function CommandPalette({ open, onClose, apps, pages, canSearchMembers, o
         <span className="command-palette-icon">{item.logo ? <img src={item.logo} alt="" /> : <item.icon size={17} />}</span>
         <span className="command-palette-label"><strong>{item.label}</strong><small>{item.group}</small></span><ArrowUpRight size={14} />
       </button>) : <p>Sonuç bulunamadı.</p>}
+      {memberSearchState === "loading" && <p role="status">Üyeler aranıyor…</p>}
+      {memberSearchState === "error" && <p role="alert">Üyeler aranamadı. Bağlantını kontrol edip tekrar dene.</p>}
     </div>
     <div className="command-palette-help">↑ ↓ seç · Enter aç · Esc kapat</div>
   </Dialog>;

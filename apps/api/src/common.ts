@@ -183,8 +183,8 @@ export async function requireTeamMember(
     fail(403, "central_session_required");
   if (
     !c.get("user").owner &&
-    !(await c.env.DB.prepare("SELECT 1 FROM user_roles WHERE user_id=?")
-      .bind(c.get("user").id)
+    !(await c.env.DB.prepare("SELECT 1 FROM user_roles WHERE user_id=? UNION SELECT 1 FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=? AND d.archived=0 AND (t.id IS NULL OR t.archived=0)")
+      .bind(c.get("user").id, c.get("user").id)
       .first())
   )
     fail(403, "team_membership_required");

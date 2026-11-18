@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { Button } from "@stardrop/ui";
 import "./application-calendar.css";
 
@@ -26,9 +26,9 @@ export function TestCover({ test }: { test: CalendarTest }) {
   </span>;
 }
 
-function Preview({ test }: { test: CalendarTest }) {
+function Preview({ test, href }: { test: CalendarTest; href: string }) {
   const reportState = (ready: number | boolean | null | undefined) => ready == null ? "Kontrol edilemedi" : ready ? "Hazır" : "Henüz eklenmedi";
-  return <div className="application-test-preview" role="tooltip">
+  return <div className="application-test-preview">
     <span className={`application-test-preview-status status-${test.status}`}>{statusNames[test.status] ?? test.status}</span>
     <h3>{test.testTypeName || test.title || "Test"}</h3>
     <dl>
@@ -39,7 +39,7 @@ function Preview({ test }: { test: CalendarTest }) {
     </dl>
     <div className="application-test-preview-files"><div><span>Ön rapor</span><strong>{reportState(test.preReportReady)}</strong></div><div><span>Test raporu</span><strong>{reportState(test.testReportReady)}</strong></div><small>{test.attachmentCount ?? 0} ek dosya · {test.imageCount ?? 0} görsel · {test.videoCount ?? 0} video · {test.dataCount ?? 0} veri dosyası</small></div>
     {test.description && <p>{test.description}</p>}
-    <small>Ayrıntılar ve düzenleme için Takvim'de aç</small>
+    <a className="application-test-preview-open" href={href}>Ayrıntılar ve düzenleme için Takvim'de aç <ArrowUpRight size={13} aria-hidden="true" /></a>
   </div>;
 }
 
@@ -69,7 +69,7 @@ export function TestPreviewLink({ test, href, className, children }: { test: Cal
     setPosition({ left: Math.max(12, Math.min(rect.left, innerWidth - card.width - 12)), top: Math.max(12, below + card.height < innerHeight - 12 ? below : rect.top - card.height - 9) });
   }, [open]);
   return <><a ref={anchor} href={href} className={className} aria-describedby={open ? id : undefined} onMouseEnter={() => { if (matchMedia("(hover: hover)").matches) show(); }} onMouseLeave={hide} onFocus={show} onBlur={() => { clear(); setOpen(false); }} onClick={() => { clear(); setOpen(false); }}>{children}</a>
-    {open && createPortal(<div ref={popup} id={id} style={position} className="application-test-preview-popup" onMouseEnter={clear} onMouseLeave={hide}><Preview test={test} /></div>, document.body)}
+    {open && createPortal(<div ref={popup} id={id} style={position} className="application-test-preview-popup" onMouseEnter={clear} onMouseLeave={hide}><Preview test={test} href={href} /></div>, document.body)}
   </>;
 }
 

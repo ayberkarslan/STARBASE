@@ -101,3 +101,31 @@
 .share-canvas-transfers small { color: #ffffffac; font-size: 8px; line-height: 1.6; }
 @media(max-width:600px) { .share-canvas-transfers { width: min(200px,52%); } }
 @media(prefers-reduced-motion:reduce) { .share-canvas-file,.share-canvas-peer,.share-canvas-zone,.share-canvas-transfers,.share-canvas-hint { transition: none !important; animation: none !important; } }
+
+.share-page:has(.share-room-layout) { max-width: none; }
+.share-room-layout { display: block; position: relative; }
+.share-room-layout .share-canvas { height: min(68vh,690px); min-height: 510px; }
+.workspace .share-room-layout .share-room-side { position: absolute; z-index: 40; top: 68px; right: 15px; display: block; width: 168px; max-width: calc(100% - 30px); padding: 0; border: 1px solid #ffffff70; border-radius: 7px; background: #000; box-shadow: 0 12px 26px #000b; }
+.workspace .share-room-layout .share-room-side.is-open { width: min(310px,calc(100% - 30px)); }
+.share-tools-toggle { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; background: #000; color: #fff; cursor: pointer; font-size: 9px; text-align: left; }
+.share-tools-toggle span { flex: 1; white-space: nowrap; }
+.share-tools-toggle > svg:last-child { transition: transform .2s ease; }
+.is-open .share-tools-toggle > svg:last-child { transform: rotate(180deg); }
+.share-tools-body { display: grid; gap: 0; max-height: min(61vh,620px); overflow-y: auto; padding: 6px 14px 14px; border-top: 1px solid #ffffff42; scrollbar-width: thin; scrollbar-color: #fff #000; }
+.share-tools-body .share-member-list { margin-top: 7px; }
+.share-tools-body .share-member { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 6px 10px; min-height: 48px; }
+.share-member-actions { display: flex; grid-column: 2; gap: 14px; padding-bottom: 3px; }
+.share-member-actions button { display: inline-flex; align-items: center; gap: 4px; border: 0; background: #000; color: #ffffffb3; cursor: pointer; font-size: 8px; }
+.share-member-actions button:hover { color: #fff; }
+.share-tools-body .share-owner-controls { margin-top: 20px; padding-top: 18px; }
+.share-pin { display: grid; gap: 8px; padding: 13px 0 15px; border-top: 1px solid #ffffff30; }
+.share-pin > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.share-pin strong { font-size: 20px; letter-spacing: .13em; font-weight: 400; }
+.share-pin small { font-size: 8px; color: #ffffff91; line-height: 1.6; }
+.share-pin button { display: inline-flex; align-items: center; gap: 5px; justify-self: start; border: 0; background: #000; color: #fff; cursor: pointer; font-size: 8px; }
+.share-pin .share-text-action { padding: 4px 0; }
+.share-banned { display: grid; gap: 8px; padding: 13px 0; border-top: 1px solid #ffffff30; }
+.share-banned > div { display: flex; justify-content: space-between; gap: 8px; font-size: 8px; }
+.share-banned button { border: 0; background: #000; color: #fff; cursor: pointer; font-size: 8px; text-decoration: underline; }
+.share-tools-body .share-info { margin-top: 8px; padding-top: 14px; }
+@media(max-width:600px) { .share-room-layout .share-canvas { min-height: 520px; }.workspace .share-room-layout .share-room-side { top: 106px; right: 10px; }.share-tools-body { max-height: 50vh; } }

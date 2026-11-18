@@ -54,9 +54,14 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0025_application_domains.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0026_resource_visibility.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0027_calendar_tests.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0028_share_rooms.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
+      idFromName: (name: string) => name,
+      get: () => ({ fetch: async () => new Response(null, { status: 204 }) }),
+    },
+    SHARE_ROOM: {
       idFromName: (name: string) => name,
       get: () => ({ fetch: async () => new Response(null, { status: 204 }) }),
     },
@@ -131,6 +136,45 @@ function call(
     env,
   );
 }
+
+async function memberSession() {
+  db.prepare("INSERT INTO user_roles VALUES(?,?)").run("u2", "member");
+  db.prepare("INSERT INTO families(id,user_id,expires) VALUES(?,?,?)").run("f2", "u2", now() + 1000);
+  db.prepare("INSERT INTO sessions(hash,user_id,kind,expires,family,created_at) VALUES(?,?,?,?,?,?)")
+    .run(await hash("member-central"), "u2", "central", now() + 1000, "f2", now());
+  return (path: string, value?: unknown, method?: string) => app.request("https://base.test/api/v1" + path, {
+    method: method ?? (value ? "POST" : "GET"),
+    headers: { Origin: "https://base.test", Cookie: "starbase=member-central", ...(value ? { "Content-Type": "application/json" } : {}) },
+    body: value ? JSON.stringify(value) : undefined,
+  }, env);
+}
+
+describe("live sharing rooms", () => {
+  it("lists rooms and admits a profile invite without the room password", async () => {
+    const asMember = await memberSession();
+    const created = await call("/share/rooms", { name: "Aviyonik dosyaları", protected: true, profileTargetId: "u2" });
+    expect(created.status).toBe(201);
+    const data: any = await created.json();
+    expect(data.generatedPassword).toHaveLength(16);
+    const listed: any = await (await asMember("/share/rooms")).json();
+    expect(listed.rooms[0]).toMatchObject({ id: data.room.id, isInvited: true, protected: true });
+    expect((await asMember(`/share/rooms/${data.room.id}/join`, {})).status).toBe(200);
+    expect(db.prepare("SELECT user_id FROM share_room_admissions WHERE room_id=? AND user_id='u2'").get(data.room.id)).toBeTruthy();
+  });
+
+  it("rejects a wrong password and prevents a removed member from rejoining", async () => {
+    const asMember = await memberSession();
+    const data: any = await (await call("/share/rooms", { name: "Test odası", protected: true, password: "secret-passphrase" })).json();
+    const id = data.room.id;
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "incorrect" })).status).toBe(403);
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "secret-passphrase" })).status).toBe(200);
+    expect((await call(`/share/rooms/${id}/kick`, { userId: "u2" })).status).toBe(200);
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "secret-passphrase" })).status).toBe(403);
+    expect((await call(`/share/rooms/${id}`, undefined, "central", "DELETE")).status).toBe(200);
+    expect((await call("/share/rooms")).status).toBe(200);
+    expect(db.prepare("SELECT id FROM share_rooms WHERE id=?").get(id)).toBeUndefined();
+  });
+});
 
 it("accepts a same-origin central session on a second hostname", async () => {
   const response = await app.request("https://legacy.test/api/v1/auth/logout", {

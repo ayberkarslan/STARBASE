@@ -1,6 +1,6 @@
 import type { Env } from "./common";
 
-type Participant = { connectionId: string; userId: string; name: string; expires: number; roomId: string };
+type Participant = { connectionId: string; userId: string; name: string; expires: number; roomId: string; sessionHash: string };
 
 export class ShareRoom {
   constructor(private readonly state: DurableObjectState, private readonly env: Env) {}
@@ -37,13 +37,25 @@ export class ShareRoom {
       await this.state.storage.deleteAll();
       return new Response(null, { status: 204 });
     }
+    if (route === "/kick" && request.method === "POST") {
+      const targetId = request.headers.get("x-target-id");
+      for (const { socket, info } of this.participants()) {
+        if (info.userId !== targetId) continue;
+        socket.send(JSON.stringify({ type: "kicked" }));
+        socket.close(1008, "Removed by room owner");
+      }
+      await this.publish(roomId);
+      return new Response(null, { status: 204 });
+    }
     if (route !== "/connect" || request.headers.get("upgrade")?.toLowerCase() !== "websocket") return new Response("Not found", { status: 404 });
     const userId = request.headers.get("x-user-id") ?? "";
     const name = decodeURIComponent(request.headers.get("x-user-name") ?? "");
     const expires = Number(request.headers.get("x-session-expires"));
-    if (!userId || !name || !Number.isFinite(expires) || expires <= Date.now() / 1000) return new Response("Unauthorized", { status: 403 });
+    const sessionHash = request.headers.get("x-session-hash") ?? "";
+    if (!userId || !name || !sessionHash || !Number.isFinite(expires) || expires <= Date.now() / 1000) return new Response("Unauthorized", { status: 403 });
     const room = await this.env.DB.prepare("SELECT id,owner_id ownerId,locked FROM share_rooms WHERE id=?").bind(roomId).first<{ id: string; ownerId: string; locked: number }>();
     if (!room) return new Response("Room missing", { status: 404 });
+    if (await this.env.DB.prepare("SELECT 1 FROM share_room_bans WHERE room_id=? AND user_id=?").bind(roomId, userId).first()) return new Response("Removed from room", { status: 403 });
     if (room.locked && room.ownerId !== userId && !(await this.env.DB.prepare("SELECT 1 FROM share_room_invites WHERE room_id=? AND user_id=?").bind(roomId, userId).first())) return new Response("Room closed to new members", { status: 403 });
     const admission = await this.env.DB.prepare("SELECT 1 FROM share_room_admissions WHERE room_id=? AND user_id=? AND expires_at>?").bind(roomId, userId, Date.now() / 1000).first();
     if (!admission) return new Response("Join required", { status: 403 });
@@ -51,7 +63,9 @@ export class ShareRoom {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.state.acceptWebSocket(server);
-    server.serializeAttachment({ roomId, userId, name, expires, connectionId: crypto.randomUUID() } satisfies Participant);
+    const connectionId = crypto.randomUUID();
+    server.serializeAttachment({ roomId, userId, name, expires, connectionId, sessionHash } satisfies Participant);
+    server.send(JSON.stringify({ type: "welcome", connectionId }));
     await this.state.storage.deleteAlarm();
     await this.publish(roomId);
     return new Response(null, { status: 101, webSocket: client });
@@ -60,6 +74,7 @@ export class ShareRoom {
   async webSocketMessage(socket: WebSocket, raw: string | ArrayBuffer) {
     const source = socket.deserializeAttachment() as Participant | null;
     if (!source || source.expires <= Date.now() / 1000) { socket.close(1008, "Session expired"); return; }
+    if (!(await this.env.DB.prepare("SELECT 1 FROM sessions s JOIN families f ON f.id=s.family WHERE s.hash=? AND s.user_id=? AND s.expires>? AND s.used=0 AND f.revoked=0").bind(source.sessionHash, source.userId, Date.now() / 1000).first())) { socket.close(1008, "Session revoked"); return; }
     if (typeof raw !== "string" || raw.length > 16_384) { socket.close(1008, "Only signaling is allowed"); return; }
     let message: { type?: string; to?: string; signal?: { type?: string } };
     try { message = JSON.parse(raw); } catch { socket.close(1008, "Invalid signaling"); return; }

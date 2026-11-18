@@ -3,7 +3,8 @@ import { type App, body, fail, requireTeamMember } from "../common";
 import { hash, now, token } from "../security";
 
 const memberSql = `(u.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=u.id) OR EXISTS(SELECT 1 FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=u.id AND d.archived=0 AND (t.id IS NULL OR t.archived=0)))`;
-const roomInput = z.object({ name: z.string().trim().min(2).max(64), protected: z.boolean(), password: z.string().min(8).max(128).optional(), profileTargetId: z.string().uuid().optional() });
+const userIdInput = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
+const roomInput = z.object({ name: z.string().trim().min(2).max(64), protected: z.boolean(), password: z.string().min(8).max(128).optional(), profileTargetId: userIdInput.optional() });
 const joinInput = z.object({ password: z.string().max(128).optional() });
 const editInput = z.object({ name: z.string().trim().min(2).max(64).optional(), protected: z.boolean().optional(), password: z.string().min(8).max(128).optional(), locked: z.boolean().optional() });
 type Room = { id: string; name: string; ownerId: string; profileTargetId: string | null; passwordHash: string | null; locked: number; participantCount: number; createdAt: number };
@@ -65,6 +66,7 @@ export function register(app: App) {
     const value = await room(c, c.req.param("id"));
     const owner = value.ownerId === c.get("user").id;
     const hasInvite = await invited(c, value.id);
+    if (await c.env.DB.prepare("SELECT 1 FROM share_room_bans WHERE room_id=? AND user_id=?").bind(value.id, c.get("user").id).first()) fail(403, "room_access_denied");
     if (value.locked && !owner && !hasInvite) fail(403, "room_locked");
     if (value.passwordHash && !owner && !hasInvite) {
       const input = await body(c, joinInput);
@@ -86,6 +88,7 @@ export function register(app: App) {
         "x-user-id": c.get("user").id,
         "x-user-name": encodeURIComponent(`${c.get("user").first_name} ${c.get("user").last_name}`),
         "x-session-expires": String(c.get("session").expires),
+        "x-session-hash": c.get("session").hash,
       },
     }));
   });
@@ -107,10 +110,32 @@ export function register(app: App) {
     await requireTeamMember(c);
     const value = await room(c, c.req.param("id"));
     if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
-    const input = await body(c, z.object({ userId: z.string().uuid() }));
+    const input = await body(c, z.object({ userId: userIdInput }));
     if (input.userId === value.ownerId || !(await knownMember(c, input.userId))) fail(400, "invalid_member");
     await c.env.DB.prepare("INSERT OR IGNORE INTO share_room_invites(room_id,user_id) VALUES(?,?)").bind(value.id, input.userId).run();
     await notify(c);
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/v1/share/rooms/:id/kick", async (c) => {
+    await requireTeamMember(c);
+    const value = await room(c, c.req.param("id"));
+    if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
+    const input = await body(c, z.object({ userId: userIdInput }));
+    if (input.userId === value.ownerId) fail(400, "invalid_member");
+    await c.env.DB.prepare("INSERT OR IGNORE INTO share_room_bans(room_id,user_id) VALUES(?,?)").bind(value.id, input.userId).run();
+    await c.env.DB.prepare("DELETE FROM share_room_admissions WHERE room_id=? AND user_id=?").bind(value.id, input.userId).run();
+    const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName(value.id));
+    await stub.fetch("https://share.internal/kick", { method: "POST", headers: { "x-room-id": value.id, "x-target-id": input.userId } });
+    await notify(c);
+    return c.json({ ok: true });
+  });
+
+  app.delete("/api/v1/share/rooms/:id/bans/:userId", async (c) => {
+    await requireTeamMember(c);
+    const value = await room(c, c.req.param("id"));
+    if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
+    await c.env.DB.prepare("DELETE FROM share_room_bans WHERE room_id=? AND user_id=?").bind(value.id, c.req.param("userId")).run();
     return c.json({ ok: true });
   });
 

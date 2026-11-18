@@ -20,3 +20,8 @@ CREATE TABLE share_room_admissions (
   expires_at INTEGER NOT NULL,
   PRIMARY KEY(room_id,user_id)
 );
+CREATE TABLE share_room_bans (
+  room_id TEXT NOT NULL REFERENCES share_rooms(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY(room_id,user_id)
+);

@@ -1,4 +1,4 @@
-.workspace-home-page { max-width: 1360px; margin: 0 auto; padding: clamp(28px,4vw,64px); }
+.workspace-home-page { max-width: 1360px; margin: 0 auto; padding: clamp(12px,1.5vw,22px) clamp(28px,4vw,64px) clamp(28px,4vw,64px); }
 .workspace-home-intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 34px; border-bottom: 1px solid #ffffff40; }
 .workspace-home-intro h1 { margin: 12px 0 4px; font-size: clamp(25px,3vw,40px); }
 .workspace-home-intro p, .workspace-home-recent p { margin: 0; color: #ffffffa3; }

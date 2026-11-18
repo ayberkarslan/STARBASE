@@ -1,4 +1,4 @@
-.share-page { max-width: 1460px; margin: 0 auto; padding: clamp(25px,3vw,52px); color: #fff; }
+.share-page { max-width: 1460px; margin: 0 auto; padding: clamp(12px,1.5vw,22px) clamp(25px,3vw,52px) clamp(25px,3vw,52px); color: #fff; }
 .share-page button,.share-page input { font-family: inherit; }
 .share-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid #ffffff45; color: #ffffff9b; font-size: 9px; letter-spacing: .14em; }
 .share-title { margin: 35px 0 35px; }.share-title h1 { margin: 10px 0 8px; font-size: clamp(27px,3vw,43px); font-weight: 400; }.share-title p { margin: 0; color: #ffffff9c; font-size: 11px; line-height: 1.8; }

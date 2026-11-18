@@ -1,13 +1,13 @@
 import type { Env } from "./common";
 
-type Participant = { connectionId: string; userId: string; name: string; expires: number; roomId: string; sessionHash: string };
+type Participant = { connectionId: string; userId: string; name: string; expires: number; roomId: string; sessionHash: string; replaced?: boolean };
 
 export class ShareRoom {
   constructor(private readonly state: DurableObjectState, private readonly env: Env) {}
 
   private participants(excluded?: WebSocket) {
     return this.state.getWebSockets().map((socket) => ({ socket, info: socket.deserializeAttachment() as Participant | null }))
-      .filter((entry): entry is { socket: WebSocket; info: Participant } => entry.socket !== excluded && !!entry.info && entry.info.expires > Date.now() / 1000);
+      .filter((entry): entry is { socket: WebSocket; info: Participant } => entry.socket !== excluded && entry.socket.readyState === WebSocket.OPEN && !!entry.info && !entry.info.replaced && entry.info.expires > Date.now() / 1000);
   }
 
   private async publish(roomId: string, excluded?: WebSocket) {
@@ -61,7 +61,13 @@ export class ShareRoom {
     if (room.locked && room.ownerId !== userId && !(await this.env.DB.prepare("SELECT 1 FROM share_room_invites WHERE room_id=? AND user_id=?").bind(roomId, userId).first())) return new Response("Room closed to new members", { status: 403 });
     const admission = await this.env.DB.prepare("SELECT 1 FROM share_room_admissions WHERE room_id=? AND user_id=? AND expires_at>?").bind(roomId, userId, Date.now() / 1000).first();
     if (!admission) return new Response("Join required", { status: 403 });
-    if (this.state.getWebSockets().length >= 24) return new Response("Room full", { status: 429 });
+    if (this.participants().filter(({ info }) => info.userId !== userId).length >= 24) return new Response("Room full", { status: 429 });
+    for (const { socket, info } of this.participants()) {
+      if (info.userId !== userId) continue;
+      socket.serializeAttachment({ ...info, replaced: true } satisfies Participant);
+      try { socket.send(JSON.stringify({ type: "replaced" })); } catch {}
+      try { socket.close(4001, "Newer connection opened"); } catch {}
+    }
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.state.acceptWebSocket(server);
@@ -75,7 +81,7 @@ export class ShareRoom {
 
   async webSocketMessage(socket: WebSocket, raw: string | ArrayBuffer) {
     const source = socket.deserializeAttachment() as Participant | null;
-    if (!source || source.expires <= Date.now() / 1000) { socket.close(1008, "Session expired"); return; }
+    if (!source || source.replaced || source.expires <= Date.now() / 1000) { socket.close(1008, "Session expired"); return; }
     if (!(await this.env.DB.prepare("SELECT 1 FROM sessions s JOIN families f ON f.id=s.family WHERE s.hash=? AND s.user_id=? AND s.expires>? AND s.used=0 AND f.revoked=0").bind(source.sessionHash, source.userId, Date.now() / 1000).first())) { socket.close(1008, "Session revoked"); return; }
     if (typeof raw !== "string" || raw.length > 16_384) { socket.close(1008, "Only signaling is allowed"); return; }
     let message: { type?: string; to?: string; signal?: { type?: string } };
@@ -99,7 +105,7 @@ export class ShareRoom {
     if (info) await this.publish(info.roomId, socket);
   }
   async alarm() {
-    if (this.state.getWebSockets().length) return;
+    if (this.participants().length) return;
     const roomId = await this.state.storage.get<string>("roomId");
     if (!roomId) return;
     await this.env.DB.prepare("DELETE FROM share_rooms WHERE id=?").bind(roomId).run();

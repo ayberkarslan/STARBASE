@@ -136,6 +136,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
     if (!roomId) return;
     let active = true;
     let ownConnection = "";
+    let replaced = false;
     let roster: Member[] = [];
     const url = new URL(`/api/v1/share/rooms/${roomId}/live`, location.origin);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
@@ -166,6 +167,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
       try {
         const message = JSON.parse(event.data);
         if (message.type === "welcome") { ownConnection = message.connectionId; return; }
+        if (message.type === "replaced") { replaced = true; setError("Bu hesap başka bir sekmede odaya girdi. Bu bağlantı kapatıldı."); setRoomId(null); return; }
         if (message.type === "members") {
           roster = message.members as Member[];
           setMembers(roster);
@@ -185,7 +187,13 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
         if (message.type === "closed" || message.type === "kicked") { setError(message.type === "kicked" ? "Oda sahibi seni odadan çıkardı." : "Oda kapatıldı."); setRoomId(null); void refresh(); }
       } catch { setError("Oda bağlantısı okunamadı."); }
     };
-    socket.onclose = () => { if (active) setError("Canlı bağlantı kesildi. Odaya yeniden katılabilirsin."); };
+    socket.onclose = (event) => {
+      if (!active) return;
+      if (event.code === 4001 || replaced || event.reason.includes("Newer connection")) setError("Bu hesap başka bir sekmede odaya girdi. Bu bağlantı kapatıldı.");
+      else setError("Canlı bağlantı kesildi. Odaya yeniden katılabilirsin.");
+      setRoomId(null);
+      void refresh();
+    };
     socket.onerror = () => { if (active) setError("Canlı odaya bağlanılamadı."); };
     const ping = setInterval(() => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" })); }, 30_000);
     return () => { active = false; clearInterval(ping); socket.close(); socketRef.current = null; for (const link of linksRef.current.values()) link.close(); linksRef.current.clear(); queueRef.current = []; drainingRef.current.clear(); setQueued([]); setMembers([]); setReadyPeers([]); setOffers([]); };

@@ -18,6 +18,8 @@ Bu özellik yalnız merkezî STARBASE oturumu ve aktif takım rolü veya departm
 
 Oda listesi, davetler, şifre özeti ve kısa süreli katılım izni D1'de tutulur. Oda kapanınca veya son katılımcı ayrılıp yeniden bağlanma süresi dolunca ilgili satırlar silinir. Şifreler ham hâliyle saklanmaz. Profil üzerinden açılan oda listede görünür, şifrelidir ve profil sahibi otomatik davetlidir. Oda sahibi dışında yalnız davetli üyeler kilitliyken katılabilir.
 
+Her hesap bir odada aynı anda tek canlı bağlantıyla temsil edilir. Aynı hesap başka sekmede odaya girerse yeni bağlantı eskisini devralır; eski sekme oda listesine dönerek eski katılımcı ve aktarım durumlarını göstermez. Bu kural dosya alıcısını belirsiz bir sekmeye yönlendirmeyi önler.
+
 ## Canlı bağlantı ve aktarım
 
 `/live` bağlantısı ilk olarak `{type:"welcome",connectionId}` ve sonra `{type:"members",members}` ile cevap verir. İstemci `{type:"signal",to,signal}` gönderir; sunucu yalnız aynı odadaki hedefe `{type:"signal",from,signal}` iletir. `signal.type` yalnız `offer`, `answer` veya `candidate` olabilir. WebSocket'e dosya baytı gönderilirse bağlantı kapatılır. Oda listesi değiştiğinde mevcut `/api/v1/directory/live` kanalı `share.rooms.changed` geçersizleştirme olayı gönderir; istemci listeyi API'den yeniden okur.

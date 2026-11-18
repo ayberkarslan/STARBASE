@@ -90,6 +90,12 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
   useEffect(() => subscribeShareChanges(() => void refresh()), [refresh]);
   useEffect(() => () => { for (const url of urls.current) URL.revokeObjectURL(url); }, []);
   useEffect(() => {
+    if (roomId) return;
+    setStaged([]); setProgress([]); setReceived([]); setFailed([]);
+    for (const url of urls.current) URL.revokeObjectURL(url);
+    urls.current = [];
+  }, [roomId]);
+  useEffect(() => {
     if (inviteQuery.trim().length < 2) { setInviteResults([]); return; }
     let active = true;
     const timer = setTimeout(() => { request(`/directory/users?q=${encodeURIComponent(inviteQuery.trim())}&page=1`).then((data: { users: SearchMember[] }) => { if (active) setInviteResults(data.users.slice(0, 6)); }).catch(() => { if (active) setInviteResults([]); }); }, 220);
@@ -144,7 +150,14 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
         offer: (offer) => { if (active) setOffers((items) => [...items, { peerId, offer }]); },
         progress: (value) => { if (active) setProgress((items) => [...items.filter((item) => item.peerId !== peerId || item.value.id !== value.id), { peerId, value }].slice(-20)); },
         received: (file) => { if (!active) return; const fileUrl = file.blob ? URL.createObjectURL(file.blob) : undefined; if (fileUrl) urls.current.push(fileUrl); setReceived((items) => [{ ...file, url: fileUrl }, ...items].slice(0, 12)); },
-        error: (message) => { if (active) setError(message); },
+        error: (message) => {
+          if (!active) return;
+          setError(message);
+          const pending = queueRef.current.filter((item) => item.peerId === peerId);
+          queueRef.current = queueRef.current.filter((item) => item.peerId !== peerId);
+          setQueued([...queueRef.current]);
+          if (pending.length) setFailed((items) => [...items, ...pending.map((item) => ({ id: item.id, peerId, name: item.file.name, reason: "Bağlantı kurulamadı" }))].slice(-8));
+        },
       });
       linksRef.current.set(peerId, link);
       return link;
@@ -234,7 +247,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
     {roomId && <div className="share-room-layout"><div className="share-room-main">
       <input ref={fileInput} type="file" multiple hidden onChange={(event) => { if (event.target.files) addFiles(event.target.files); event.target.value = ""; }} />
       <ShareCanvas files={staged} members={visibleMembers} currentUserId={currentUserId} readyPeers={readyPeers} transfers={transferRows} onAddFiles={addFiles} onRemoveFile={(id) => setStaged((items) => items.filter((item) => item.id !== id))} onSend={sendTo} onChooseFiles={() => fileInput.current?.click()} />
-      {progress.length > 0 && <div className="share-transfers"><span className="eyebrow">AKTARIMLAR</span>{progress.map(({ peerId, value }) => <div key={`${peerId}:${value.id}`}><span>{value.name}</span><span>{value.status} · %{value.size ? Math.round(value.bytes / value.size * 100) : 100}</span><progress value={value.bytes} max={Math.max(value.size, 1)} /></div>)}</div>}
+      {transferRows.length > 0 && <div className="share-transfers"><span className="eyebrow">SON AKTARIMLAR</span>{transferRows.map((item) => <div key={item.id}><span>{item.name} · {item.peer}</span><span>{item.status}{["Gönderiliyor", "Alınıyor"].includes(item.status) ? ` · %${item.percent}` : ""}</span><progress value={item.percent} max={100} /></div>)}</div>}
       {received.length > 0 && <div className="share-received"><span className="eyebrow">ALINAN DOSYALAR</span>{received.map((file) => <div key={file.id}><File size={15} /><span>{file.name}</span>{file.url ? <a href={file.url} download={file.name}>İndir <ArrowUpRight size={14} /></a> : <small>Cihaza kaydedildi</small>}</div>)}</div>}
       </div><aside className="share-room-side"><div className="share-section-head"><span className="eyebrow">KATILIMCILAR</span><Users size={15} /></div><div className="share-member-list">{visibleMembers.map((member) => <div className="share-member" key={member.connectionId} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const entry = staged.find((item) => item.id === event.dataTransfer.getData("text/plain")); if (entry) sendTo(member.connectionId, entry.file); }}><span className="share-member-avatar">{member.name.slice(0, 1)}</span><span><strong>{member.name}</strong><small>{member.userId === currentUserId ? "Sen" : readyPeers.includes(member.connectionId) ? "Bağlı · dosya alabilir" : "Bağlanıyor"}</small></span>{activeRoom?.isOwner && member.userId !== currentUserId && <button type="button" title="Odadan çıkar" aria-label={`${member.name} kişisini çıkar`} onClick={() => void kick(member)}><X size={14} /></button>}</div>)}</div>
       {activeRoom?.isOwner && <div className="share-owner-controls">

@@ -25,7 +25,10 @@ LATEX_COMPILER_ORIGIN = "https://yrt-latex-compiler-777919223466.europe-west1.ru
 crons = ["0 3 * * *"]
 
 [durable_objects]
-bindings = [{name = "BOARD_HUB", class_name = "BoardHub"}]
+bindings = [{name = "BOARD_HUB", class_name = "BoardHub"}, {name = "SHARE_ROOM", class_name = "ShareRoom"}]
 [[migrations]]
 tag = "v1-board-hub"
 new_sqlite_classes = ["BoardHub"]
+[[migrations]]
+tag = "v2-share-room"
+new_sqlite_classes = ["ShareRoom"]

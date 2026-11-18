@@ -37,7 +37,8 @@ export class BoardHub {
         ? "directory.changed" : url.searchParams.get("type") === "profile.photo.changed"
           ? "profile.photo.changed" : url.searchParams.get("type") === "app.resources.changed"
             ? "app.resources.changed" : url.searchParams.get("type") === "session.revoked"
-              ? "session.revoked" : "board.changed";
+              ? "session.revoked" : url.searchParams.get("type") === "share.rooms.changed"
+                ? "share.rooms.changed" : "board.changed";
       for (const socket of this.state.getWebSockets()) {
         try {
           const attachment = socket.deserializeAttachment() as {

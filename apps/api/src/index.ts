@@ -1,4 +1,5 @@
 export { BoardHub } from "./board-hub";
+export { ShareRoom } from "./share-room";
 import { register as directory } from "./routes/directory";
 import { register as members } from "./routes/members";
 import spec from "./openapi.json";
@@ -34,6 +35,7 @@ import { register as organization } from "./routes/organization";
 import { register as management } from "./routes/management";
 import { register as applications } from "./routes/applications";
 import { register as activityAdmin } from "./routes/activity-admin";
+import { register as sharing } from "./routes/sharing";
 import { MAX_IMAGE_BYTES } from "./image-assets";
 const app: App = new Hono();
 app.onError((e, c) =>
@@ -164,6 +166,7 @@ members(app);
 directory(app);
 applications(app);
 activityAdmin(app);
+sharing(app);
 app.notFound((c) =>
   c.req.path.startsWith("/api/")
     ? c.json({ error: { code: "not_found" } }, 404)

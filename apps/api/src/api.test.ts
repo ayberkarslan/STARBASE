@@ -53,6 +53,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0024_app_access_blocks.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0025_application_domains.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0026_resource_visibility.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0027_calendar_tests.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -979,6 +980,25 @@ it("keeps personal documents out of other members' profiles", async () => {
   expect(profile.resources.map((item: any) => item.resourceId)).toEqual(["team-doc"]);
 });
 
+  it("shows every calendar test to members while keeping personal resources scoped", async () => {
+    env.TEST_FORMU_SYNC_SECRET = "calendar-sync-secret";
+    db.prepare("INSERT INTO apps(id,name,redirects,origins,scopes) VALUES(?,?,?,?,?)").run("test-formu-web", "YRT Test Takvimi", "[]", "[]", "[]");
+    const endpoint = "https://base.test/api/v1/internal/test-formu-resources";
+    const headers = { "Content-Type": "application/json", "x-app-sync-key": "calendar-sync-secret" };
+    const payload = {
+      resourceId: "test-1", starbaseUserIds: [], title: "Donanım · Proof Test", date: "2026-11-18", status: "report_pending",
+      url: "https://test.yildizroket.com/?test=test-1", createdAt: 1700000000, updatedAt: 1700000100,
+      calendar: { teamProject: "Donanım", testTypeName: "Proof Test", description: "Basınç ölçümü", reportCode: "YRT-01", reportRevision: 0, testNumber: 1, preReportReady: false, testReportReady: false, attachmentCount: 0, imageCount: 0, videoCount: 0, dataCount: 0 },
+    };
+    expect((await app.request(endpoint, { method: "POST", headers, body: JSON.stringify(payload) }, env)).status).toBe(200);
+    const calendar = await call("/apps/test-formu-web/calendar?from=2026-11-01&to=2026-11-30");
+    expect(calendar.status).toBe(200);
+    expect((await calendar.json() as any).tests[0]).toMatchObject({ resourceId: "test-1", description: "Basınç ölçümü", testTypeName: "Proof Test" });
+    expect((await (await call("/apps/test-formu-web/resources")).json() as any).resources).toEqual([]);
+    expect((await call("/apps/test-formu-web/calendar?from=2026-01-01&to=2026-11-30")).status).toBe(400);
+    expect((await app.request(endpoint, { method: "POST", headers, body: JSON.stringify({ resourceId: "test-1", starbaseUserIds: ["u1"], deleted: true }) }, env)).status).toBe(200);
+    expect((await (await call("/apps/test-formu-web/calendar?from=2026-11-01&to=2026-11-30")).json() as any).tests).toEqual([]);
+  });
 describe.skip("archived shared board notes", () => {
   async function memberRequest(
     path: string,
@@ -1441,6 +1461,7 @@ describe.skip("archived shared board notes", () => {
     const afterDelete: any = await (await call("/directory/users/u2")).json();
     expect(afterDelete.resources).toEqual([]);
   });
+
   it("manages badges, user custom titles, and admin role assignments", async () => {
     // 1. List badges
     const badgesRes = await call("/badges");

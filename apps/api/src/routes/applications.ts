@@ -243,13 +243,27 @@ export function register(app: App) {
         createdAt: z.number().int().positive().optional(),
         updatedAt: z.number().int().positive().optional(),
         visibility: z.enum(["team", "personal"]).optional(),
+        calendar: z.object({
+          teamProject: z.string().max(100), testTypeName: z.string().max(100), description: z.string().max(3000).default(""),
+          reportCode: z.string().max(100).default(""), reportRevision: z.number().int().min(0).max(9999).nullable().default(null),
+          testNumber: z.number().int().min(1).max(999).nullable().default(null),
+          preReportReady: z.boolean(), testReportReady: z.boolean(),
+          attachmentCount: z.number().int().min(0), imageCount: z.number().int().min(0), videoCount: z.number().int().min(0), dataCount: z.number().int().min(0),
+        }).optional(),
       }),
     );
     const starbaseUserIds = item.starbaseUserIds ?? (item.starbaseUserId ? [item.starbaseUserId] : []);
-    if (!item.deleted && starbaseUserIds.length === 0) return fail(400, "invalid_input");
     if (item.deleted) {
+      await c.env.DB.prepare("DELETE FROM calendar_tests WHERE id=?").bind(item.resourceId).run();
       await syncAppResource(c, { ...item, appId: "test-formu-web", starbaseUserIds: [], deleted: true });
     } else {
+      if (item.calendar) {
+        if (!item.date || !item.status || !item.url || !item.createdAt) return fail(400, "invalid_input");
+        const detail = item.calendar;
+        await c.env.DB.prepare(
+          "INSERT INTO calendar_tests(id,team_project,test_type_name,description,report_code,report_revision,test_number,date,status,url,pre_report_ready,test_report_ready,attachment_count,image_count,video_count,data_count,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET team_project=excluded.team_project,test_type_name=excluded.test_type_name,description=excluded.description,report_code=excluded.report_code,report_revision=excluded.report_revision,test_number=excluded.test_number,date=excluded.date,status=excluded.status,url=excluded.url,pre_report_ready=excluded.pre_report_ready,test_report_ready=excluded.test_report_ready,attachment_count=excluded.attachment_count,image_count=excluded.image_count,video_count=excluded.video_count,updated_at=excluded.updated_at WHERE excluded.updated_at>=calendar_tests.updated_at",
+        ).bind(item.resourceId, detail.teamProject, detail.testTypeName, detail.description, detail.reportCode, detail.reportRevision, detail.testNumber, item.date, item.status, item.url, Number(detail.preReportReady), Number(detail.testReportReady), detail.attachmentCount, detail.imageCount, detail.videoCount, detail.dataCount, item.createdAt, item.updatedAt ?? now()).run();
+      }
       await syncAppResource(c, {
         ...item,
         appId: "test-formu-web",
@@ -288,6 +302,19 @@ export function register(app: App) {
     return c.json({ application: { ...application, logoUrl: logoUrl(id, application.logoUrl) }, summary, visits: visits.results, resources: resources.results, resourceCount: resourceCount?.count ?? 0,
       access: { connected: !!consent && !block, blocked: !!block, scopes: consent ? JSON.parse(consent.scopes) : [] } });
   });
+  app.get("/api/v1/apps/:id/calendar", async (c) => {
+    const application = await personalApplication(c);
+    if (application.id !== "test-formu-web") fail(404, "calendar_not_found");
+    const parsed = z.object({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).safeParse(c.req.query());
+    if (!parsed.success) return fail(400, "invalid_query");
+    const { from, to } = parsed.data;
+    const first = Date.parse(`${from}T00:00:00Z`), last = Date.parse(`${to}T00:00:00Z`);
+    if (!Number.isFinite(first) || !Number.isFinite(last) || first > last || last - first > 45 * 86400000) return fail(400, "invalid_range");
+    const rows = await c.env.DB.prepare(
+      "SELECT id resourceId,team_project teamProject,test_type_name testTypeName,description,report_code reportCode,report_revision reportRevision,test_number testNumber,date,status,url,pre_report_ready preReportReady,test_report_ready testReportReady,attachment_count attachmentCount,image_count imageCount,video_count videoCount,data_count dataCount,created_at createdAt,updated_at updatedAt FROM calendar_tests WHERE date>=? AND date<=? ORDER BY date,id LIMIT 1001",
+    ).bind(from, to).all();
+    return c.json({ tests: rows.results.slice(0, 1000), truncated: rows.results.length > 1000 });
+  });
   app.get("/api/v1/apps/:id/resources", async (c) => {
     const application = await personalApplication(c);
     const parsed = z.object({ q: z.string().trim().max(80).default(""), page: z.coerce.number().int().min(1).max(10000).default(1) }).safeParse(c.req.query());
@@ -303,7 +330,7 @@ export function register(app: App) {
     const filter = q ? ` AND (${foldColumn("r.title")} LIKE ? ESCAPE '!' OR ${foldColumn("r.status")} LIKE ? ESCAPE '!')` : "";
     const bindings = q ? [search, search] : [];
     const [rows, count] = await Promise.all([
-      c.env.DB.prepare(`SELECT r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt FROM app_resources r WHERE r.app_id=? AND r.user_id=?${filter} ORDER BY r.updated_at DESC,r.created_at DESC,r.resource_id LIMIT 20 OFFSET ?`)
+      c.env.DB.prepare(`SELECT r.resource_id resourceId,r.title,r.date,r.status,r.url,r.created_at createdAt,r.updated_at updatedAt,t.team_project teamProject,t.test_type_name testTypeName,t.description,t.report_code reportCode,t.report_revision reportRevision,t.test_number testNumber,t.pre_report_ready preReportReady,t.test_report_ready testReportReady,t.attachment_count attachmentCount,t.image_count imageCount,t.video_count videoCount,t.data_count dataCount FROM app_resources r LEFT JOIN calendar_tests t ON t.id=r.resource_id AND r.app_id='test-formu-web' WHERE r.app_id=? AND r.user_id=?${filter} ORDER BY r.updated_at DESC,r.created_at DESC,r.resource_id LIMIT 20 OFFSET ?`)
         .bind(application.id, c.get("user").id, ...bindings, (page - 1) * 20).all(),
       c.env.DB.prepare(`SELECT COUNT(*) total FROM app_resources r WHERE r.app_id=? AND r.user_id=?${filter}`)
         .bind(application.id, c.get("user").id, ...bindings).first<{ total: number }>(),

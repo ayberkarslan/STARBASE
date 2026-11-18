@@ -16,7 +16,7 @@ export type TransferEvents = {
   error?: (message: string) => void;
 };
 
-type Sender = { id: string; file: File; resolve: () => void; reject: (error: Error) => void; acknowledged: number; sent: number };
+type Sender = { id: string; file: File; resolve: () => void; reject: (error: Error) => void; acknowledged: number; sent: number; started: boolean };
 type Receiver = { offer: FileOffer; parts: ArrayBuffer[]; bytes: number; writer?: FileSystemWritableFileStream };
 type SavePicker = Window & { showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle> };
 
@@ -95,7 +95,7 @@ export class TransferLink {
     const id = crypto.randomUUID();
     const offer: FileOffer = { id, name: file.name, size: file.size, mime: file.type || "application/octet-stream" };
     return new Promise((resolve, reject) => {
-      this.sender = { id, file, resolve, reject, acknowledged: 0, sent: 0 };
+      this.sender = { id, file, resolve, reject, acknowledged: 0, sent: 0, started: false };
       this.send({ type: "file-offer", offer });
       this.progress(offer, 0, "offered");
     });
@@ -133,7 +133,8 @@ export class TransferLink {
       this.events.offer?.(offer);
       return;
     }
-    if (data.type === "file-accept" && sender && sender.id === data.id) {
+    if (data.type === "file-accept" && sender && sender.id === data.id && !sender.started) {
+      sender.started = true;
       void this.pump(sender.file, sender.id);
       return;
     }
@@ -149,6 +150,7 @@ export class TransferLink {
     }
     if (data.type === "file-done" && this.receiver) {
       await this.receiveQueue;
+      if (!this.receiver) return;
       const { offer, bytes, writer, parts } = this.receiver;
       if (bytes !== offer.size) { this.fail("Aktarım eksik tamamlandı."); return; }
       if (writer) await writer.close();

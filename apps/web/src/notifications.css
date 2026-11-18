@@ -1,0 +1,20 @@
+.workspace-header-actions { display: flex; align-items: center; gap: 18px; }
+.starbase-notifications { position: relative; }
+.starbase-notifications-trigger { position: relative; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 5px; background: #000; color: #fff; cursor: pointer; }
+.starbase-notifications-trigger:hover,.starbase-notifications-trigger:focus-visible { outline: 1px solid #ffffff75; }
+.starbase-notifications-trigger span { position: absolute; top: -2px; right: -4px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 3px; border-radius: 50%; background: #fff; color: #000; font: 9px/1 sans-serif; }
+.starbase-notifications-popover { position: absolute; z-index: 2000; top: calc(100% + 14px); right: 0; width: min(380px,calc(100vw - 26px)); max-height: min(520px,70vh); overflow: auto; padding: 18px; border: 1px solid #ffffff85; border-radius: 8px; background: #000; color: #fff; box-shadow: 0 18px 45px #000d; scrollbar-width: thin; scrollbar-color: #fff #000; }
+.starbase-notifications-head { display: flex; align-items: end; justify-content: space-between; gap: 14px; padding-bottom: 15px; border-bottom: 1px solid #ffffff42; }
+.starbase-notifications-head h2 { margin: 6px 0 0; font-size: 15px; font-weight: 400; }
+.starbase-notifications-head button { display: flex; align-items: center; gap: 5px; padding: 0; border: 0; background: #000; color: #ffffffa8; cursor: pointer; font-size: 8px; text-align: right; }
+.starbase-notifications-list { display: grid; }
+.starbase-notifications-list > p { margin: 22px 0 8px; color: #ffffff98; font-size: 10px; }
+.starbase-notification { display: grid; grid-template-columns: 32px minmax(0,1fr) 16px; align-items: center; gap: 10px; padding: 13px 0; border: 0; border-bottom: 1px solid #ffffff2f; background: #000; color: #fff; cursor: pointer; text-align: left; }
+.starbase-notification:last-child { border-bottom: 0; }
+.starbase-notification.is-unread { border-left: 2px solid #fff; padding-left: 8px; }
+.starbase-notification-icon { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #ffffff66; border-radius: 50%; }
+.starbase-notification strong { display: block; font-size: 9px; font-weight: 400; line-height: 1.7; }
+.starbase-notification small { display: block; margin-top: 5px; color: #ffffff90; font-size: 8px; }
+.starbase-notification > svg { color: #ffffffa0; }
+.starbase-notification:hover > svg { color: #fff; }
+@media(max-width:600px) { .workspace-header-actions { gap: 5px; }.starbase-notifications-popover { right: -60px; } }

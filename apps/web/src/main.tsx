@@ -4,6 +4,7 @@ import {
 } from "./workspace-shell";
 import { WorkspaceHome } from "./workspace-home";
 import { FileSharing } from "./file-sharing";
+import { Notifications, type StarbaseNotification } from "./notifications";
 import { CommandPalette } from "./command-palette";
 import { DeveloperDocs } from "./developer-docs";
 import { ApplicationDetail } from "./application-detail";
@@ -136,7 +137,9 @@ function App() {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
-  const [shareInviteCount, setShareInviteCount] = useState(0);
+  const [shareOpenRoomId, setShareOpenRoomId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<StarbaseNotification[]>([]);
+  const [notificationUnread, setNotificationUnread] = useState(0);
   const [directoryRevision, setDirectoryRevision] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState("");
@@ -334,14 +337,28 @@ function App() {
   );
   const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length || user?.memberships?.length);
   useEffect(() => {
-    if (!user?.id || !canBrowseDirectory) { setShareInviteCount(0); return; }
+    if (!user?.id || !canBrowseDirectory) { setNotifications([]); setNotificationUnread(0); return; }
     let active = true;
-    const refresh = () => { api("/share/rooms").then((data: { rooms: { isInvited: boolean; isOwner: boolean }[] }) => { if (active) setShareInviteCount(data.rooms.filter((room) => room.isInvited && !room.isOwner).length); }).catch(() => {}); };
+    const refresh = () => { api("/notifications").then((data: { notifications: StarbaseNotification[]; unreadCount: number }) => { if (active) { setNotifications(data.notifications); setNotificationUnread(data.unreadCount); } }).catch(() => {}); };
     refresh();
     const unsubscribe = subscribeShareChanges(refresh);
     window.addEventListener("focus", refresh);
-    return () => { active = false; unsubscribe(); window.removeEventListener("focus", refresh); };
+    const timer = window.setInterval(refresh, 30_000);
+    return () => { active = false; unsubscribe(); window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [user?.id, canBrowseDirectory]);
+  const openNotification = (item: StarbaseNotification) => {
+    setNotifications((before) => before.map((entry) => entry.id === item.id ? { ...entry, readAt: entry.readAt ?? Math.floor(Date.now() / 1000) } : entry));
+    if (!item.readAt) setNotificationUnread((count) => Math.max(0, count - 1));
+    void api(`/notifications/${item.id}/read`, {}).catch(() => {});
+    setShareTarget(null);
+    setShareOpenRoomId(item.resourceId);
+    setTab("sharing");
+  };
+  const readAllNotifications = () => {
+    setNotifications((before) => before.map((item) => ({ ...item, readAt: item.readAt ?? Math.floor(Date.now() / 1000) })));
+    setNotificationUnread(0);
+    void api("/notifications/read-all", {}).catch(() => {});
+  };
   const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
   const canViewDocs = Boolean(user?.owner || user?.roles?.some((role: { id: string }) => role.id === "admin"));
   useEffect(() => {
@@ -368,6 +385,7 @@ function App() {
   const openPage = (id: string) => {
     if (id === "applications") setSelectedApplication(null);
     setShareTarget(null);
+    setShareOpenRoomId(null);
     if (tab === "profile") history.pushState({}, "", "/");
     setTab(id);
   };
@@ -651,25 +669,28 @@ function App() {
           </WorkspaceMenu>
         }
         end={
-          <Button
-            variant="bare"
-            onClick={() =>
-              act(async () => {
-                await api("/auth/logout", {});
-                setUser(null);
-                location.assign("/");
-              })
-            }
-          >
-            <LogOut size={15} /> Çıkış
-          </Button>
+          <div className="workspace-header-actions">
+            {canBrowseDirectory && <Notifications items={notifications} unreadCount={notificationUnread} onOpen={openNotification} onReadAll={readAllNotifications} />}
+            <Button
+              variant="bare"
+              onClick={() =>
+                act(async () => {
+                  await api("/auth/logout", {});
+                  setUser(null);
+                  location.assign("/");
+                })
+              }
+            >
+              <LogOut size={15} /> Çıkış
+            </Button>
+          </div>
         }
       />
       <div className="workspace-body">
         <main className="content">
           {status}
-          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} shareInviteCount={shareInviteCount} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
-          {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} onBack={() => { setShareTarget(null); setTab("home"); }} />}
+          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} shareInviteCount={notificationUnread} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
+          {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} initialRoomId={shareOpenRoomId} onBack={() => { setShareTarget(null); setShareOpenRoomId(null); setTab("home"); }} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
               key={tab}
@@ -680,7 +701,7 @@ function App() {
               canManageOrganization={user.owner || permissions.includes("organization.manage")}
             />
           )}
-          {tab === "profile" && profileId && <MemberProfilePage id={profileId} revision={directoryRevision} onBack={() => { history.pushState({}, "", "/"); setTab("directory"); }} onEdit={profileId === user.id ? () => { history.pushState({}, "", "/account"); setTab("account"); } : undefined} onStartShare={profileId === user.id ? undefined : (name) => { history.pushState({}, "", "/"); setShareTarget({ id: profileId, name }); setTab("sharing"); }} />}
+          {tab === "profile" && profileId && <MemberProfilePage id={profileId} revision={directoryRevision} onBack={() => { history.pushState({}, "", "/"); setTab("directory"); }} onEdit={profileId === user.id ? () => { history.pushState({}, "", "/account"); setTab("account"); } : undefined} onStartShare={profileId === user.id ? undefined : (name) => { history.pushState({}, "", "/"); setShareOpenRoomId(null); setShareTarget({ id: profileId, name }); setTab("sharing"); }} />}
           {tab === "account" && (
             <section className="profile-page">
               <div className="profile-hero">

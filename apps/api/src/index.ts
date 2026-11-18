@@ -89,6 +89,7 @@ app.use("/api/v1/*", async (c, next) => {
       "/api/v1/apps",
       "/api/v1/internal/app-resources",
       "/api/v1/internal/test-formu-resources",
+      "/api/v1/internal/test-formu-members",
       "/api/v1/auth/resend",
       "/api/v1/health",
       "/api/v1/auth/register",

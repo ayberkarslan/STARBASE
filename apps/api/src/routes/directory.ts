@@ -52,6 +52,22 @@ async function target(c: C) {
   return u;
 }
 export function register(app: App) {
+  app.get("/api/v1/directory/calendar-members", async (c) => {
+    const session = c.get("session");
+    if (session.kind !== "access" || session.app_id !== "test-formu-web") fail(403, "access_denied");
+    const memberAccess = await c.env.DB.prepare("SELECT 1 FROM user_roles WHERE user_id=?").bind(c.get("user").id).first();
+    if (!c.get("user").owner && !memberAccess) fail(403, "team_membership_required");
+    const q = (c.req.query("q") ?? "").trim().slice(0, 80);
+    if (q.length < 2) return c.json({ users: [] });
+    const fold = q.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").toLowerCase();
+    let column = "u.first_name||' '||u.last_name||' '||u.username";
+    for (const [from, to] of [["İ", "i"], ["ı", "i"], ["Ç", "c"], ["ç", "c"], ["Ğ", "g"], ["ğ", "g"], ["Ö", "o"], ["ö", "o"], ["Ş", "s"], ["ş", "s"], ["Ü", "u"], ["ü", "u"]])
+      column = `replace(${column},'${from}','${to}')`;
+    const users = await c.env.DB.prepare(
+      `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName FROM users u WHERE u.disabled=0 AND ${member("u")} AND lower(${column}) LIKE ? ESCAPE '!' ORDER BY u.first_name COLLATE NOCASE,u.last_name COLLATE NOCASE LIMIT 20`,
+    ).bind("%" + fold.replace(/[!%_]/g, "!$&") + "%").all();
+    return c.json({ users: users.results });
+  });
   app.get("/api/v1/directory/live", async (c) => {
     await requireDirectory(c);
     if (c.req.header("origin") !== new URL(c.req.url).origin) fail(403, "origin_rejected");

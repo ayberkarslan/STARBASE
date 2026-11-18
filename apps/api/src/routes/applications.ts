@@ -228,7 +228,8 @@ export function register(app: App) {
       c,
       z.object({
         resourceId: z.string().min(1).max(150),
-        starbaseUserId: z.string().regex(/^[a-zA-Z0-9-]{1,100}$/),
+        starbaseUserId: z.string().regex(/^[a-zA-Z0-9-]{1,100}$/).optional(),
+        starbaseUserIds: z.array(z.string().regex(/^[a-zA-Z0-9-]{1,100}$/)).max(31).optional(),
         deleted: z.boolean().default(false),
         title: z.string().trim().min(1).max(180).optional(),
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -244,16 +245,27 @@ export function register(app: App) {
         visibility: z.enum(["team", "personal"]).optional(),
       }),
     );
+    const starbaseUserIds = item.starbaseUserIds ?? (item.starbaseUserId ? [item.starbaseUserId] : []);
+    if (!item.deleted && starbaseUserIds.length === 0) return fail(400, "invalid_input");
     if (item.deleted) {
       await syncAppResource(c, { ...item, appId: "test-formu-web", starbaseUserIds: [], deleted: true });
     } else {
       await syncAppResource(c, {
         ...item,
         appId: "test-formu-web",
-        starbaseUserIds: [item.starbaseUserId],
+        starbaseUserIds,
       });
     }
     return c.json({ ok: true });
+  });
+  app.post("/api/v1/internal/test-formu-members", async (c) => {
+    if (!checkSyncSecret(c)) return fail(403, "permission_denied");
+    const { ids } = await body(c, z.object({ ids: z.array(z.string().regex(/^[a-zA-Z0-9-]{1,100}$/)).max(30) }));
+    if (!ids.length) return c.json({ users: [] });
+    const users = await c.env.DB.prepare(
+      `SELECT u.id,u.username,u.first_name firstName,u.last_name lastName FROM users u WHERE u.disabled=0 AND (u.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=u.id)) AND u.id IN (${ids.map(() => "?").join(",")})`,
+    ).bind(...ids).all();
+    return c.json({ users: users.results });
   });
   app.get("/api/v1/apps", async (c) => {
     const apps = await c.env.DB.prepare(

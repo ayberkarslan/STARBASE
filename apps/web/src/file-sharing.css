@@ -64,3 +64,24 @@
 .share-page:has(.share-room-layout) .share-title { margin: 20px 0; }
 @media(max-width:920px) { .share-canvas { height: 500px; }.share-canvas-head { align-items: start; }.share-canvas-peer { width: 112px; }.share-canvas-peer > span { width: 56px; height: 56px; } }
 @media(max-width:600px) { .share-canvas-head { flex-direction: column; }.share-canvas-head > div:last-child { justify-content: flex-start; }.share-canvas { height: 520px; }.share-canvas-file { width: 86px; min-height: 110px; }.share-canvas-file-preview { height: 54px; }.share-canvas-zone { width: 150px; height: 125px; }.share-canvas-zone small { display: none; } }
+
+.share-owner-controls { gap: 0; }
+.share-owner-controls > .eyebrow { margin-bottom: 13px; }
+.share-setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 0; border-top: 1px solid #ffffff30; }
+.share-setting > div:first-child { display: grid; gap: 5px; }
+.share-setting strong { font-size: 10px; font-weight: 400; }
+.share-setting small { color: #ffffff8a; font-size: 8px; }
+.share-setting-choice { display: flex; border: 1px solid #ffffff5b; border-radius: 5px; overflow: hidden; }
+.share-setting-choice button { min-height: 31px; padding: 0 10px; border: 0; background: #000; color: #fff; cursor: pointer; font-size: 8px; }
+.share-setting-choice button.selected { background: #fff; color: #000; }
+.share-setting-choice button + button { border-left: 1px solid #ffffff5b; }
+.share-text-action { flex: none; padding: 6px 0; border: 0; background: #000; color: #fff; font-size: 9px; cursor: pointer; text-decoration: underline; text-decoration-color: #ffffff68; text-underline-offset: 4px; }
+.share-password-settings { display: grid; gap: 10px; padding: 5px 0 15px; }
+.share-password-settings > .share-text-action { justify-self: start; }
+.share-password { justify-content: space-between; }
+.share-password > span { display: grid; gap: 5px; }
+.share-password button { display: flex; align-items: center; gap: 5px; font-size: 8px; }
+.share-password-edit { display: grid; gap: 10px; }
+.share-password-edit .sd-button { justify-self: start; }
+.share-invite-control { padding: 17px 0; border-top: 1px solid #ffffff30; }
+.share-close-room { display: flex; align-items: center; gap: 8px; justify-self: start; padding: 14px 0; border: 0; border-top: 1px solid #ffffff30; width: 100%; background: #000; color: #fff; cursor: pointer; font-size: 9px; }

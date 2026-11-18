@@ -3,6 +3,7 @@ import {
   WorkspaceStarfield,
 } from "./workspace-shell";
 import { WorkspaceHome } from "./workspace-home";
+import { FileSharing } from "./file-sharing";
 import { CommandPalette } from "./command-palette";
 import { DeveloperDocs } from "./developer-docs";
 import { ApplicationDetail } from "./application-detail";
@@ -58,6 +59,7 @@ import {
   Camera,
   Trash2,
   House,
+  Share2,
 } from "lucide-react";
 import "@stardrop/ui/styles.css";
 import "./style.css";
@@ -133,6 +135,7 @@ function App() {
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
   const [directoryRevision, setDirectoryRevision] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState("");
@@ -340,6 +343,7 @@ function App() {
     ...(canBrowseDirectory ? [
       { id: "directory", name: "Takım", icon: Users },
       { id: "teams", name: "Departmanlar", icon: Layers },
+      { id: "sharing", name: "Dosya Paylaşımı", icon: Share2 },
     ] : []),
     { id: "account", name: "Hesabım", icon: Orbit },
     ...(canManage("users.manage") ? [
@@ -353,6 +357,7 @@ function App() {
   const shortcuts = navigation.filter((item) => !["home", "applications", "teams"].includes(item.id));
   const openPage = (id: string) => {
     if (id === "applications") setSelectedApplication(null);
+    setShareTarget(null);
     if (tab === "profile") history.pushState({}, "", "/");
     setTab(id);
   };
@@ -654,6 +659,7 @@ function App() {
         <main className="content">
           {status}
           {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
+          {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} onBack={() => { setShareTarget(null); setTab("home"); }} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
               key={tab}
@@ -664,7 +670,7 @@ function App() {
               canManageOrganization={user.owner || permissions.includes("organization.manage")}
             />
           )}
-          {tab === "profile" && profileId && <MemberProfilePage id={profileId} revision={directoryRevision} onBack={() => { history.pushState({}, "", "/"); setTab("directory"); }} onEdit={profileId === user.id ? () => { history.pushState({}, "", "/account"); setTab("account"); } : undefined} />}
+          {tab === "profile" && profileId && <MemberProfilePage id={profileId} revision={directoryRevision} onBack={() => { history.pushState({}, "", "/"); setTab("directory"); }} onEdit={profileId === user.id ? () => { history.pushState({}, "", "/account"); setTab("account"); } : undefined} onStartShare={profileId === user.id ? undefined : (name) => { history.pushState({}, "", "/"); setShareTarget({ id: profileId, name }); setTab("sharing"); }} />}
           {tab === "account" && (
             <section className="profile-page">
               <div className="profile-hero">

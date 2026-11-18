@@ -137,11 +137,13 @@ export function MemberProfilePage({
   id,
   onBack,
   onEdit,
+  onStartShare,
   revision,
 }: {
   id: string;
   onBack: () => void;
   onEdit?: () => void;
+  onStartShare?: (name: string) => void;
   revision: number;
 }) {
   const [profile, setProfile] = useState<DirectoryProfile | null>(null),
@@ -202,6 +204,7 @@ export function MemberProfilePage({
               <h3>{profile.firstName} {profile.lastName}</h3>
               <p>@{profile.username}{(profile as any).customTitle && !(profile as any).badges?.length ? ` · ${(profile as any).customTitle}` : ""}</p>
               {onEdit && <Button variant="bare" onClick={onEdit}>Hesabımı düzenle <ArrowUpRight size={14} /></Button>}
+              {onStartShare && <Button variant="bare" onClick={() => onStartShare(`${profile.firstName} ${profile.lastName}`)}>Canlı paylaşım başlat <ArrowUpRight size={14} /></Button>}
             </div>
           </section>
           {(profile as any).badges?.length ? (

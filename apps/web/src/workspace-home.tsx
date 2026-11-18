@@ -7,10 +7,11 @@ import "./workspace-home.css";
 export type HomeApp = { id: string; name: string; logoUrl?: string; launchUrl?: string };
 export type HomeShortcut = { id: string; name: string; icon: LucideIcon };
 
-export function WorkspaceHome({ name, apps, shortcuts, onPage, onApplication, onSearch }: {
+export function WorkspaceHome({ name, apps, shortcuts, shareInviteCount, onPage, onApplication, onSearch }: {
   name: string;
   apps: HomeApp[];
   shortcuts: HomeShortcut[];
+  shareInviteCount: number;
   onPage: (id: string) => void;
   onApplication: (id: string) => void;
   onSearch: () => void;
@@ -41,6 +42,8 @@ export function WorkspaceHome({ name, apps, shortcuts, onPage, onApplication, on
         <Search size={17} /><span>Uygulama veya üye ara</span>
       </button>
     </div>
+
+    {shareInviteCount > 0 && <button type="button" className="workspace-home-share-invite" onClick={() => onPage("sharing")}><span>{shareInviteCount} canlı paylaşım davetin var</span><ArrowUpRight size={16} /></button>}
 
     {recent && <section className="workspace-home-recent" aria-label="Son kullanılan uygulama">
       <div><span className="eyebrow">KALDIĞIN YER</span><p>Son giriş yaptığın uygulamaya dön.</p></div>

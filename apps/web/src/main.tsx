@@ -13,7 +13,7 @@ import { OrbitalIdentity } from "./orbital-identity";
 import { AuthStarfield } from "./auth-starfield";
 import { FormSelect } from "./form-select";
 import { memberStatus, memberStatusLabel } from "./member-status";
-import { invalidateDirectory, subscribeDirectoryChanges } from "./member-live";
+import { invalidateDirectory, subscribeDirectoryChanges, subscribeShareChanges } from "./member-live";
 import { Captcha } from "./captcha";
 import { AdminActivity } from "./admin-activity";
 import { PasswordField } from "./password-field";
@@ -136,6 +136,7 @@ function App() {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
+  const [shareInviteCount, setShareInviteCount] = useState(0);
   const [directoryRevision, setDirectoryRevision] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState("");
@@ -332,6 +333,15 @@ function App() {
     </button>
   );
   const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length || user?.memberships?.length);
+  useEffect(() => {
+    if (!user?.id || !canBrowseDirectory) { setShareInviteCount(0); return; }
+    let active = true;
+    const refresh = () => { api("/share/rooms").then((data: { rooms: { isInvited: boolean; isOwner: boolean }[] }) => { if (active) setShareInviteCount(data.rooms.filter((room) => room.isInvited && !room.isOwner).length); }).catch(() => {}); };
+    refresh();
+    const unsubscribe = subscribeShareChanges(refresh);
+    window.addEventListener("focus", refresh);
+    return () => { active = false; unsubscribe(); window.removeEventListener("focus", refresh); };
+  }, [user?.id, canBrowseDirectory]);
   const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
   const canViewDocs = Boolean(user?.owner || user?.roles?.some((role: { id: string }) => role.id === "admin"));
   useEffect(() => {
@@ -658,7 +668,7 @@ function App() {
       <div className="workspace-body">
         <main className="content">
           {status}
-          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
+          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} shareInviteCount={shareInviteCount} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
           {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} onBack={() => { setShareTarget(null); setTab("home"); }} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory

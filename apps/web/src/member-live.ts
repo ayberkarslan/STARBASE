@@ -1,4 +1,10 @@
 const EVENT = "starbase:directory-changed";
+const SHARE_EVENT = "starbase:share-rooms-changed";
+
+export function subscribeShareChanges(onChange: () => void) {
+  window.addEventListener(SHARE_EVENT, onChange);
+  return () => window.removeEventListener(SHARE_EVENT, onChange);
+}
 
 export function invalidateDirectory() {
   window.dispatchEvent(new Event(EVENT));
@@ -24,7 +30,9 @@ export function subscribeDirectoryChanges(onChange: () => void) {
     };
     current.onmessage = (event) => {
       try {
-        if (JSON.parse(event.data).type === "directory.changed") onChange();
+        const type = JSON.parse(event.data).type;
+        if (type === "directory.changed") onChange();
+        if (type === "share.rooms.changed") window.dispatchEvent(new Event(SHARE_EVENT));
       } catch { /* Ignore unknown frames. */ }
     };
     current.onclose = () => {

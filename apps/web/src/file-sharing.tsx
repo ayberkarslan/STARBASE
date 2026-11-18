@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowUpRight, Check, Copy, File, FileUp, LockKeyhole, Plus, 
 import { Button, TextField } from "@stardrop/ui";
 import { TransferLink, type FileOffer, type ReceivedFile, type Signal, type TransferProgress } from "@starbase/file-transfer";
 import { request } from "./management";
+import { subscribeShareChanges } from "./member-live";
 import "./file-sharing.css";
 
 type Room = { id: string; name: string; ownerId: string; ownerName: string; profileTargetId: string | null; protected: boolean; locked: boolean; participantCount: number; createdAt: number; isOwner: boolean; isInvited: boolean };
@@ -51,21 +52,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
     catch (cause) { setError(messageOf(cause)); }
   }, []);
   useEffect(() => { void refresh(); const timer = setInterval(() => void refresh(), 15_000); return () => clearInterval(timer); }, [refresh]);
-  useEffect(() => {
-    let socket: WebSocket | null = null;
-    let reconnect: ReturnType<typeof setTimeout> | undefined;
-    let disposed = false;
-    const connect = () => {
-      if (disposed || document.hidden) return;
-      const url = new URL("/api/v1/directory/live", location.origin);
-      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-      socket = new WebSocket(url);
-      socket.onmessage = (event) => { try { if (JSON.parse(event.data).type === "share.rooms.changed") void refresh(); } catch {} };
-      socket.onclose = () => { socket = null; if (!disposed) reconnect = setTimeout(connect, 3_000); };
-    };
-    connect();
-    return () => { disposed = true; clearTimeout(reconnect); socket?.close(); };
-  }, [refresh]);
+  useEffect(() => subscribeShareChanges(() => void refresh()), [refresh]);
   useEffect(() => () => { for (const url of urls.current) URL.revokeObjectURL(url); }, []);
   useEffect(() => {
     if (inviteQuery.trim().length < 2) { setInviteResults([]); return; }

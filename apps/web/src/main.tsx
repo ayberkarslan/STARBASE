@@ -330,11 +330,15 @@ function App() {
   );
   const canBrowseDirectory = Boolean(user?.owner || user?.roles?.length);
   const canManage = (permission: string) => Boolean(user?.owner || permissions.includes(permission));
+  const canViewDocs = Boolean(user?.owner || user?.roles?.some((role: { id: string }) => role.id === "admin"));
+  useEffect(() => {
+    if (user && tab === "docs" && !canViewDocs) setTab("home");
+  }, [user, tab, canViewDocs]);
   const navigation = [
     { id: "home", name: "Ana sayfa", icon: House },
     { id: "applications", name: "Uygulamalar", icon: AppWindow },
     ...(canBrowseDirectory ? [
-      { id: "directory", name: "Takım dizini", icon: Users },
+      { id: "directory", name: "Takım", icon: Users },
       { id: "teams", name: "Departmanlar", icon: Layers },
     ] : []),
     { id: "account", name: "Hesabım", icon: Orbit },
@@ -344,7 +348,7 @@ function App() {
     ] : []),
     ...(canManage("roles.manage") ? [{ id: "roles", name: "Roller ve izinler", icon: Shield }] : []),
     ...(canManage("apps.manage") ? [{ id: "application_management", name: "Uygulama yönetimi", icon: AppWindow }] : []),
-    { id: "docs", name: "Geliştiriciler", icon: BookOpen },
+    ...(canViewDocs ? [{ id: "docs", name: "Geliştiriciler", icon: BookOpen }] : []),
   ];
   const shortcuts = navigation.filter((item) => !["home", "applications", "teams"].includes(item.id));
   const openPage = (id: string) => {
@@ -414,10 +418,7 @@ function App() {
             />
           }
         />
-        {path === "/docs" ? (
-          <Docs />
-        ) : (
-          <main className="login-main">
+        <main className="login-main">
             <section className="intro">
               <span className="eyebrow">YILDIZDAN YILDIZLARA</span>
               <h1>
@@ -562,8 +563,7 @@ function App() {
                 )}
               </div>
             </section>
-          </main>
-        )}
+        </main>
         <footer>
           <span>YILDIZ ROKET TAKIMI</span>
         </footer>
@@ -1026,7 +1026,7 @@ function App() {
               <AdminForm kind="assignment" run={act} />
             </>
           )}
-          {tab === "docs" && <Docs />}
+          {tab === "docs" && canViewDocs && <Docs />}
         </main>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} apps={apps} pages={navigation} canSearchMembers={canBrowseDirectory} onPage={openPage} onApplication={openApplication} onMember={openMember} />

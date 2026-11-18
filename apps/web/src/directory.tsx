@@ -172,7 +172,7 @@ export function MemberProfilePage({
   }, [id, attempt, revision]);
   return (
     <section className="member-profile-page">
-      <div className="member-profile-page__nav"><Button variant="bare" onClick={onBack}><ArrowLeft size={15} /> Takım dizinine dön</Button><span>STARBASE / TAKIM PROFİLİ</span></div>
+      <div className="member-profile-page__nav"><Button variant="bare" onClick={onBack}><ArrowLeft size={15} /> Takıma dön</Button><span>STARBASE / TAKIM PROFİLİ</span></div>
       {error && (
         <div role="alert">
           <p>{error}</p>
@@ -265,8 +265,8 @@ export function TeamDirectory({
         if (live)
           setError(
             (cause as Error).message === "team_membership_required"
-              ? "Takım dizini yalnız ekip üyelerine açık. Yönetici hesabına bir ekip üyeliği ata."
-              : "Takım dizini yüklenemedi. Sunucu migration'larını güncelle ve yeniden dene.",
+              ? "Takım yalnız ekip üyelerine açık. Yönetici hesabına bir ekip üyeliği ata."
+              : "Takım yüklenemedi. Sunucu migration'larını güncelle ve yeniden dene.",
           );
       });
     return () => {
@@ -344,7 +344,7 @@ export function TeamDirectory({
       <div className="directory-heading">
         <div>
           <span className="eyebrow">YILDIZ ROKET TAKIMI</span>
-          <h1>{selectedTeam ? org.teams.find((t) => t.id === selectedTeam)?.name ?? "Ekip" : teamsOnly ? "Departmanlar" : "Takım dizini"}</h1>
+          <h1>{selectedTeam ? org.teams.find((t) => t.id === selectedTeam)?.name ?? "Ekip" : teamsOnly ? "Departmanlar" : "Takım"}</h1>
         </div>
         <Button variant="bare" onClick={() => onOpenProfile(currentUserId)}>
           Profilimi görüntüle <ArrowUpRight size={15} />

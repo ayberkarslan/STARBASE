@@ -691,7 +691,7 @@ function App() {
       <div className="workspace-body">
         <main className="content">
           {status}
-          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} shareInviteCount={notificationUnread} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
+          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
           {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} initialRoomId={shareOpenRoomId} initialRoomNonce={shareOpenNonce} onBack={() => { setShareTarget(null); setShareOpenRoomId(null); setTab("home"); }} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory

@@ -202,7 +202,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
           const member = roster.find((item) => item.connectionId === message.from) ?? { connectionId: message.from, userId: "", name: "Üye" };
           void addPeer(member).handleSignal(message.signal as Signal).catch((cause) => setError(messageOf(cause)));
         }
-        if (["closed", "kicked", "banned"].includes(message.type)) { setError(message.type === "kicked" ? "Odadan çıkarıldın. Yeniden katılabilirsin." : message.type === "banned" ? "Bu odada engellendin." : "Oda kapatıldı."); setRoomId(null); void refresh(); }
+        if (["closed", "kicked", "banned"].includes(message.type)) { setError(message.type === "kicked" ? "Odadan çıkarıldın. Yeniden katılmak için yeni davet veya oda kodu gerekli." : message.type === "banned" ? "Bu odada engellendin." : "Oda kapatıldı."); setRoomId(null); void refresh(); }
       } catch { setError("Oda bağlantısı okunamadı."); }
     };
     socket.onclose = (event) => {

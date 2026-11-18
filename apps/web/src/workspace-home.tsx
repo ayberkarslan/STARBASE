@@ -7,10 +7,11 @@ import "./workspace-home.css";
 export type HomeApp = { id: string; name: string; logoUrl?: string; launchUrl?: string };
 export type HomeShortcut = { id: string; name: string; icon: LucideIcon };
 
-export function WorkspaceHome({ name, apps, shortcuts, onPage, onApplication, onSearch }: {
+export function WorkspaceHome({ name, apps, shortcuts, canShare, onPage, onApplication, onSearch }: {
   name: string;
   apps: HomeApp[];
   shortcuts: HomeShortcut[];
+  canShare: boolean;
   onPage: (id: string) => void;
   onApplication: (id: string) => void;
   onSearch: () => void;
@@ -53,7 +54,11 @@ export function WorkspaceHome({ name, apps, shortcuts, onPage, onApplication, on
     <section className="workspace-home-section" aria-labelledby="home-apps-title">
       <div className="workspace-home-section-head"><span className="eyebrow">PLATFORMLAR</span><button type="button" onClick={() => onPage("applications")}>Tüm uygulamalar <ArrowUpRight size={14} /></button></div>
       <h2 id="home-apps-title">Uygulamalar</h2>
-      {apps.length ? <div className="workspace-home-apps">{apps.map((app) => <button type="button" className="workspace-home-app" key={app.id} onClick={() => onApplication(app.id)} aria-label={`${app.name} ayrıntılarını aç`}>
+      {apps.length || canShare ? <div className="workspace-home-apps">{canShare && <button type="button" className="workspace-home-app" onClick={() => onPage("sharing")} aria-label="Dosya Paylaşım ekranını aç">
+        <img className="workspace-home-app-watermark" src="/brand/file-sharing.svg" alt="" />
+        <span className="workspace-home-app-icon"><img src="/brand/file-sharing.svg" alt="" /></span>
+        <strong>Dosya Paylaşım</strong><span className="workspace-home-app-action">Paylaşım alanını aç <ArrowUpRight size={16} /></span>
+      </button>}{apps.map((app) => <button type="button" className="workspace-home-app" key={app.id} onClick={() => onApplication(app.id)} aria-label={`${app.name} ayrıntılarını aç`}>
         {app.logoUrl && <img className="workspace-home-app-watermark" src={app.logoUrl} alt="" />}
         <span className="workspace-home-app-icon">{app.logoUrl ? <img src={app.logoUrl} alt="" /> : <AppWindow size={22} />}</span>
         <strong>{app.name}</strong><span className="workspace-home-app-action">Uygulama ayrıntıları <ArrowUpRight size={16} /></span>

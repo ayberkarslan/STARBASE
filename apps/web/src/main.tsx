@@ -383,7 +383,7 @@ function App() {
     ...(canManage("apps.manage") ? [{ id: "application_management", name: "Uygulama yönetimi", icon: AppWindow }] : []),
     ...(canViewDocs ? [{ id: "docs", name: "Geliştiriciler", icon: BookOpen }] : []),
   ];
-  const shortcuts = navigation.filter((item) => !["home", "applications", "teams"].includes(item.id));
+  const shortcuts = navigation.filter((item) => !["home", "applications", "teams", "sharing"].includes(item.id));
   const openPage = (id: string) => {
     if (id === "applications") setSelectedApplication(null);
     setShareTarget(null);
@@ -691,7 +691,7 @@ function App() {
       <div className="workspace-body">
         <main className="content">
           {status}
-          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
+          {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} canShare={canBrowseDirectory} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
           {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} initialRoomId={shareOpenRoomId} initialRoomNonce={shareOpenNonce} onBack={() => { setShareTarget(null); setShareOpenRoomId(null); setTab("home"); }} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory

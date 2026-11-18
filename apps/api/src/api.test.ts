@@ -150,6 +150,15 @@ async function memberSession() {
 }
 
 describe("live sharing rooms", () => {
+  it("lets an active department member search team profiles without an explicit role", async () => {
+    db.prepare("INSERT INTO memberships VALUES(?,?,?)").run("u2", "avionics", "software");
+    db.prepare("INSERT INTO families(id,user_id,expires) VALUES(?,?,?)").run("f2", "u2", now() + 1000);
+    db.prepare("INSERT INTO sessions(hash,user_id,kind,expires,family,created_at) VALUES(?,?,?,?,?,?)")
+      .run(await hash("member-central"), "u2", "central", now() + 1000, "f2", now());
+    const response = await app.request("https://base.test/api/v1/directory/users?q=alice", { headers: { Cookie: "starbase=member-central", Origin: "https://base.test" } }, env);
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as any).users[0].id).toBe("u1");
+  });
   it("lists rooms and admits a profile invite without the room password", async () => {
     const asMember = await memberSession();
     const created = await call("/share/rooms", { name: "Aviyonik dosyaları", protected: true, profileTargetId: "u2" });

@@ -28,7 +28,7 @@ const deviceLabel = (agent: string | null) => {
 
 function DocumentCover({ id, resourceId, title }: { id: string; resourceId: string; title: string }) {
   const [failed, setFailed] = useState(false);
-  return <span className="application-detail-cover">
+  return <span className={`application-detail-cover${failed ? "" : " application-detail-cover--preview"}`}>
     {!failed && <img loading="lazy" src={`/api/v1/apps/${encodeURIComponent(id)}/resources/${encodeURIComponent(resourceId)}/preview`} alt="" onError={() => setFailed(true)} />}
     {failed && <FileText size={35} aria-hidden="true" />}
     <span className="application-detail-cover-label" aria-hidden="true">{title}</span>

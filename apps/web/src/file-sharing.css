@@ -24,7 +24,7 @@
 .share-canvas-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .share-canvas-head p { margin: 9px 0 0; color: #ffffffa3; font-size: 10px; line-height: 1.7; }
 .share-canvas-head > div:last-child { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.share-canvas { position: relative; height: min(61vh,620px); min-height: 490px; overflow: hidden; border: 1px solid #ffffff51; border-radius: 9px; background: #000; touch-action: none; }
+.share-canvas { position: relative; height: min(52vh,520px); min-height: 420px; overflow: hidden; border: 1px solid #ffffff51; border-radius: 9px; background: #000; touch-action: none; }
 .share-canvas::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .6; background-image: radial-gradient(#ffffff2e .6px,transparent .6px); background-size: 28px 28px; mask-image: linear-gradient(to bottom,transparent,#000 18%,#000 85%,transparent); }
 .share-canvas-axis { position: absolute; left: 50%; top: 39%; width: min(64%,520px); height: 1px; transform: translate(-50%,-50%); background: linear-gradient(90deg,transparent,#ffffff24,transparent); pointer-events: none; }
 .share-canvas-peer,.share-canvas-self,.share-canvas-file,.share-canvas-zone { position: absolute; transform: translate(-50%,-50%); user-select: none; }
@@ -58,5 +58,9 @@
 .share-preview-image { display: grid; place-items: center; height: min(45vh,320px); overflow: hidden; border: 1px solid #ffffff48; }
 .share-preview-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .share-preview-image svg { width: 70px; height: 70px; }
-@media(max-width:920px) { .share-canvas { height: 520px; }.share-canvas-head { align-items: start; }.share-canvas-peer { width: 112px; }.share-canvas-peer > span { width: 56px; height: 56px; } }
+.share-preview-targets { display: grid; max-height: 140px; overflow: auto; scrollbar-width: thin; }
+.share-preview-targets button { display: flex; align-items: center; justify-content: space-between; min-height: 36px; border: 0; border-bottom: 1px solid #ffffff3a; background: #000; color: #fff; cursor: pointer; font-size: 9px; text-align: left; }
+.share-preview-targets button:disabled { color: #ffffff70; cursor: default; }
+.share-page:has(.share-room-layout) .share-title { margin: 20px 0; }
+@media(max-width:920px) { .share-canvas { height: 500px; }.share-canvas-head { align-items: start; }.share-canvas-peer { width: 112px; }.share-canvas-peer > span { width: 56px; height: 56px; } }
 @media(max-width:600px) { .share-canvas-head { flex-direction: column; }.share-canvas-head > div:last-child { justify-content: flex-start; }.share-canvas { height: 520px; }.share-canvas-file { width: 86px; min-height: 110px; }.share-canvas-file-preview { height: 54px; }.share-canvas-zone { width: 150px; height: 125px; }.share-canvas-zone small { display: none; } }

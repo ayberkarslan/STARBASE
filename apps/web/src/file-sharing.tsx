@@ -10,6 +10,7 @@ import "./file-sharing.css";
 type Room = { id: string; name: string; ownerId: string; ownerName: string; profileTargetId: string | null; protected: boolean; locked: boolean; participantCount: number; createdAt: number; isOwner: boolean; isInvited: boolean };
 type Member = { connectionId: string; userId: string; name: string };
 type StagedFile = { id: string; file: File };
+type QueuedFile = { id: string; peerId: string; file: File };
 type SearchMember = { id: string; firstName: string; lastName: string; username: string; photoUrl: string };
 const errorText: Record<string, string> = {
   room_password_invalid: "Oda şifresi yanlış.", room_locked: "Oda yeni katılımlara kapalı.", room_access_denied: "Bu odaya erişimin kaldırıldı.",
@@ -36,6 +37,8 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [offers, setOffers] = useState<Array<{ peerId: string; offer: FileOffer }>>([]);
   const [progress, setProgress] = useState<Array<{ peerId: string; value: TransferProgress }>>([]);
+  const [queued, setQueued] = useState<QueuedFile[]>([]);
+  const [failed, setFailed] = useState<Array<{ id: string; peerId: string; name: string; reason: string }>>([]);
   const [received, setReceived] = useState<Array<ReceivedFile & { url?: string }>>([]);
   const [inviteQuery, setInviteQuery] = useState("");
   const [inviteResults, setInviteResults] = useState<SearchMember[]>([]);
@@ -44,6 +47,8 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
   const [showPasswordEditor, setShowPasswordEditor] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const linksRef = useRef(new Map<string, TransferLink>());
+  const queueRef = useRef<QueuedFile[]>([]);
+  const drainingRef = useRef(new Set<string>());
   const fileInput = useRef<HTMLInputElement>(null);
   const urls = useRef<string[]>([]);
   const startedProfile = useRef("");
@@ -51,6 +56,31 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
   const visibleMembers = [...members]
     .sort((a, b) => Number(readyPeers.includes(b.connectionId)) - Number(readyPeers.includes(a.connectionId)))
     .filter((member, index, list) => list.findIndex((item) => item.userId === member.userId) === index);
+  const transferRows = [
+    ...queued.map((item) => ({ id: item.id, name: item.file.name, peer: members.find((member) => member.connectionId === item.peerId)?.name ?? "Üye", status: "Bağlantı kuruluyor", percent: 0 })),
+    ...progress.map(({ peerId, value }) => ({ id: `${peerId}:${value.id}`, name: value.name, peer: members.find((member) => member.connectionId === peerId)?.name ?? "Üye", status: ({ offered: "Alıcının onayı bekleniyor", sending: "Gönderiliyor", receiving: "Alınıyor", sent: "Gönderildi", received: "Alındı", rejected: "Reddedildi", failed: "Aktarım başarısız" } as const)[value.status], percent: value.size ? Math.round(value.bytes / value.size * 100) : 100 })),
+    ...failed.map((item) => ({ id: item.id, name: item.name, peer: members.find((member) => member.connectionId === item.peerId)?.name ?? "Üye", status: item.reason, percent: 0 })),
+  ].slice(-4).reverse();
+
+  const drainPeer = async (peerId: string) => {
+    if (drainingRef.current.has(peerId)) return;
+    const link = linksRef.current.get(peerId);
+    if (!link?.ready) return;
+    drainingRef.current.add(peerId);
+    try {
+      while (link.ready) {
+        const index = queueRef.current.findIndex((item) => item.peerId === peerId);
+        if (index < 0) break;
+        const [item] = queueRef.current.splice(index, 1);
+        setQueued([...queueRef.current]);
+        try { await link.sendFile(item.file); }
+        catch (cause) {
+          const reason = messageOf(cause).includes("reddetti") ? "Alıcı reddetti" : "Gönderilemedi";
+          setFailed((items) => [...items, { id: item.id, peerId, name: item.file.name, reason }].slice(-8));
+        }
+      }
+    } finally { drainingRef.current.delete(peerId); }
+  };
 
   const refresh = useCallback(async () => {
     try { const data = await request("/share/rooms") as { rooms: Room[] }; setRooms(data.rooms); }
@@ -110,7 +140,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
       const peerId = member.connectionId;
       const link = new TransferLink({
         signal: (signal: Signal) => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "signal", to: peerId, signal })); },
-        ready: () => { if (active) setReadyPeers((items) => [...new Set([...items, peerId])]); },
+        ready: () => { if (active) { setReadyPeers((items) => [...new Set([...items, peerId])]); void drainPeer(peerId); } },
         offer: (offer) => { if (active) setOffers((items) => [...items, { peerId, offer }]); },
         progress: (value) => { if (active) setProgress((items) => [...items.filter((item) => item.peerId !== peerId || item.value.id !== value.id), { peerId, value }].slice(-20)); },
         received: (file) => { if (!active) return; const fileUrl = file.blob ? URL.createObjectURL(file.blob) : undefined; if (fileUrl) urls.current.push(fileUrl); setReceived((items) => [{ ...file, url: fileUrl }, ...items].slice(0, 12)); },
@@ -127,7 +157,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
           roster = message.members as Member[];
           setMembers(roster);
           const present = new Set(roster.map((member) => member.connectionId));
-          for (const [id, link] of linksRef.current) if (!present.has(id)) { link.close(); linksRef.current.delete(id); setReadyPeers((items) => items.filter((item) => item !== id)); }
+          for (const [id, link] of linksRef.current) if (!present.has(id)) { link.close(); linksRef.current.delete(id); setReadyPeers((items) => items.filter((item) => item !== id)); queueRef.current = queueRef.current.filter((item) => item.peerId !== id); setQueued([...queueRef.current]); }
           for (const member of roster) {
             if (member.connectionId === ownConnection || linksRef.current.has(member.connectionId)) continue;
             const link = addPeer(member);
@@ -145,7 +175,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
     socket.onclose = () => { if (active) setError("Canlı bağlantı kesildi. Odaya yeniden katılabilirsin."); };
     socket.onerror = () => { if (active) setError("Canlı odaya bağlanılamadı."); };
     const ping = setInterval(() => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" })); }, 30_000);
-    return () => { active = false; clearInterval(ping); socket.close(); socketRef.current = null; for (const link of linksRef.current.values()) link.close(); linksRef.current.clear(); setMembers([]); setReadyPeers([]); setOffers([]); };
+    return () => { active = false; clearInterval(ping); socket.close(); socketRef.current = null; for (const link of linksRef.current.values()) link.close(); linksRef.current.clear(); queueRef.current = []; drainingRef.current.clear(); setQueued([]); setMembers([]); setReadyPeers([]); setOffers([]); };
   }, [roomId, refresh]);
 
   const updateRoom = async (change: Record<string, unknown>) => {
@@ -175,9 +205,10 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
     catch (cause) { setError(messageOf(cause)); }
   };
   const sendTo = (peerId: string, file: File) => {
-    const link = linksRef.current.get(peerId);
-    if (!link?.ready) { setError("Alıcının doğrudan bağlantısı henüz hazır değil."); return; }
-    void link.sendFile(file).catch((cause) => setError(messageOf(cause)));
+    if (!members.some((member) => member.connectionId === peerId)) { setError("Alıcı odadan ayrıldı."); return; }
+    queueRef.current.push({ id: crypto.randomUUID(), peerId, file });
+    setQueued([...queueRef.current]);
+    void drainPeer(peerId);
   };
   const addFiles = (files: FileList | File[]) => {
     const added = Array.from(files, (file) => ({ id: crypto.randomUUID(), file }));
@@ -202,7 +233,7 @@ export function FileSharing({ currentUserId, profileTarget, onBack }: {
     {joinTarget && <div className="share-modal-backdrop" role="presentation"><form className="share-modal" onSubmit={(event) => { event.preventDefault(); void enter(joinTarget, joinPassword); }}><div className="share-modal-head"><LockKeyhole size={18} /><Button variant="bare" type="button" onClick={() => setJoinTarget(null)} aria-label="Kapat"><X size={17} /></Button></div><h2>{joinTarget.name}</h2><p>Bu oda için şifre gerekiyor.</p><TextField label="Oda şifresi" type="password" value={joinPassword} onChange={(event) => setJoinPassword(event.target.value)} required /><Button variant="primary" type="submit" disabled={busy}>Odaya katıl <ArrowUpRight size={15} /></Button></form></div>}
     {roomId && <div className="share-room-layout"><div className="share-room-main">
       <input ref={fileInput} type="file" multiple hidden onChange={(event) => { if (event.target.files) addFiles(event.target.files); event.target.value = ""; }} />
-      <ShareCanvas files={staged} members={visibleMembers} currentUserId={currentUserId} readyPeers={readyPeers} onAddFiles={addFiles} onRemoveFile={(id) => setStaged((items) => items.filter((item) => item.id !== id))} onSend={sendTo} onChooseFiles={() => fileInput.current?.click()} />
+      <ShareCanvas files={staged} members={visibleMembers} currentUserId={currentUserId} readyPeers={readyPeers} transfers={transferRows} onAddFiles={addFiles} onRemoveFile={(id) => setStaged((items) => items.filter((item) => item.id !== id))} onSend={sendTo} onChooseFiles={() => fileInput.current?.click()} />
       {progress.length > 0 && <div className="share-transfers"><span className="eyebrow">AKTARIMLAR</span>{progress.map(({ peerId, value }) => <div key={`${peerId}:${value.id}`}><span>{value.name}</span><span>{value.status} · %{value.size ? Math.round(value.bytes / value.size * 100) : 100}</span><progress value={value.bytes} max={Math.max(value.size, 1)} /></div>)}</div>}
       {received.length > 0 && <div className="share-received"><span className="eyebrow">ALINAN DOSYALAR</span>{received.map((file) => <div key={file.id}><File size={15} /><span>{file.name}</span>{file.url ? <a href={file.url} download={file.name}>İndir <ArrowUpRight size={14} /></a> : <small>Cihaza kaydedildi</small>}</div>)}</div>}
       </div><aside className="share-room-side"><div className="share-section-head"><span className="eyebrow">KATILIMCILAR</span><Users size={15} /></div><div className="share-member-list">{visibleMembers.map((member) => <div className="share-member" key={member.connectionId} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const entry = staged.find((item) => item.id === event.dataTransfer.getData("text/plain")); if (entry) sendTo(member.connectionId, entry.file); }}><span className="share-member-avatar">{member.name.slice(0, 1)}</span><span><strong>{member.name}</strong><small>{member.userId === currentUserId ? "Sen" : readyPeers.includes(member.connectionId) ? "Bağlı · dosya alabilir" : "Bağlanıyor"}</small></span>{activeRoom?.isOwner && member.userId !== currentUserId && <button type="button" title="Odadan çıkar" aria-label={`${member.name} kişisini çıkar`} onClick={() => void kick(member)}><X size={14} /></button>}</div>)}</div>

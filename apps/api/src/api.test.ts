@@ -173,6 +173,9 @@ describe("live sharing rooms", () => {
     const inbox: any = await (await asMember("/notifications")).json();
     expect(inbox.unreadCount).toBe(1);
     expect(inbox.notifications[0]).toMatchObject({ kind: "share.invite", resourceId: data.room.id });
+    expect((await call(`/notifications/${inbox.notifications[0].id}/read`, {})).status).toBe(404);
+    expect((await asMember(`/notifications/${inbox.notifications[0].id}/read`, {})).status).toBe(200);
+    expect(((await (await asMember("/notifications")).json()) as any).unreadCount).toBe(0);
   });
 
   it("lets a removed member rejoin but keeps a banned member out", async () => {

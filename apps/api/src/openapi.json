@@ -4883,6 +4883,115 @@
         ]
       }
     },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "get__api_v1_notifications",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "operationId": "post__api_v1_notifications_read_all",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "post": {
+        "operationId": "post__api_v1_notifications__id_read",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/organization": {
       "get": {
         "operationId": "get__api_v1_organization",
@@ -5254,6 +5363,90 @@
     "/api/v1/share/rooms/{id}/kick": {
       "post": {
         "operationId": "post__api_v1_share_rooms__id_kick",
+        "tags": [
+          "sharing"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/share/rooms/{id}/bans": {
+      "post": {
+        "operationId": "post__api_v1_share_rooms__id_bans",
+        "tags": [
+          "sharing"
+        ],
+        "security": [
+          {
+            "central": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Dependency or quota unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "get": {
+        "operationId": "get__api_v1_share_rooms__id_bans",
         "tags": [
           "sharing"
         ],

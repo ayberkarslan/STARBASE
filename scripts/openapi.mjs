@@ -63,6 +63,7 @@ for (const f of fs
         route.startsWith("/api/v1/admin/") ||
         route.startsWith("/api/v1/directory/") ||
         route.startsWith("/api/v1/share/") ||
+        route.startsWith("/api/v1/notifications") ||
         route === "/api/v1/me/applications/live" ||
         route.startsWith("/api/v1/board/") ||
         [

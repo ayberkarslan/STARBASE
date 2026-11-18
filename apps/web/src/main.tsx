@@ -138,6 +138,7 @@ function App() {
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
   const [shareOpenRoomId, setShareOpenRoomId] = useState<string | null>(null);
+  const [shareOpenNonce, setShareOpenNonce] = useState(0);
   const [notifications, setNotifications] = useState<StarbaseNotification[]>([]);
   const [notificationUnread, setNotificationUnread] = useState(0);
   const [directoryRevision, setDirectoryRevision] = useState(0);
@@ -352,6 +353,7 @@ function App() {
     void api(`/notifications/${item.id}/read`, {}).catch(() => {});
     setShareTarget(null);
     setShareOpenRoomId(item.resourceId);
+    setShareOpenNonce((nonce) => nonce + 1);
     setTab("sharing");
   };
   const readAllNotifications = () => {
@@ -690,7 +692,7 @@ function App() {
         <main className="content">
           {status}
           {tab === "home" && <WorkspaceHome name={user.firstName || user.username} apps={apps} shortcuts={shortcuts} shareInviteCount={notificationUnread} onPage={openPage} onApplication={openApplication} onSearch={() => setPaletteOpen(true)} />}
-          {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} initialRoomId={shareOpenRoomId} onBack={() => { setShareTarget(null); setShareOpenRoomId(null); setTab("home"); }} />}
+          {tab === "sharing" && canBrowseDirectory && <FileSharing currentUserId={user.id} profileTarget={shareTarget} initialRoomId={shareOpenRoomId} initialRoomNonce={shareOpenNonce} onBack={() => { setShareTarget(null); setShareOpenRoomId(null); setTab("home"); }} />}
           {(tab === "directory" || tab === "teams") && (
             <TeamDirectory
               key={tab}

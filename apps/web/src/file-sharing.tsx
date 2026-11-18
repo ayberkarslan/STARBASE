@@ -18,10 +18,11 @@ const errorText: Record<string, string> = {
 };
 const messageOf = (error: unknown) => errorText[error instanceof Error ? error.message : ""] ?? (error instanceof Error ? error.message : "İşlem tamamlanamadı.");
 
-export function FileSharing({ currentUserId, profileTarget, initialRoomId, onBack }: {
+export function FileSharing({ currentUserId, profileTarget, initialRoomId, initialRoomNonce, onBack }: {
   currentUserId: string;
   profileTarget: { id: string; name: string } | null;
   initialRoomId?: string | null;
+  initialRoomNonce?: number;
   onBack: () => void;
 }) {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -54,7 +55,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, onBac
   const fileInput = useRef<HTMLInputElement>(null);
   const urls = useRef<string[]>([]);
   const startedProfile = useRef("");
-  const openedInvite = useRef("");
+  const openedInvite = useRef(0);
   const activeRoom = rooms.find((room) => room.id === roomId) ?? null;
   const visibleMembers = [...members]
     .sort((a, b) => Number(readyPeers.includes(b.connectionId)) - Number(readyPeers.includes(a.connectionId)))
@@ -135,13 +136,13 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, onBac
     void createRoom(`${profileTarget.name} ile paylaşım`, true, profileTarget.id);
   }, [profileTarget?.id]);
   useEffect(() => {
-    if (!initialRoomId || openedInvite.current === initialRoomId) return;
+    if (!initialRoomId || openedInvite.current === initialRoomNonce) return;
     const target = rooms.find((item) => item.id === initialRoomId);
     if (!target) return;
-    openedInvite.current = initialRoomId;
+    openedInvite.current = initialRoomNonce ?? 0;
     if (roomId && roomId !== initialRoomId) setRoomId(null);
     chooseRoom(target);
-  }, [initialRoomId, rooms, roomId]);
+  }, [initialRoomId, initialRoomNonce, rooms, roomId]);
   useEffect(() => {
     if (!roomId || !activeRoom?.isOwner) { setBannedUsers([]); return; }
     let alive = true;

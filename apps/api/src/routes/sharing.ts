@@ -1,12 +1,15 @@
 import { z } from "zod";
 import { type App, body, fail, requireTeamMember } from "../common";
-import { hash, now, token } from "../security";
+import { hash, now } from "../security";
+import { createRoomInviteNotification } from "./notifications";
 
 const memberSql = `(u.owner=1 OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=u.id) OR EXISTS(SELECT 1 FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=u.id AND d.archived=0 AND (t.id IS NULL OR t.archived=0)))`;
 const userIdInput = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
-const roomInput = z.object({ name: z.string().trim().min(2).max(64), protected: z.boolean(), password: z.string().min(8).max(128).optional(), profileTargetId: userIdInput.optional() });
-const joinInput = z.object({ password: z.string().max(128).optional() });
-const editInput = z.object({ name: z.string().trim().min(2).max(64).optional(), protected: z.boolean().optional(), password: z.string().min(8).max(128).optional(), locked: z.boolean().optional() });
+const pinInput = z.string().regex(/^\d{6}$/);
+const newPin = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
+const roomInput = z.object({ name: z.string().trim().min(2).max(64), protected: z.boolean(), password: pinInput.optional(), profileTargetId: userIdInput.optional() });
+const joinInput = z.object({ password: pinInput.optional() });
+const editInput = z.object({ name: z.string().trim().min(2).max(64).optional(), protected: z.boolean().optional(), password: pinInput.optional(), generatePin: z.boolean().optional(), locked: z.boolean().optional() });
 type Room = { id: string; name: string; ownerId: string; profileTargetId: string | null; passwordHash: string | null; locked: number; participantCount: number; createdAt: number };
 
 async function room(c: any, id: string): Promise<Room> {
@@ -51,10 +54,13 @@ export function register(app: App) {
     const input = await body(c, roomInput);
     if (input.profileTargetId && (input.profileTargetId === c.get("user").id || !(await knownMember(c, input.profileTargetId)))) fail(400, "invalid_member");
     const id = crypto.randomUUID();
-    const password = input.protected ? input.password ?? token().slice(0, 16) : undefined;
+    const password = input.protected ? input.password ?? newPin() : undefined;
     const passwordHash = password ? await hash(`${id}:${password}`) : null;
     await c.env.DB.prepare("INSERT INTO share_rooms(id,name,owner_id,profile_target_id,password_hash,created_at) VALUES(?,?,?,?,?,?)").bind(id, input.name, c.get("user").id, input.profileTargetId ?? null, passwordHash, now()).run();
-    if (input.profileTargetId) await c.env.DB.prepare("INSERT INTO share_room_invites(room_id,user_id) VALUES(?,?)").bind(id, input.profileTargetId).run();
+    if (input.profileTargetId) {
+      await c.env.DB.prepare("INSERT INTO share_room_invites(room_id,user_id) VALUES(?,?)").bind(id, input.profileTargetId).run();
+      await createRoomInviteNotification(c.env, input.profileTargetId, c.get("user").id, id);
+    }
     const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName(id));
     await stub.fetch("https://share.internal/init", { method: "POST", headers: { "x-room-id": id } });
     await notify(c);
@@ -98,12 +104,13 @@ export function register(app: App) {
     const value = await room(c, c.req.param("id"));
     if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
     const input = await body(c, editInput);
-    if (input.protected && !input.password && !value.passwordHash) fail(400, "room_password_required");
-    const passwordHash = input.protected === false ? null : input.password ? await hash(`${value.id}:${input.password}`) : value.passwordHash;
+    const generatedPassword = input.protected !== false && (input.generatePin || (input.protected && !value.passwordHash && !input.password)) ? newPin() : undefined;
+    const password = input.password ?? generatedPassword;
+    const passwordHash = input.protected === false ? null : password ? await hash(`${value.id}:${password}`) : value.passwordHash;
     await c.env.DB.prepare("UPDATE share_rooms SET name=?,password_hash=?,locked=? WHERE id=?").bind(input.name ?? value.name, passwordHash, input.locked == null ? value.locked : Number(input.locked), value.id).run();
-    if (input.password || input.protected === false) await c.env.DB.prepare("DELETE FROM share_room_admissions WHERE room_id=? AND user_id<>?").bind(value.id, value.ownerId).run();
+    if (password || input.protected === false) await c.env.DB.prepare("DELETE FROM share_room_admissions WHERE room_id=? AND user_id<>?").bind(value.id, value.ownerId).run();
     await notify(c);
-    return c.json({ room: publicRoom(await room(c, value.id), c.get("user").id, false) });
+    return c.json({ room: publicRoom(await room(c, value.id), c.get("user").id, false), ...(generatedPassword ? { generatedPassword } : {}) });
   });
 
   app.post("/api/v1/share/rooms/:id/invites", async (c) => {
@@ -113,6 +120,7 @@ export function register(app: App) {
     const input = await body(c, z.object({ userId: userIdInput }));
     if (input.userId === value.ownerId || !(await knownMember(c, input.userId))) fail(400, "invalid_member");
     await c.env.DB.prepare("INSERT OR IGNORE INTO share_room_invites(room_id,user_id) VALUES(?,?)").bind(value.id, input.userId).run();
+    await createRoomInviteNotification(c.env, input.userId, c.get("user").id, value.id);
     await notify(c);
     return c.json({ ok: true });
   });
@@ -123,12 +131,33 @@ export function register(app: App) {
     if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
     const input = await body(c, z.object({ userId: userIdInput }));
     if (input.userId === value.ownerId) fail(400, "invalid_member");
-    await c.env.DB.prepare("INSERT OR IGNORE INTO share_room_bans(room_id,user_id) VALUES(?,?)").bind(value.id, input.userId).run();
     await c.env.DB.prepare("DELETE FROM share_room_admissions WHERE room_id=? AND user_id=?").bind(value.id, input.userId).run();
     const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName(value.id));
     await stub.fetch("https://share.internal/kick", { method: "POST", headers: { "x-room-id": value.id, "x-target-id": input.userId } });
     await notify(c);
     return c.json({ ok: true });
+  });
+
+  app.post("/api/v1/share/rooms/:id/bans", async (c) => {
+    await requireTeamMember(c);
+    const value = await room(c, c.req.param("id"));
+    if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
+    const input = await body(c, z.object({ userId: userIdInput }));
+    if (input.userId === value.ownerId) fail(400, "invalid_member");
+    await c.env.DB.prepare("INSERT OR IGNORE INTO share_room_bans(room_id,user_id) VALUES(?,?)").bind(value.id, input.userId).run();
+    await c.env.DB.prepare("DELETE FROM share_room_admissions WHERE room_id=? AND user_id=?").bind(value.id, input.userId).run();
+    const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName(value.id));
+    await stub.fetch("https://share.internal/kick", { method: "POST", headers: { "x-room-id": value.id, "x-target-id": input.userId, "x-ban": "1" } });
+    await notify(c);
+    return c.json({ ok: true });
+  });
+
+  app.get("/api/v1/share/rooms/:id/bans", async (c) => {
+    await requireTeamMember(c);
+    const value = await room(c, c.req.param("id"));
+    if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
+    const rows = await c.env.DB.prepare("SELECT b.user_id userId,u.first_name firstName,u.last_name lastName FROM share_room_bans b JOIN users u ON u.id=b.user_id WHERE b.room_id=? ORDER BY u.first_name,u.last_name").bind(value.id).all<{ userId: string; firstName: string; lastName: string }>();
+    return c.json({ users: rows.results });
   });
 
   app.delete("/api/v1/share/rooms/:id/bans/:userId", async (c) => {
@@ -144,6 +173,7 @@ export function register(app: App) {
     const value = await room(c, c.req.param("id"));
     if (value.ownerId !== c.get("user").id) fail(403, "permission_denied");
     await c.env.DB.prepare("DELETE FROM share_rooms WHERE id=?").bind(value.id).run();
+    await c.env.DB.prepare("DELETE FROM notifications WHERE kind='share.invite' AND resource_id=?").bind(value.id).run();
     const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName(value.id));
     await stub.fetch("https://share.internal/close", { method: "POST", headers: { "x-room-id": value.id } });
     await notify(c);

@@ -41,9 +41,10 @@ export class ShareRoom {
     }
     if (route === "/kick" && request.method === "POST") {
       const targetId = request.headers.get("x-target-id");
+      const banned = request.headers.get("x-ban") === "1";
       for (const { socket, info } of this.participants()) {
         if (info.userId !== targetId) continue;
-        socket.send(JSON.stringify({ type: "kicked" }));
+        socket.send(JSON.stringify({ type: banned ? "banned" : "kicked" }));
         socket.close(1008, "Removed by room owner");
       }
       await this.publish(roomId);
@@ -109,6 +110,7 @@ export class ShareRoom {
     const roomId = await this.state.storage.get<string>("roomId");
     if (!roomId) return;
     await this.env.DB.prepare("DELETE FROM share_rooms WHERE id=?").bind(roomId).run();
+    await this.env.DB.prepare("DELETE FROM notifications WHERE kind='share.invite' AND resource_id=?").bind(roomId).run();
     await this.state.storage.deleteAll();
     const hub = this.env.BOARD_HUB.get(this.env.BOARD_HUB.idFromName("team-directory"));
     await hub.fetch("https://board.internal/notify?type=share.rooms.changed", { method: "POST" });

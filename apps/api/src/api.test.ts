@@ -55,6 +55,7 @@ beforeEach(async () => {
   db.exec(readFileSync("apps/api/migrations/0026_resource_visibility.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0027_calendar_tests.sql", "utf8"));
   db.exec(readFileSync("apps/api/migrations/0028_share_rooms.sql", "utf8"));
+  db.exec(readFileSync("apps/api/migrations/0029_notifications.sql", "utf8"));
   env = {
     PUBLIC_ORIGIN: "https://base.test",
     BOARD_HUB: {
@@ -164,21 +165,28 @@ describe("live sharing rooms", () => {
     const created = await call("/share/rooms", { name: "Aviyonik dosyaları", protected: true, profileTargetId: "u2" });
     expect(created.status).toBe(201);
     const data: any = await created.json();
-    expect(data.generatedPassword).toHaveLength(16);
+    expect(data.generatedPassword).toMatch(/^\d{6}$/);
     const listed: any = await (await asMember("/share/rooms")).json();
     expect(listed.rooms[0]).toMatchObject({ id: data.room.id, isInvited: true, protected: true });
     expect((await asMember(`/share/rooms/${data.room.id}/join`, {})).status).toBe(200);
     expect(db.prepare("SELECT user_id FROM share_room_admissions WHERE room_id=? AND user_id='u2'").get(data.room.id)).toBeTruthy();
+    const inbox: any = await (await asMember("/notifications")).json();
+    expect(inbox.unreadCount).toBe(1);
+    expect(inbox.notifications[0]).toMatchObject({ kind: "share.invite", resourceId: data.room.id });
   });
 
-  it("rejects a wrong password and prevents a removed member from rejoining", async () => {
+  it("lets a removed member rejoin but keeps a banned member out", async () => {
     const asMember = await memberSession();
-    const data: any = await (await call("/share/rooms", { name: "Test odası", protected: true, password: "secret-passphrase" })).json();
+    const data: any = await (await call("/share/rooms", { name: "Test odası", protected: true, password: "123456" })).json();
     const id = data.room.id;
-    expect((await asMember(`/share/rooms/${id}/join`, { password: "incorrect" })).status).toBe(403);
-    expect((await asMember(`/share/rooms/${id}/join`, { password: "secret-passphrase" })).status).toBe(200);
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "000000" })).status).toBe(403);
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "123456" })).status).toBe(200);
     expect((await call(`/share/rooms/${id}/kick`, { userId: "u2" })).status).toBe(200);
-    expect((await asMember(`/share/rooms/${id}/join`, { password: "secret-passphrase" })).status).toBe(403);
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "123456" })).status).toBe(200);
+    expect((await call(`/share/rooms/${id}/bans`, { userId: "u2" })).status).toBe(200);
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "123456" })).status).toBe(403);
+    expect((await call(`/share/rooms/${id}/bans/u2`, undefined, "central", "DELETE")).status).toBe(200);
+    expect((await asMember(`/share/rooms/${id}/join`, { password: "123456" })).status).toBe(200);
     expect((await call(`/share/rooms/${id}`, undefined, "central", "DELETE")).status).toBe(200);
     expect((await call("/share/rooms")).status).toBe(200);
     expect(db.prepare("SELECT id FROM share_rooms WHERE id=?").get(id)).toBeUndefined();

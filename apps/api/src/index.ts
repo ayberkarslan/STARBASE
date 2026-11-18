@@ -36,6 +36,7 @@ import { register as management } from "./routes/management";
 import { register as applications } from "./routes/applications";
 import { register as activityAdmin } from "./routes/activity-admin";
 import { register as sharing } from "./routes/sharing";
+import { register as notifications } from "./routes/notifications";
 import { MAX_IMAGE_BYTES } from "./image-assets";
 const app: App = new Hono();
 app.onError((e, c) =>
@@ -167,6 +168,7 @@ directory(app);
 applications(app);
 activityAdmin(app);
 sharing(app);
+notifications(app);
 app.notFound((c) =>
   c.req.path.startsWith("/api/")
     ? c.json({ error: { code: "not_found" } }, 404)

@@ -56,9 +56,10 @@ export function TestPreviewLink({ test, href, className, children }: { test: Cal
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
+    const closeOnScroll = (event: Event) => { if (!popup.current?.contains(event.target as Node)) close(); };
     const escape = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
-    window.addEventListener("scroll", close, true); window.addEventListener("resize", close); document.addEventListener("keydown", escape);
-    return () => { window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); document.removeEventListener("keydown", escape); };
+    window.addEventListener("scroll", closeOnScroll, true); window.addEventListener("resize", close); document.addEventListener("keydown", escape);
+    return () => { window.removeEventListener("scroll", closeOnScroll, true); window.removeEventListener("resize", close); document.removeEventListener("keydown", escape); };
   }, [open]);
   useEffect(() => () => clear(), []);
   useLayoutEffect(() => {

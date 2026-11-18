@@ -38,9 +38,9 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
   const [readyPeers, setReadyPeers] = useState<string[]>([]);
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [offers, setOffers] = useState<Array<{ peerId: string; offer: FileOffer }>>([]);
-  const [progress, setProgress] = useState<Array<{ peerId: string; value: TransferProgress }>>([]);
+  const [progress, setProgress] = useState<Array<{ peerId: string; value: TransferProgress; at: number }>>([]);
   const [queued, setQueued] = useState<QueuedFile[]>([]);
-  const [failed, setFailed] = useState<Array<{ id: string; peerId: string; name: string; reason: string }>>([]);
+  const [failed, setFailed] = useState<Array<{ id: string; peerId: string; name: string; reason: string; at: number }>>([]);
   const [received, setReceived] = useState<Array<ReceivedFile & { url?: string }>>([]);
   const [inviteQuery, setInviteQuery] = useState("");
   const [inviteResults, setInviteResults] = useState<SearchMember[]>([]);
@@ -61,9 +61,9 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     .sort((a, b) => Number(readyPeers.includes(b.connectionId)) - Number(readyPeers.includes(a.connectionId)))
     .filter((member, index, list) => list.findIndex((item) => item.userId === member.userId) === index);
   const transferRows = [
-    ...queued.map((item) => ({ id: item.id, name: item.file.name, peer: members.find((member) => member.connectionId === item.peerId)?.name ?? "Üye", status: "Bağlantı kuruluyor", percent: 0 })),
-    ...progress.map(({ peerId, value }) => ({ id: `${peerId}:${value.id}`, name: value.name, peer: members.find((member) => member.connectionId === peerId)?.name ?? "Üye", status: ({ offered: "Alıcının onayı bekleniyor", sending: "Gönderiliyor", receiving: "Alınıyor", sent: "Gönderildi", received: "Alındı", rejected: "Reddedildi", failed: "Aktarım başarısız" } as const)[value.status], percent: value.size ? Math.round(value.bytes / value.size * 100) : 100 })),
-    ...failed.map((item) => ({ id: item.id, name: item.name, peer: members.find((member) => member.connectionId === item.peerId)?.name ?? "Üye", status: item.reason, percent: 0 })),
+    ...queued.map((item) => ({ id: item.id, name: item.file.name, peer: members.find((member) => member.connectionId === item.peerId)?.name ?? "Üye", status: "Bağlantı kuruluyor", percent: 0, active: true })),
+    ...progress.map(({ peerId, value }) => ({ id: `${peerId}:${value.id}`, name: value.name, peer: members.find((member) => member.connectionId === peerId)?.name ?? "Üye", status: ({ offered: "Alıcının onayı bekleniyor", sending: "Kabul edildi · gönderiliyor", receiving: "Alınıyor", sent: "Alıcıya ulaştı", received: "Alındı", rejected: "Reddedildi", failed: "Aktarım başarısız" } as const)[value.status], percent: value.size ? Math.round(value.bytes / value.size * 100) : 100, active: !["sent", "received", "rejected", "failed"].includes(value.status) })),
+    ...failed.map((item) => ({ id: item.id, name: item.name, peer: members.find((member) => member.connectionId === item.peerId)?.name ?? "Üye", status: item.reason, percent: 0, active: false })),
   ].slice(-4).reverse();
 
   const drainPeer = async (peerId: string) => {
@@ -80,7 +80,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
         try { await link.sendFile(item.file); }
         catch (cause) {
           const reason = messageOf(cause).includes("reddetti") ? "Alıcı reddetti" : "Gönderilemedi";
-          setFailed((items) => [...items, { id: item.id, peerId, name: item.file.name, reason }].slice(-8));
+          setFailed((items) => [...items, { id: item.id, peerId, name: item.file.name, reason, at: Date.now() }].slice(-8));
         }
       }
     } finally { drainingRef.current.delete(peerId); }
@@ -91,6 +91,14 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     catch (cause) { setError(messageOf(cause)); }
   }, []);
   useEffect(() => { void refresh(); const timer = setInterval(() => void refresh(), 15_000); return () => clearInterval(timer); }, [refresh]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const cutoff = Date.now() - 6000;
+      setProgress((items) => items.filter((item) => !["sent", "received", "rejected", "failed"].includes(item.value.status) || item.at > cutoff));
+      setFailed((items) => items.filter((item) => item.at > cutoff));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => subscribeShareChanges(() => void refresh()), [refresh]);
   useEffect(() => () => { for (const url of urls.current) URL.revokeObjectURL(url); }, []);
   useEffect(() => {
@@ -167,7 +175,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
         signal: (signal: Signal) => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "signal", to: peerId, signal })); },
         ready: () => { if (active) { setReadyPeers((items) => [...new Set([...items, peerId])]); void drainPeer(peerId); } },
         offer: (offer) => { if (active) setOffers((items) => [...items, { peerId, offer }]); },
-        progress: (value) => { if (active) setProgress((items) => [...items.filter((item) => item.peerId !== peerId || item.value.id !== value.id), { peerId, value }].slice(-20)); },
+        progress: (value) => { if (active) setProgress((items) => [...items.filter((item) => item.peerId !== peerId || item.value.id !== value.id), { peerId, value, at: Date.now() }].slice(-20)); },
         received: (file) => { if (!active) return; const fileUrl = file.blob ? URL.createObjectURL(file.blob) : undefined; if (fileUrl) urls.current.push(fileUrl); setReceived((items) => [{ ...file, url: fileUrl }, ...items].slice(0, 12)); },
         error: (message) => {
           if (!active) return;
@@ -175,7 +183,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
           const pending = queueRef.current.filter((item) => item.peerId === peerId);
           queueRef.current = queueRef.current.filter((item) => item.peerId !== peerId);
           setQueued([...queueRef.current]);
-          if (pending.length) setFailed((items) => [...items, ...pending.map((item) => ({ id: item.id, peerId, name: item.file.name, reason: "Bağlantı kurulamadı" }))].slice(-8));
+          if (pending.length) setFailed((items) => [...items, ...pending.map((item) => ({ id: item.id, peerId, name: item.file.name, reason: "Bağlantı kurulamadı", at: Date.now() }))].slice(-8));
         },
       });
       linksRef.current.set(peerId, link);
@@ -208,7 +216,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     socket.onclose = (event) => {
       if (!active) return;
       if (event.code === 4001 || replaced || event.reason.includes("Newer connection")) setError("Bu hesap başka bir sekmede odaya girdi. Bu bağlantı kapatıldı.");
-      else if (event.code === 4002) setError("Odadan çıkarıldın. Yeniden katılabilirsin.");
+      else if (event.code === 4002) setError("Odadan çıkarıldın. Yeniden katılmak için yeni davet veya oda kodu gerekli.");
       else if (event.code === 4003) setError("Bu odada engellendin.");
       else setError("Canlı bağlantı kesildi. Odaya yeniden katılabilirsin.");
       setRoomId(null);
@@ -289,7 +297,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     {roomId && <div className="share-room-layout"><div className="share-room-main">
       <input ref={fileInput} type="file" multiple hidden onChange={(event) => { if (event.target.files) addFiles(event.target.files); event.target.value = ""; }} />
       <ShareCanvas files={staged} members={visibleMembers} currentUserId={currentUserId} readyPeers={readyPeers} transfers={transferRows} onAddFiles={addFiles} onRemoveFile={(id) => setStaged((items) => items.filter((item) => item.id !== id))} onSend={sendTo} onChooseFiles={() => fileInput.current?.click()} />
-      {transferRows.length > 0 && <div className="share-transfers"><span className="eyebrow">SON AKTARIMLAR</span>{transferRows.map((item) => <div key={item.id}><span>{item.name} · {item.peer}</span><span>{item.status}{["Gönderiliyor", "Alınıyor"].includes(item.status) ? ` · %${item.percent}` : ""}</span><progress value={item.percent} max={100} /></div>)}</div>}
+      {transferRows.length > 0 && <div className="share-transfers"><span className="eyebrow">SON AKTARIMLAR</span>{transferRows.map((item) => <div key={item.id}><span>{item.name} · {item.peer}</span><span>{item.status}{item.active && item.percent > 0 ? ` · %${item.percent}` : ""}</span>{item.active && item.percent > 0 && <progress value={item.percent} max={100} />}</div>)}</div>}
       {received.length > 0 && <div className="share-received"><span className="eyebrow">ALINAN DOSYALAR</span>{received.map((file) => <div key={file.id}><File size={15} /><span>{file.name}</span>{file.url ? <a href={file.url} download={file.name}>İndir <ArrowUpRight size={14} /></a> : <small>Cihaza kaydedildi</small>}</div>)}</div>}
       </div><aside className={`share-room-side ${toolsOpen ? "is-open" : ""}`}>
         <button type="button" className="share-tools-toggle" aria-expanded={toolsOpen} onClick={() => setToolsOpen((value) => !value)}><Users size={15} /><span>{visibleMembers.length} kişi</span>{activeRoom?.protected && <LockKeyhole size={13} />}<Settings2 size={15} /><ChevronDown size={14} /></button>
@@ -309,6 +317,6 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
         </div>}
       </aside></div>}
     {banCandidate && <div className="share-modal-backdrop"><div className="share-modal" role="dialog" aria-modal="true" aria-label="Üyeyi engelle"><span className="eyebrow">ODA ERİŞİMİ</span><h2>{banCandidate.name} engellensin mi?</h2><p>Bu kişi odadan çıkarılır ve engeli kaldırana kadar tekrar giremez.</p><div className="share-modal-actions"><Button variant="bare" onClick={() => setBanCandidate(null)}>Vazgeç</Button><Button variant="primary" onClick={() => void ban()}>Engelle <Ban size={14} /></Button></div></div></div>}
-    {offers.length > 0 && <div className="share-modal-backdrop"><div className="share-modal" role="dialog" aria-modal="true" aria-label="Dosya teklifi"><span className="eyebrow">DOSYA TEKLİFİ</span><h2>{offers[0].offer.name}</h2><p>{members.find((member) => member.connectionId === offers[0].peerId)?.name ?? "Bir üye"} sana dosya göndermek istiyor. {Math.round(offers[0].offer.size / 1024)} KB</p><div className="share-modal-actions"><Button variant="bare" onClick={() => { linksRef.current.get(offers[0].peerId)?.reject(offers[0].offer.id); setOffers((items) => items.slice(1)); }}>Reddet</Button><Button variant="primary" onClick={() => { void linksRef.current.get(offers[0].peerId)?.accept(offers[0].offer.id); setOffers((items) => items.slice(1)); }}>Kabul et <Check size={15} /></Button></div></div></div>}
+    {offers.length > 0 && <div className="share-modal-backdrop"><div className="share-modal" role="dialog" aria-modal="true" aria-label="Dosya teklifi"><span className="eyebrow">DOSYA TEKLİFİ</span><h2>{offers[0].offer.name}</h2><p>{members.find((member) => member.connectionId === offers[0].peerId)?.name ?? "Bir üye"} sana dosya göndermek istiyor. {Math.round(offers[0].offer.size / 1024)} KB</p><div className="share-modal-actions"><Button variant="bare" onClick={() => { const current = offers[0]; linksRef.current.get(current.peerId)?.reject(current.offer.id); setFailed((items) => [...items, { id: current.offer.id, peerId: current.peerId, name: current.offer.name, reason: "Teklif reddedildi", at: Date.now() }].slice(-8)); setOffers((items) => items.slice(1)); }}>Reddet</Button><Button variant="primary" onClick={() => { void linksRef.current.get(offers[0].peerId)?.accept(offers[0].offer.id); setOffers((items) => items.slice(1)); }}>Kabul et <Check size={15} /></Button></div></div></div>}
   </section>;
 }

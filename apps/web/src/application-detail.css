@@ -54,11 +54,11 @@ a.application-detail-resource:focus-visible { outline: 1px solid #fff; outline-o
 .application-detail-cover--test .application-detail-cover-label { color: #ffffff9b; letter-spacing: .12em; }
 .application-detail-paper { position: relative; display: grid; place-items: center; width: 34px; height: 42px; flex: none; border: 1px solid #ffffff9c; color: #fff; }
 .application-detail-paper::after { content: ""; position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; border-left: 1px solid #ffffff9c; border-bottom: 1px solid #ffffff9c; background: #000; }
-.application-detail-resource-copy { display: grid; gap: 6px; min-width: 0; }
-.application-detail-resource-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 400; }
+.application-detail-resource-copy { display: grid; gap: 6px; min-width: 0; padding-right: 21px; }
+.application-detail-resource-copy strong { display: -webkit-box; min-height: 30px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 10px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
 .application-detail-resource-copy small { color: #ffffff98; font-size: 8px; line-height: 1.5; }
 .application-detail-latest { position: absolute; top: 10px; left: 10px; padding: 6px; background: #000; color: #fff; font-size: 7px; letter-spacing: .08em; white-space: nowrap; }
-.application-detail-resource > svg { position: absolute; right: 7px; bottom: 31px; }
+.application-detail-resource > svg { position: absolute; right: 0; bottom: 28px; }
 .application-detail-resources > .sd-button { margin-top: 14px; }
 .application-detail-visits { margin-top: clamp(48px,6vw,88px); }
 .application-detail-visit { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 22px; padding: 14px 0; border-bottom: 1px solid #ffffff2b; font-size: 10px; }

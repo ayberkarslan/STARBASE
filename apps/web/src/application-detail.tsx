@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowUpRight, AppWindow, FileText, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { Button, Dialog, Panel } from "@stardrop/ui";
+import { CalendarOverview, TestCover, TestPreviewLink, type CalendarTest } from "./application-calendar";
 import "./application-detail.css";
 
-type Resource = { resourceId: string; title: string; date: string; status: string; url?: string; createdAt: number; updatedAt?: number };
+type Resource = CalendarTest & { title: string; createdAt: number; updatedAt?: number };
 type Visit = { signedInAt: number; endedAt: number | null; endReason: string | null };
 type Overview = {
   application: { id: string; name: string; logoUrl: string; launchUrl: string };
@@ -18,7 +19,7 @@ type ResourcePage = { resources: Resource[]; page: number; total: number; hasMor
 const dateTime = (value: number | null | undefined) => value
   ? new Date(value * 1000).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })
   : "Kayıt yok";
-const statusLabel = (status: string) => ({ test_pending: "Test bekliyor", report_pending: "Rapor bekliyor", completed: "Tamamlandı", cancelled: "İptal edildi" })[status as "test_pending"] ?? status;
+const statusLabel = (status: string) => ({ test_pending: "Test bekliyor", report_pending: "Test raporu bekleniyor", completed: "Tamamlandı", cancelled: "İptal edildi" })[status as "test_pending"] ?? status;
 const deviceLabel = (agent: string | null) => {
   if (!agent) return "Bilinmeyen cihaz";
   const browser = /Edg\//.test(agent) ? "Edge" : /Firefox\//.test(agent) ? "Firefox" : /Chrome\//.test(agent) ? "Chrome" : /Safari\//.test(agent) ? "Safari" : "Tarayıcı";
@@ -156,15 +157,16 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
       </div>
 
       <section className="application-detail-resources" aria-labelledby="application-resources-title">
-        <div className="application-detail-section-head"><div><span className="eyebrow">ÇALIŞMALARIN</span><h2 id="application-resources-title">{isLatex ? "Belgelerim" : isCalendar ? "Oluşturduğum testler" : "Kayıtlarım"}</h2></div>{resourceTotal > 0 && <small>{resourceTotal} kayıt</small>}</div>
+        <div className="application-detail-section-head"><div><span className="eyebrow">ÇALIŞMALARIN</span><h2 id="application-resources-title">{isLatex ? "Belgelerim" : isCalendar ? "Testlerim" : "Kayıtlarım"}</h2></div>{resourceTotal > 0 && <small>{resourceTotal} kayıt</small>}</div>
         {(isLatex || isCalendar) && <label className="application-detail-search"><Search size={16} /><input value={query} onChange={(event) => { setQuery(event.target.value); setResourcePage(1); }} placeholder={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} aria-label={isLatex ? "Belgelerimde ara" : "Testlerimde ara"} /></label>}
         {resourceError && <p role="alert">{resourceError}</p>}
         {resources.length ? <div className="application-detail-resource-list">{resources.map((item, index) => {
-          const content = <>{isLatex ? <DocumentCover id={id} resourceId={item.resourceId} title={item.title} /> : <span className="application-detail-cover application-detail-cover--test"><FileText size={38} aria-hidden="true" /><span className="application-detail-cover-label">YRT / TEST</span></span>}<span className="application-detail-resource-copy"><strong>{item.title}</strong><small>{isCalendar ? `Test tarihi: ${item.date || "Belirtilmedi"} · ${statusLabel(item.status)}` : `${statusLabel(item.status || "Belge")} · ${dateTime(item.updatedAt ?? item.createdAt)}`}</small></span>{index === 0 && resourcePage === 1 && !query && <span className="application-detail-latest">SON ÇALIŞMA</span>}{item.url && <ArrowUpRight size={16} aria-hidden="true" />}</>;
-          return item.url ? <a href={item.url} key={item.resourceId} className="application-detail-resource">{content}</a> : <div key={item.resourceId} className="application-detail-resource">{content}</div>;
-        })}</div> : <p className="application-detail-muted">{query ? "Aramana uygun kayıt bulunamadı." : isCalendar ? "Henüz hesabınla oluşturulmuş test yok." : isLatex ? "Henüz bağlı belge yok." : "Bu uygulama için kayıt yok."}</p>}
+          const content = <>{isLatex ? <DocumentCover id={id} resourceId={item.resourceId} title={item.title} /> : isCalendar ? <TestCover test={item} /> : <span className="application-detail-cover application-detail-cover--test"><FileText size={38} aria-hidden="true" /><span className="application-detail-cover-label">YRT / TEST</span></span>}<span className="application-detail-resource-copy"><strong>{item.title}</strong><small>{isCalendar ? `Test tarihi: ${item.date || "Belirtilmedi"} · ${statusLabel(item.status)}` : `${statusLabel(item.status || "Belge")} · ${dateTime(item.updatedAt ?? item.createdAt)}`}</small></span>{index === 0 && resourcePage === 1 && !query && <span className="application-detail-latest">SON ÇALIŞMA</span>}{item.url && <ArrowUpRight size={16} aria-hidden="true" />}</>;
+          return item.url ? isCalendar ? <TestPreviewLink test={item} href={item.url} key={item.resourceId} className="application-detail-resource">{content}</TestPreviewLink> : <a href={item.url} key={item.resourceId} className="application-detail-resource">{content}</a> : <div key={item.resourceId} className="application-detail-resource">{content}</div>;
+        })}</div> : <p className="application-detail-muted">{query ? "Aramana uygun kayıt bulunamadı." : isCalendar ? "Henüz hesabına bağlı test yok." : isLatex ? "Henüz bağlı belge yok." : "Bu uygulama için kayıt yok."}</p>}
         {hasMore && <Button variant="bare" onClick={() => setResourcePage((page) => page + 1)}>Daha fazla göster</Button>}
       </section>
+      {isCalendar && <CalendarOverview revision={revision} />}
 
       {supportsLive && <section className="application-detail-access" aria-labelledby="application-access-title">
         <div><span className="eyebrow">HESAP BAĞLANTISI</span><h2 id="application-access-title">Erişim ve oturumlar</h2></div>

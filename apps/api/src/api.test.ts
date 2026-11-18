@@ -176,6 +176,11 @@ describe("live sharing rooms", () => {
     expect((await call(`/notifications/${inbox.notifications[0].id}/read`, {})).status).toBe(404);
     expect((await asMember(`/notifications/${inbox.notifications[0].id}/read`, {})).status).toBe(200);
     expect(((await (await asMember("/notifications")).json()) as any).unreadCount).toBe(0);
+    expect((await call(`/share/rooms/${data.room.id}/kick`, { userId: "u2" })).status).toBe(200);
+    expect((await asMember(`/share/rooms/${data.room.id}/join`, {})).status).toBe(403);
+    expect(((await (await asMember("/notifications")).json()) as any).notifications).toHaveLength(0);
+    expect((await call(`/share/rooms/${data.room.id}/invites`, { userId: "u2" })).status).toBe(200);
+    expect((await asMember(`/share/rooms/${data.room.id}/join`, {})).status).toBe(200);
   });
 
   it("lets a removed member rejoin but keeps a banned member out", async () => {

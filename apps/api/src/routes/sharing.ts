@@ -132,6 +132,8 @@ export function register(app: App) {
     const input = await body(c, z.object({ userId: userIdInput }));
     if (input.userId === value.ownerId) fail(400, "invalid_member");
     await c.env.DB.prepare("DELETE FROM share_room_admissions WHERE room_id=? AND user_id=?").bind(value.id, input.userId).run();
+    await c.env.DB.prepare("DELETE FROM share_room_invites WHERE room_id=? AND user_id=?").bind(value.id, input.userId).run();
+    await c.env.DB.prepare("DELETE FROM notifications WHERE user_id=? AND kind='share.invite' AND resource_id=?").bind(input.userId, value.id).run();
     const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName(value.id));
     await stub.fetch("https://share.internal/kick", { method: "POST", headers: { "x-room-id": value.id, "x-target-id": input.userId } });
     await notify(c);
@@ -146,6 +148,8 @@ export function register(app: App) {
     if (input.userId === value.ownerId) fail(400, "invalid_member");
     await c.env.DB.prepare("INSERT OR IGNORE INTO share_room_bans(room_id,user_id) VALUES(?,?)").bind(value.id, input.userId).run();
     await c.env.DB.prepare("DELETE FROM share_room_admissions WHERE room_id=? AND user_id=?").bind(value.id, input.userId).run();
+    await c.env.DB.prepare("DELETE FROM share_room_invites WHERE room_id=? AND user_id=?").bind(value.id, input.userId).run();
+    await c.env.DB.prepare("DELETE FROM notifications WHERE user_id=? AND kind='share.invite' AND resource_id=?").bind(input.userId, value.id).run();
     const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName(value.id));
     await stub.fetch("https://share.internal/kick", { method: "POST", headers: { "x-room-id": value.id, "x-target-id": input.userId, "x-ban": "1" } });
     await notify(c);

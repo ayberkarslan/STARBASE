@@ -90,9 +90,20 @@ export class ShareRoom {
     if (!(await this.env.DB.prepare("SELECT 1 FROM sessions s JOIN families f ON f.id=s.family WHERE s.hash=? AND s.user_id=? AND s.expires>? AND s.used=0 AND f.revoked=0").bind(source.sessionHash, source.userId, Date.now() / 1000).first())) { socket.close(1008, "Session revoked"); return; }
     if (source.roomId === "team-quick-share" && !(await this.env.DB.prepare("SELECT 1 FROM users u WHERE u.id=? AND u.disabled=0 AND (u.owner=1 OR EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id) OR EXISTS(SELECT 1 FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=u.id AND d.archived=0 AND (t.id IS NULL OR t.archived=0)))").bind(source.userId).first())) { socket.close(1008, "Team membership ended"); return; }
     if (typeof raw !== "string" || raw.length > 16_384) { socket.close(1008, "Only signaling is allowed"); return; }
-    let message: { type?: string; to?: string; signal?: { type?: string } };
+    let message: { type?: string; to?: string; signal?: { type?: string }; id?: string; files?: Array<{ id: string; name: string; size: number; mime: string }> };
     try { message = JSON.parse(raw); } catch { socket.close(1008, "Invalid signaling"); return; }
     if (message.type === "ping") return;
+    if (source.roomId === "team-quick-share" && message.type === "file-list") {
+      if (!Array.isArray(message.files) || message.files.length > 20 || !message.files.every((file) => file && typeof file.id === "string" && /^[a-f0-9-]{36}$/i.test(file.id) && typeof file.name === "string" && file.name.length > 0 && file.name.length <= 255 && Number.isSafeInteger(file.size) && file.size >= 0 && file.size <= 50 * 1024 * 1024 && typeof file.mime === "string" && file.mime.length <= 128)) { socket.close(1008, "Invalid file list"); return; }
+      const notice = JSON.stringify({ type: "file-list", from: source.connectionId, files: message.files });
+      for (const { socket: peer } of this.participants(socket)) peer.send(notice);
+      return;
+    }
+    if (source.roomId === "team-quick-share" && message.type === "file-request" && typeof message.id === "string" && /^[a-f0-9-]{36}$/i.test(message.id) && message.to) {
+      const target = this.participants().find(({ info }) => info.connectionId === message.to);
+      if (target) target.socket.send(JSON.stringify({ type: "file-request", from: source.connectionId, id: message.id }));
+      return;
+    }
     if (message.type !== "signal" || !message.to || !message.signal || !["offer", "answer", "candidate"].includes(message.signal.type ?? "")) {
       socket.close(1008, "Only signaling is allowed"); return;
     }

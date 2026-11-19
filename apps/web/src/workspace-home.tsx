@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppWindow, ArrowUpRight, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { request } from "./management";
@@ -17,6 +17,22 @@ export function WorkspaceHome({ name, apps, shortcuts, canShare, onPage, onAppli
   onSearch: () => void;
 }) {
   const [recentId, setRecentId] = useState<string | null>(null);
+  const [easterVisible, setEasterVisible] = useState(false);
+  const typed = useRef("");
+  const easterTimer = useRef<number | null>(null);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || (event.target instanceof Element && event.target.closest("input,textarea,select,[contenteditable='true'],[role='textbox']"))) return;
+      typed.current = /^[A-Z]$/.test(event.key) ? (typed.current + event.key).slice(-6) : "";
+      if (typed.current !== "AYBERK") return;
+      typed.current = "";
+      setEasterVisible(true);
+      if (easterTimer.current != null) window.clearTimeout(easterTimer.current);
+      easterTimer.current = window.setTimeout(() => setEasterVisible(false), 5200);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => { window.removeEventListener("keydown", onKeyDown); if (easterTimer.current != null) window.clearTimeout(easterTimer.current); };
+  }, []);
   useEffect(() => {
     let active = true;
     request("/me/applications?page=1")
@@ -33,6 +49,7 @@ export function WorkspaceHome({ name, apps, shortcuts, canShare, onPage, onAppli
   const recent = apps.find((app) => app.id === recentId);
 
   return <section className="workspace-home-page">
+    {easterVisible && <div className="workspace-home-easter" aria-hidden="true"><div className="workspace-home-easter-stars" /><div className="workspace-home-easter-ring workspace-home-easter-ring-one" /><div className="workspace-home-easter-ring workspace-home-easter-ring-two" /><img src="/brand/ytu-easter-egg.png" alt="" /></div>}
     <div className="workspace-home-intro">
       <div><h1>Merhaba, {name}.</h1>
         <p>Çalışma alanın hazır.</p>

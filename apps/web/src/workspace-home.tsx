@@ -34,12 +34,11 @@ export function WorkspaceHome({ name, apps, shortcuts, canShare, onPage, onAppli
 
   return <section className="workspace-home-page">
     <div className="workspace-home-intro">
-      <div><span className="eyebrow">YILDIZ ROKET TAKIMI / STARBASE</span>
-        <h1>Merhaba, {name}.</h1>
+      <div><h1>Merhaba, {name}.</h1>
         <p>Çalışma alanın hazır.</p>
       </div>
       <button type="button" className="workspace-home-search" onClick={onSearch} aria-label="Uygulama veya üye ara">
-        <Search size={17} /><span>Uygulama veya üye ara</span>
+        <Search size={17} /><span>Uygulama veya üye ara</span><kbd>CTRL + K</kbd>
       </button>
     </div>
 
@@ -52,7 +51,7 @@ export function WorkspaceHome({ name, apps, shortcuts, canShare, onPage, onAppli
     </section>}
 
     <section className="workspace-home-section" aria-labelledby="home-apps-title">
-      <div className="workspace-home-section-head"><span className="eyebrow">PLATFORMLAR</span><button type="button" onClick={() => onPage("applications")}>Tüm uygulamalar <ArrowUpRight size={14} /></button></div>
+      <div className="workspace-home-section-head"><button type="button" onClick={() => onPage("applications")}>Tüm uygulamalar <ArrowUpRight size={14} /></button></div>
       <h2 id="home-apps-title">Uygulamalar</h2>
       {apps.length || canShare ? <div className="workspace-home-apps">{canShare && <button type="button" className="workspace-home-app" onClick={() => onPage("sharing")} aria-label="Dosya Paylaşım ekranını aç">
         <img className="workspace-home-app-watermark" src="/brand/file-sharing.svg" alt="" />
@@ -66,7 +65,7 @@ export function WorkspaceHome({ name, apps, shortcuts, canShare, onPage, onAppli
     </section>
 
     <section className="workspace-home-section" aria-labelledby="home-shortcuts-title">
-      <span className="eyebrow">HIZLI ERİŞİM</span><h2 id="home-shortcuts-title">Çalışma alanları</h2>
+      <h2 id="home-shortcuts-title">Çalışma alanları</h2>
       <div className="workspace-home-shortcuts">{shortcuts.map(({ id, name: label, icon: Icon }) => <button type="button" key={id} onClick={() => onPage(id)}><Icon size={17} /><span>{label}</span><ArrowUpRight size={14} /></button>)}</div>
     </section>
   </section>;

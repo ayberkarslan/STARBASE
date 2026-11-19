@@ -68,7 +68,6 @@ export function AdminActivity({ userId }: { userId?: string }) {
   return <section className={userId ? "admin-activity admin-activity--member" : "admin-activity"}>
     <div className="admin-activity__heading">
       <div>
-        <span className="eyebrow">STARBASE / ERİŞİM KAYITLARI</span>
         <h1>{userId ? "Ziyaret geçmişi" : focused ? focused.name : "Erişim geçmişi"}</h1>
         <p>Girişler, açıkça yapılan çıkışlar ve oturum sonlanmaları. Çıkış kaydı olmayan oturumlar çevrimiçi sayılmaz.</p>
       </div>

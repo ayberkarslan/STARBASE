@@ -352,8 +352,8 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
   const filteredRooms = rooms.filter((room) => `${room.name} ${room.ownerName}`.toLocaleLowerCase("tr-TR").includes(filter.toLocaleLowerCase("tr-TR")));
 
   return <section className="share-page">
-    <header className="share-header"><Button variant="bare" onClick={roomId ? () => { setRoomId(null); setCreatedPassword(""); } : onBack}><ArrowLeft size={16} /> {roomId ? "Odalara dön" : "Ana sayfaya dön"}</Button><span>STARBASE / DOSYA PAYLAŞIMI</span></header>
-    <div className="share-title"><span className="eyebrow">CANLI AKTARIM</span><h1>{activeRoom ? activeRoom.name : "Dosya Paylaşımı"}</h1><p>Dosyalar doğrudan katılımcıların cihazları arasında aktarılır. Sunucuda saklanmaz.</p></div>
+    <header className="share-header"><Button variant="bare" onClick={roomId ? () => { setRoomId(null); setCreatedPassword(""); } : onBack}><ArrowLeft size={16} /> {roomId ? "Odalara dön" : "Ana sayfaya dön"}</Button></header>
+    <div className="share-title"><h1>{activeRoom ? activeRoom.name : "Dosya Paylaşımı"}</h1><p>Dosyalar doğrudan katılımcıların cihazları arasında aktarılır. Sunucuda saklanmaz.</p></div>
     <TabBar className="share-mode-tabs" label="Paylaşım biçimi" items={[{ value: "quick", label: "Hızlı paylaşım" }, { value: "rooms", label: "Odalar" }]} value={view} onChange={(next) => { setRoomId(null); setCreatedPassword(""); setToolsOpen(false); setError(""); setView(next as "quick" | "rooms"); }} />
     {error && <div className="share-error" role="alert">{error}<button type="button" aria-label="Uyarıyı kapat" onClick={() => setError("")}><X size={14} /></button></div>}
     {!roomId && view === "rooms" && <div className="share-index">

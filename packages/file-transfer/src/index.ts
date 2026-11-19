@@ -101,12 +101,12 @@ export class TransferLink {
     });
   }
 
-  async accept(id: string) {
+  async accept(id: string, temporary = false) {
     const offer = this.incomingOffer;
     if (!offer || offer.id !== id || this.receiver) return;
     let writer: FileSystemWritableFileStream | undefined;
     const picker = (window as SavePicker).showSaveFilePicker;
-    if (picker) {
+    if (picker && !temporary) {
       try { writer = await (await picker.call(window, { suggestedName: offer.name })).createWritable(); }
       catch { this.reject(id); return; }
     }

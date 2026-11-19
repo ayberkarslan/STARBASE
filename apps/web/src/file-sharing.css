@@ -24,6 +24,13 @@
 .share-canvas-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .share-canvas-head p { margin: 9px 0 0; color: #ffffffa3; font-size: 10px; line-height: 1.7; }
 .share-canvas-head > div:last-child { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.share-remote-shelf { display: grid; gap: 11px; margin: 0 0 16px; }
+.share-remote-shelf > div { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: thin; scrollbar-color: #fff #000; }
+.share-remote-shelf button { display: flex; align-items: center; gap: 10px; flex: 0 0 min(220px,75vw); min-width: 0; padding: 12px; border: 1px solid #ffffff54; border-radius: 6px; background: #000; color: #fff; text-align: left; cursor: pointer; }
+.share-remote-shelf button:hover,.share-remote-shelf button:focus-visible { border-color: #fff; }
+.share-remote-shelf button > span { display: grid; gap: 5px; min-width: 0; flex: 1; }
+.share-remote-shelf strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 400; }
+.share-remote-shelf small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ffffff9e; font-size: 8px; }
 .share-canvas { position: relative; height: min(52vh,520px); min-height: 420px; overflow: hidden; border: 1px solid #ffffff51; border-radius: 9px; background: #000; touch-action: none; }
 .share-canvas::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .6; background-image: radial-gradient(#ffffff2e .6px,transparent .6px); background-size: 28px 28px; mask-image: linear-gradient(to bottom,transparent,#000 18%,#000 85%,transparent); }
 .share-canvas-axis { position: absolute; left: 50%; top: 39%; width: min(64%,520px); height: 1px; transform: translate(-50%,-50%); background: linear-gradient(90deg,transparent,#ffffff24,transparent); pointer-events: none; }

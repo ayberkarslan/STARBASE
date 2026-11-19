@@ -11,6 +11,7 @@ type Room = { id: string; name: string; ownerId: string; ownerName: string; prof
 type Member = { connectionId: string; userId: string; name: string };
 type StagedFile = { id: string; file: File };
 type QueuedFile = { id: string; peerId: string; file: File };
+type RemoteFile = { id: string; peerId: string; name: string; size: number; mime: string };
 type SearchMember = { id: string; firstName: string; lastName: string; username: string; photoUrl: string };
 const errorText: Record<string, string> = {
   room_password_invalid: "Oda kodu yanlış.", room_locked: "Oda yeni katılımlara kapalı.", room_access_denied: "Bu odada engellendin.",
@@ -40,6 +41,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
   const [members, setMembers] = useState<Member[]>([]);
   const [readyPeers, setReadyPeers] = useState<string[]>([]);
   const [staged, setStaged] = useState<StagedFile[]>([]);
+  const [remoteFiles, setRemoteFiles] = useState<RemoteFile[]>([]);
   const [offers, setOffers] = useState<Array<{ peerId: string; offer: FileOffer }>>([]);
   const [progress, setProgress] = useState<Array<{ peerId: string; value: TransferProgress; at: number }>>([]);
   const [queued, setQueued] = useState<QueuedFile[]>([]);
@@ -57,6 +59,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
   const drainingRef = useRef(new Set<string>());
   const fileInput = useRef<HTMLInputElement>(null);
   const urls = useRef<string[]>([]);
+  const stagedRef = useRef<StagedFile[]>([]);
   const startedProfile = useRef("");
   const openedInvite = useRef(0);
   const activeRoom = rooms.find((room) => room.id === roomId) ?? null;
@@ -105,8 +108,13 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
   useEffect(() => subscribeShareChanges(() => void refresh()), [refresh]);
   useEffect(() => () => { for (const url of urls.current) URL.revokeObjectURL(url); }, []);
   useEffect(() => {
+    stagedRef.current = staged;
+    if (view !== "quick" || roomId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    socketRef.current.send(JSON.stringify({ type: "file-list", files: staged.slice(0, 20).map(({ id, file }) => ({ id, name: file.name, size: file.size, mime: file.type })) }));
+  }, [staged, view, roomId]);
+  useEffect(() => {
     if (roomId) return;
-    setStaged([]); setProgress([]); setReceived([]); setFailed([]);
+    setStaged([]); setRemoteFiles([]); setProgress([]); setReceived([]); setFailed([]);
     for (const url of urls.current) URL.revokeObjectURL(url);
     urls.current = [];
   }, [roomId, view]);
@@ -121,6 +129,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     setBusy(true); setError("");
     try {
       await request(`/share/rooms/${room.id}/join`, password ? { password } : {}, "POST");
+      setStaged([]); setRemoteFiles([]); setReceived([]);
       setView("rooms");
       setRoomId(room.id); setJoinTarget(null); setJoinPassword("");
       await refresh();
@@ -176,7 +185,11 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     const socket = new WebSocket(url);
     socketRef.current = socket;
     if (quick) setQuickState("connecting");
-    socket.onopen = () => { if (active && quick) { setQuickState("online"); setError(""); } };
+    const announceFiles = () => {
+      if (!quick || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify({ type: "file-list", files: stagedRef.current.slice(0, 20).map(({ id, file }) => ({ id, name: file.name, size: file.size, mime: file.type })) }));
+    };
+    socket.onopen = () => { if (active && quick) { setQuickState("online"); setError(""); announceFiles(); } };
     const addPeer = (member: Member) => {
       if (linksRef.current.has(member.connectionId)) return linksRef.current.get(member.connectionId)!;
       const peerId = member.connectionId;
@@ -212,18 +225,33 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
         const message = JSON.parse(event.data);
         if (message.type === "welcome") { ownConnection = message.connectionId; return; }
         if (message.type === "replaced") { replaced = true; setError("Bu hesap başka bir sekmede paylaşım alanına girdi. Bu bağlantı kapatıldı."); if (quick) setQuickState("offline"); else setRoomId(null); return; }
+        if (quick && message.type === "file-list") {
+          setRemoteFiles((items) => [...items.filter((item) => item.peerId !== message.from), ...(message.files as Array<Omit<RemoteFile, "peerId">>).map((file) => ({ ...file, peerId: message.from }))]);
+          return;
+        }
+        if (quick && message.type === "file-request") {
+          const file = stagedRef.current.find((item) => item.id === message.id)?.file;
+          if (file && roster.some((member) => member.connectionId === message.from)) {
+            queueRef.current.push({ id: crypto.randomUUID(), peerId: message.from, file });
+            setQueued([...queueRef.current]);
+            void drainPeer(message.from);
+          }
+          return;
+        }
         if (message.type === "members") {
           roster = message.members as Member[];
           setMembers(roster);
           const present = new Set(roster.map((member) => member.connectionId));
           for (const [id, link] of linksRef.current) if (!present.has(id)) { link.close(); linksRef.current.delete(id); setReadyPeers((items) => items.filter((item) => item !== id)); queueRef.current = queueRef.current.filter((item) => item.peerId !== id); setQueued([...queueRef.current]); }
           if (quick) {
+            setRemoteFiles((items) => items.filter((file) => present.has(file.peerId)));
             setReceived((items) => items.filter((file) => {
               if (present.has(file.peerId)) return true;
               if (file.url) URL.revokeObjectURL(file.url);
               return false;
             }));
             setOffers((items) => items.filter((item) => present.has(item.peerId)));
+            announceFiles();
           }
           for (const member of roster) {
             if (member.connectionId === ownConnection || linksRef.current.has(member.connectionId)) continue;
@@ -243,6 +271,9 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
       if (!active) return;
       if (quick) {
         setQuickState("offline");
+        setRemoteFiles([]); setReceived([]);
+        for (const url of urls.current) URL.revokeObjectURL(url);
+        urls.current = [];
         setError(event.code === 4001 || replaced ? "Bu hesap başka bir sekmede paylaşım alanına girdi." : "Canlı bağlantı kesildi. Yeniden bağlanabilirsin.");
         return;
       }
@@ -255,7 +286,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     };
     socket.onerror = () => { if (active) setError(quick ? "Hızlı paylaşım alanına bağlanılamadı." : "Canlı odaya bağlanılamadı."); };
     const ping = setInterval(() => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" })); }, 30_000);
-    return () => { active = false; clearInterval(ping); socket.close(); socketRef.current = null; for (const link of linksRef.current.values()) link.close(); linksRef.current.clear(); queueRef.current = []; drainingRef.current.clear(); setQueued([]); setMembers([]); setReadyPeers([]); setOffers([]); };
+    return () => { active = false; clearInterval(ping); socket.close(); socketRef.current = null; for (const link of linksRef.current.values()) link.close(); linksRef.current.clear(); queueRef.current = []; drainingRef.current.clear(); setQueued([]); setMembers([]); setReadyPeers([]); setOffers([]); setRemoteFiles([]); };
   }, [roomId, view, quickRetry, refresh]);
 
   const updateRoom = async (change: Record<string, unknown>) => {
@@ -311,7 +342,12 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
       setError("Hızlı paylaşımda üst sınır 50 MB. Büyük dosyalar için oda açabilirsin.");
       return false;
     }).map((file) => ({ id: crypto.randomUUID(), file }));
-    setStaged((items) => [...items, ...added]);
+    if (view === "quick" && staged.length + added.length > 20) setError("Hızlı alanda en fazla 20 dosya gösterebilirsin.");
+    setStaged((items) => [...items, ...added.slice(0, view === "quick" ? Math.max(0, 20 - items.length) : added.length)]);
+  };
+  const requestRemoteFile = (peerId: string, id: string) => {
+    if (socketRef.current?.readyState !== WebSocket.OPEN) { setError("Canlı bağlantı hazır değil."); return; }
+    socketRef.current.send(JSON.stringify({ type: "file-request", to: peerId, id }));
   };
   const filteredRooms = rooms.filter((room) => `${room.name} ${room.ownerName}`.toLocaleLowerCase("tr-TR").includes(filter.toLocaleLowerCase("tr-TR")));
 
@@ -334,7 +370,7 @@ export function FileSharing({ currentUserId, profileTarget, initialRoomId, initi
     {(roomId || view === "quick") && <div className={`share-room-layout ${roomId ? "" : "share-quick-layout"}`}><div className="share-room-main">
       {!roomId && <div className="share-quick-intro"><div><span className="eyebrow">TAKIMIN ORTAK ALANI</span><p>Buraya gelen herkes anında görünür. Dosyalar gönderen ayrılınca alandan silinir.</p></div><div className="share-quick-presence"><span className={`share-live-dot ${quickState === "online" ? "is-online" : ""}`} />{quickState === "online" ? `${visibleMembers.length} kişi burada` : quickState === "connecting" ? "Bağlanıyor" : <button type="button" onClick={() => setQuickRetry((value) => value + 1)}>Yeniden bağlan</button>}</div></div>}
       <input ref={fileInput} type="file" multiple hidden onChange={(event) => { if (event.target.files) addFiles(event.target.files); event.target.value = ""; }} />
-      <ShareCanvas files={staged} members={visibleMembers} currentUserId={currentUserId} readyPeers={readyPeers} transfers={transferRows} onAddFiles={addFiles} onRemoveFile={(id) => setStaged((items) => items.filter((item) => item.id !== id))} onSend={sendTo} onChooseFiles={() => fileInput.current?.click()} />
+      <ShareCanvas files={staged} remoteFiles={roomId ? [] : remoteFiles} members={visibleMembers} currentUserId={currentUserId} readyPeers={readyPeers} transfers={transferRows} onAddFiles={addFiles} onRemoveFile={(id) => setStaged((items) => items.filter((item) => item.id !== id))} onSend={sendTo} onRequestFile={requestRemoteFile} onChooseFiles={() => fileInput.current?.click()} />
       {transferRows.length > 0 && <div className="share-transfers"><span className="eyebrow">SON AKTARIMLAR</span>{transferRows.map((item) => <div key={item.id}><span>{item.name} · {item.peer}</span><span>{item.status}{item.active && item.percent > 0 ? ` · %${item.percent}` : ""}</span>{item.active && item.percent > 0 && <progress value={item.percent} max={100} />}</div>)}</div>}
       {received.length > 0 && <div className="share-received"><span className="eyebrow">ALINAN DOSYALAR</span>{received.map((file) => <div key={file.id}><File size={15} /><span>{file.name}</span>{file.url ? <a href={file.url} download={file.name}>İndir <ArrowUpRight size={14} /></a> : <small>Cihaza kaydedildi</small>}</div>)}</div>}
       </div>{roomId && <aside className={`share-room-side ${toolsOpen ? "is-open" : ""}`}>

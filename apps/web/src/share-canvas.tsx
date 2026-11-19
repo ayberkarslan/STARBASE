@@ -4,6 +4,7 @@ import { Button } from "@stardrop/ui";
 
 type Member = { connectionId: string; userId: string; name: string };
 type StagedFile = { id: string; file: File };
+type RemoteFile = { id: string; peerId: string; name: string; size: number; mime: string };
 type TransferRow = { id: string; name: string; peer: string; status: string; percent: number };
 type Point = { x: number; y: number };
 type Drag = { kind: "file" | "member" | "zone"; id: string; pointerId: number; startX: number; startY: number; origin: Point; moved: boolean };
@@ -21,8 +22,9 @@ function FilePreview({ file }: { file: File }) {
   return url ? <img src={url} alt="" /> : file.type.startsWith("image/") ? <ImageIcon size={31} /> : <FileIcon size={31} />;
 }
 
-export function ShareCanvas({ files, members, currentUserId, readyPeers, transfers, onAddFiles, onRemoveFile, onSend, onChooseFiles }: {
+export function ShareCanvas({ files, remoteFiles = [], members, currentUserId, readyPeers, transfers, onAddFiles, onRemoveFile, onSend, onRequestFile, onChooseFiles }: {
   files: StagedFile[];
+  remoteFiles?: RemoteFile[];
   members: Member[];
   currentUserId: string;
   readyPeers: string[];
@@ -30,6 +32,7 @@ export function ShareCanvas({ files, members, currentUserId, readyPeers, transfe
   onAddFiles: (files: FileList) => void;
   onRemoveFile: (id: string) => void;
   onSend: (peerId: string, file: File) => void;
+  onRequestFile?: (peerId: string, id: string) => void;
   onChooseFiles: () => void;
 }) {
   const surface = useRef<HTMLDivElement>(null);
@@ -132,6 +135,7 @@ export function ShareCanvas({ files, members, currentUserId, readyPeers, transfe
   };
   return <div className="share-canvas-shell">
     <div className="share-canvas-head"><div><span className="eyebrow">CANLI PAYLAŞIM ALANI</span><p>Dosyayı kişiye sürükle ve bırak. Kişileri de alanda taşıyabilirsin.</p></div><div><Button variant="bare" onClick={() => setZones((items) => [...items, { id: crypto.randomUUID(), width: 190, height: 190 }])}><Plus size={14} /> Toplu alan</Button><Button variant="primary" onClick={onChooseFiles}><Plus size={14} /> Dosya ekle</Button></div></div>
+    {remoteFiles.length > 0 && <div className="share-remote-shelf"><span className="eyebrow">PAYLAŞILAN DOSYALAR</span><div>{remoteFiles.map((file) => <button type="button" key={`${file.peerId}:${file.id}`} onClick={() => { onRequestFile?.(file.peerId, file.id); setHint("Dosya isteği gönderildi. Gönderen bağlıysa teklif birazdan gelir."); }}><FileIcon size={17} /><span><strong title={file.name}>{file.name}</strong><small>{members.find((member) => member.connectionId === file.peerId)?.name ?? "Üye"} · {(file.size / 1024 / 1024).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} MB</small></span><ArrowUpRight size={14} /></button>)}</div></div>}
     <div ref={surface} className="share-canvas" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer.files.length) onAddFiles(event.dataTransfer.files); }}>
       <div className="share-canvas-axis" aria-hidden="true" />
       {zones.map((zone, index) => { const point = pointFor("zone", zone.id, index); return <div key={zone.id} className={`share-canvas-zone ${activeTarget === zone.id ? "is-target" : ""} ${draggingNode === `zone:${zone.id}` ? "is-dragging" : ""}`} data-share-zone={zone.id} style={{ left: `${point.x}%`, top: `${point.y}%`, width: zone.width, height: zone.height }} onPointerDown={(event) => begin(event, "zone", zone.id, index)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}><span><Users size={17} /> TOPLU ALAN</span><small>Kişileri buraya taşı, dosyayı alana bırak.</small><button type="button" className="share-zone-remove" aria-label="Alanı kaldır" onClick={() => setZones((items) => items.filter((item) => item.id !== zone.id))}><X size={13} /></button><button type="button" className="share-zone-resize" aria-label="Toplu alanı yeniden boyutlandır" title="Boyutlandır" onPointerDown={(event) => beginResize(event, zone)} onPointerMove={moveResize} onPointerUp={() => { resize.current = null; }} onPointerCancel={() => { resize.current = null; }}><span /></button></div>; })}

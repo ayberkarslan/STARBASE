@@ -49,7 +49,7 @@ export function WorkspaceHome({ name, apps, shortcuts, canShare, onPage, onAppli
   const recent = apps.find((app) => app.id === recentId);
 
   return <section className="workspace-home-page">
-    {easterVisible && <div className="workspace-home-easter" aria-hidden="true"><div className="workspace-home-easter-stars" /><div className="workspace-home-easter-ring workspace-home-easter-ring-one" /><div className="workspace-home-easter-ring workspace-home-easter-ring-two" /><img src="/brand/ytu-easter-egg.png" alt="" /></div>}
+    {easterVisible && <div className="workspace-home-easter" aria-hidden="true"><div className="workspace-home-easter-stars" /><div className="workspace-home-easter-ring workspace-home-easter-ring-one" /><div className="workspace-home-easter-ring workspace-home-easter-ring-two" /><img src="/brand/ayberk-signature.png" alt="" /></div>}
     <div className="workspace-home-intro">
       <div><h1>Merhaba, {name}.</h1>
         <p>Çalışma alanın hazır.</p>

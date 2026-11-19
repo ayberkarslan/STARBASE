@@ -146,3 +146,21 @@
 .share-banned button { border: 0; background: #000; color: #fff; cursor: pointer; font-size: 8px; text-decoration: underline; }
 .share-tools-body .share-info { margin-top: 8px; padding-top: 14px; }
 @media(max-width:600px) { .share-room-layout .share-canvas { min-height: 520px; }.workspace .share-room-layout .share-room-side { top: 106px; right: 10px; }.share-tools-body { max-height: 50vh; }.share-quick-intro { align-items: start; flex-direction: column; } }
+
+/* The quick canvas uses the space left under the STARBASE header. */
+.workspace .content:has(> .share-page:has(.share-quick-layout)) { padding: 8px 16px; }
+.share-page:has(.share-quick-layout) { display: flex; flex-direction: column; box-sizing: border-box; height: 100%; min-height: 0; padding: 6px 10px 8px; }
+.share-page:has(.share-quick-layout) .share-header { min-height: 0; padding: 0 0 7px; }
+.share-page:has(.share-quick-layout) .share-title { margin: 10px 0 8px; }
+.share-page:has(.share-quick-layout) .share-title h1 { font-size: clamp(23px,2.5vw,34px); margin-bottom: 3px; }
+.share-page:has(.share-quick-layout) .share-title p { font-size: 9px; line-height: 1.5; }
+.share-page:has(.share-quick-layout) .share-mode-tabs.sd-tabbar { flex: none; margin: 0 0 9px; }
+.share-page:has(.share-quick-layout) .share-mode-tabs.sd-tabbar button { padding: 7px 0; }
+.share-quick-layout { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.share-quick-layout .share-room-main,.share-quick-layout .share-canvas-shell { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.share-quick-layout .share-quick-intro { flex: none; margin-bottom: 8px; }
+.share-quick-layout .share-quick-intro p { margin-top: 3px; }
+.share-quick-layout .share-canvas-head { flex: none; margin-bottom: 8px; }
+.share-quick-layout .share-canvas-head p { margin-top: 3px; }
+.share-quick-layout .share-canvas { flex: 1; height: auto; min-height: 300px; }
+@media(max-width:600px) { .workspace .content:has(> .share-page:has(.share-quick-layout)) { padding: 6px 10px; }.share-page:has(.share-quick-layout) { padding-inline: 4px; }.share-quick-layout .share-quick-intro { gap: 5px; }.share-quick-layout .share-canvas { min-height: 260px; } }

@@ -88,6 +88,7 @@ export class ShareRoom {
     const source = socket.deserializeAttachment() as Participant | null;
     if (!source || source.replaced || source.expires <= Date.now() / 1000) { socket.close(1008, "Session expired"); return; }
     if (!(await this.env.DB.prepare("SELECT 1 FROM sessions s JOIN families f ON f.id=s.family WHERE s.hash=? AND s.user_id=? AND s.expires>? AND s.used=0 AND f.revoked=0").bind(source.sessionHash, source.userId, Date.now() / 1000).first())) { socket.close(1008, "Session revoked"); return; }
+    if (source.roomId === "team-quick-share" && !(await this.env.DB.prepare("SELECT 1 FROM users u WHERE u.id=? AND u.disabled=0 AND (u.owner=1 OR EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id) OR EXISTS(SELECT 1 FROM memberships m JOIN departments d ON d.id=m.department_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.user_id=u.id AND d.archived=0 AND (t.id IS NULL OR t.archived=0)))").bind(source.userId).first())) { socket.close(1008, "Team membership ended"); return; }
     if (typeof raw !== "string" || raw.length > 16_384) { socket.close(1008, "Only signaling is allowed"); return; }
     let message: { type?: string; to?: string; signal?: { type?: string } };
     try { message = JSON.parse(raw); } catch { socket.close(1008, "Invalid signaling"); return; }

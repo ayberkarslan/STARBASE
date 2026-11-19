@@ -151,6 +151,12 @@ async function memberSession() {
 }
 
 describe("live sharing rooms", () => {
+  it("keeps the quick lobby team-only and requires a live connection", async () => {
+    expect((await call("/share/quick/live", undefined, "")).status).toBe(401);
+    const asMember = await memberSession();
+    expect((await asMember("/share/quick/live")).status).toBe(400);
+    expect(db.prepare("SELECT COUNT(*) total FROM share_rooms").get()).toMatchObject({ total: 0 });
+  });
   it("lets an active department member search team profiles without an explicit role", async () => {
     db.prepare("INSERT INTO memberships VALUES(?,?,?)").run("u2", "avionics", "software");
     db.prepare("INSERT INTO families(id,user_id,expires) VALUES(?,?,?)").run("f2", "u2", now() + 1000);

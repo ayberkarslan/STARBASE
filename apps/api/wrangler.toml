@@ -20,6 +20,7 @@ FIREBASE_PROJECT_ID = "starbase-3ce1f"
 FIREBASE_API_KEY = "AIzaSyBs6-4Ffur8Z5oWJcT9WF_jU7mBf65dE_s"
 TURNSTILE_SITE_KEY = "0x4AAAAAAFz1CdINYgcD0Umi"
 LATEX_COMPILER_ORIGIN = "https://yrt-latex-compiler-777919223466.europe-west1.run.app"
+TEST_FORMU_BACKUP_URL = "https://europe-west1-yrt-test-takvimi.cloudfunctions.net/internalTestBackup"
 
 [triggers]
 crons = ["0 3 * * *"]

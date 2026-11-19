@@ -21,6 +21,7 @@ export type Env = AdminEnv & {
   APP_SYNC_SECRET?: string;
   LATEX_COMPILER_ORIGIN?: string;
   TEST_FORMU_SYNC_SECRET?: string;
+  TEST_FORMU_BACKUP_URL?: string;
   ASSETS: Fetcher;
 };
 export type Session = {

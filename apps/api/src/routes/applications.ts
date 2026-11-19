@@ -315,6 +315,30 @@ export function register(app: App) {
     ).bind(from, to).all();
     return c.json({ tests: rows.results.slice(0, 1000), truncated: rows.results.length > 1000 });
   });
+  async function calendarBackup(c: any, action: "start" | "status", input: { testId?: string; jobId?: string }) {
+    const application = await personalApplication(c);
+    if (application.id !== "test-formu-web") fail(404, "calendar_not_found");
+    const secret = c.env.TEST_FORMU_SYNC_SECRET || c.env.APP_SYNC_SECRET;
+    const url = c.env.TEST_FORMU_BACKUP_URL;
+    if (!secret || !url) fail(503, "backup_unavailable");
+    if (action === "start") {
+      const exists = await c.env.DB.prepare("SELECT 1 FROM calendar_tests WHERE id=?").bind(input.testId).first();
+      if (!exists) fail(404, "test_not_found");
+    }
+    const upstream = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-app-sync-key": secret }, body: JSON.stringify({ action, starbaseUserId: c.get("user").id, ...input }), signal: AbortSignal.timeout(12_000) });
+    if (!upstream.ok) fail(upstream.status === 404 ? 404 : 503, "backup_unavailable");
+    return c.json(await upstream.json());
+  }
+  app.post("/api/v1/apps/:id/calendar/backups", async (c) => {
+    const parsed = z.object({ testId: z.string().min(1).max(128) }).safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) fail(400, "invalid_test_id");
+    return calendarBackup(c, "start", parsed.data!);
+  });
+  app.get("/api/v1/apps/:id/calendar/backups/:jobId", async (c) => {
+    const jobId = c.req.param("jobId");
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(jobId)) fail(400, "invalid_job_id");
+    return calendarBackup(c, "status", { jobId });
+  });
   app.get("/api/v1/apps/:id/resources", async (c) => {
     const application = await personalApplication(c);
     const parsed = z.object({ q: z.string().trim().max(80).default(""), page: z.coerce.number().int().min(1).max(10000).default(1) }).safeParse(c.req.query());

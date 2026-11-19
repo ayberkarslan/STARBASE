@@ -1063,6 +1063,12 @@ it("keeps personal documents out of other members' profiles", async () => {
     const calendar = await call("/apps/test-formu-web/calendar?from=2026-11-01&to=2026-11-30");
     expect(calendar.status).toBe(200);
     expect((await calendar.json() as any).tests[0]).toMatchObject({ resourceId: "test-1", description: "Basınç ölçümü", testTypeName: "Proof Test" });
+    env.TEST_FORMU_BACKUP_URL = "https://calendar.test/internalTestBackup";
+    const upstream = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ jobId: "backup-1" }), { headers: { "Content-Type": "application/json" } }));
+    expect((await call("/apps/test-formu-web/calendar/backups", { testId: "test-1" })).status).toBe(200);
+    expect(JSON.parse(String(upstream.mock.calls[0][1]?.body))).toMatchObject({ action: "start", testId: "test-1", starbaseUserId: "u1" });
+    expect((await call("/apps/test-formu-web/calendar/backups", { testId: "missing" })).status).toBe(404);
+    expect((await call("/apps/test-formu-web/calendar/backups/backup-1", undefined, "")).status).toBe(401);
     expect((await (await call("/apps/test-formu-web/resources")).json() as any).resources).toEqual([]);
     expect((await call("/apps/test-formu-web/calendar?from=2026-01-01&to=2026-11-30")).status).toBe(400);
     expect((await app.request(endpoint, { method: "POST", headers, body: JSON.stringify({ resourceId: "test-1", starbaseUserIds: ["u1"], deleted: true }) }, env)).status).toBe(200);

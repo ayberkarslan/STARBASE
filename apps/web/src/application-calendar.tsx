@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { Button } from "@stardrop/ui";
+import { CalendarBackupButton } from "./calendar-backup-button";
 import "./application-calendar.css";
 
 export type CalendarTest = {
@@ -128,6 +129,6 @@ export function CalendarOverview({ revision }: { revision: number }) {
         <div className="application-calendar-events">{items.slice(0, 2).map(test => test.url ? <TestPreviewLink key={test.resourceId} test={test} href={test.url} className={`application-calendar-event status-${test.status}`}>{test.testTypeName || test.title || "Test"}</TestPreviewLink> : null)}{items.length > 2 && <button type="button" className="application-calendar-more" onClick={() => setSelectedDay(day)}>+{items.length - 2} test</button>}</div>
       </div>; })}
     </div>
-    <div className="application-calendar-selection"><span>{dateLabel(selectedDay)} · {loading ? "Yükleniyor…" : `${selected.length} test`}</span>{selected.length > 0 && <div>{selected.map(test => test.url ? <TestPreviewLink key={test.resourceId} test={test} href={test.url} className="application-calendar-selected-test"><strong>{test.testTypeName || test.title || "Test"}</strong><small>{test.teamProject || "Ekip belirtilmedi"} · {statusNames[test.status] ?? test.status}</small><ArrowRight size={14} /></TestPreviewLink> : null)}</div>}</div>
+    <div className="application-calendar-selection"><span>{dateLabel(selectedDay)} · {loading ? "Yükleniyor…" : `${selected.length} test`}</span>{selected.length > 0 && <div>{selected.map(test => test.url ? <div className="application-calendar-selected-row" key={test.resourceId}><TestPreviewLink test={test} href={test.url} className="application-calendar-selected-test"><strong>{test.testTypeName || test.title || "Test"}</strong><small>{test.teamProject || "Ekip belirtilmedi"} · {statusNames[test.status] ?? test.status}</small><ArrowRight size={14} /></TestPreviewLink><CalendarBackupButton testId={test.resourceId} onError={setError} /></div> : null)}</div>}</div>
   </section>;
 }

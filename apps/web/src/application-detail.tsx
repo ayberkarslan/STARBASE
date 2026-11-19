@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowUpRight, AppWindow, FileText, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { Button, Dialog, Panel } from "@stardrop/ui";
 import { CalendarOverview, TestCover, TestPreviewLink, type CalendarTest } from "./application-calendar";
+import { CalendarBackupButton } from "./calendar-backup-button";
 import "./application-detail.css";
 
 type Resource = CalendarTest & { title: string; createdAt: number; updatedAt?: number };
@@ -162,7 +163,7 @@ export function ApplicationDetail({ id, onBack }: { id: string; onBack: () => vo
         {resourceError && <p role="alert">{resourceError}</p>}
         {resources.length ? <div className="application-detail-resource-list">{resources.map((item, index) => {
           const content = <>{isLatex ? <DocumentCover id={id} resourceId={item.resourceId} title={item.title} /> : isCalendar ? <TestCover test={item} /> : <span className="application-detail-cover application-detail-cover--test"><FileText size={38} aria-hidden="true" /><span className="application-detail-cover-label">YRT / TEST</span></span>}<span className="application-detail-resource-copy"><strong>{item.title}</strong><small>{isCalendar ? `Test tarihi: ${item.date || "Belirtilmedi"} · ${statusLabel(item.status)}` : `${statusLabel(item.status || "Belge")} · ${dateTime(item.updatedAt ?? item.createdAt)}`}</small></span>{index === 0 && resourcePage === 1 && !query && <span className="application-detail-latest">SON ÇALIŞMA</span>}{item.url && <ArrowUpRight size={16} aria-hidden="true" />}</>;
-          return item.url ? isCalendar ? <TestPreviewLink test={item} href={item.url} key={item.resourceId} className="application-detail-resource">{content}</TestPreviewLink> : <a href={item.url} key={item.resourceId} className="application-detail-resource">{content}</a> : <div key={item.resourceId} className="application-detail-resource">{content}</div>;
+          return item.url ? isCalendar ? <div className="application-detail-resource-item" key={item.resourceId}><TestPreviewLink test={item} href={item.url} className="application-detail-resource">{content}</TestPreviewLink><CalendarBackupButton testId={item.resourceId} onError={setResourceError} /></div> : <a href={item.url} key={item.resourceId} className="application-detail-resource">{content}</a> : <div key={item.resourceId} className="application-detail-resource">{content}</div>;
         })}</div> : <p className="application-detail-muted">{query ? "Aramana uygun kayıt bulunamadı." : isCalendar ? "Henüz hesabına bağlı test yok." : isLatex ? "Henüz bağlı belge yok." : "Bu uygulama için kayıt yok."}</p>}
         {hasMore && <Button variant="bare" onClick={() => setResourcePage((page) => page + 1)}>Daha fazla göster</Button>}
       </section>

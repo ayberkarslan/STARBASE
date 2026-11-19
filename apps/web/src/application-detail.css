@@ -43,6 +43,11 @@
 .application-detail-search input::placeholder { color: #ffffff8e; }
 .application-detail-resource-list { display: flex; gap: 18px; overflow-x: auto; overflow-y: hidden; padding: 3px 0 15px; scrollbar-width: thin; scrollbar-color: #ffffff5c #000; scroll-snap-type: x proximity; }
 .application-detail-resource { position: relative; display: flex; flex: 0 0 190px; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; color: #fff; text-decoration: none; scroll-snap-align: start; }
+.application-detail-resource-item { display: flex; flex: 0 0 190px; flex-direction: column; min-width: 0; scroll-snap-align: start; }
+.application-detail-resource-item .application-detail-resource { flex: 0 0 auto; width: 100%; }
+.application-detail-backup { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 9px; padding: 5px 0; border: 0; background: transparent; color: #ffffffa6; cursor: pointer; font: inherit; font-size: 9px; }
+.application-detail-backup:hover,.application-detail-backup:focus-visible { color: #fff; }
+.application-detail-backup:disabled { cursor: wait; }
 a.application-detail-resource:hover .application-detail-cover,a.application-detail-resource:focus-visible .application-detail-cover { border-color: #fff; transform: translateY(-3px); }
 a.application-detail-resource:focus-visible { outline: 1px solid #fff; outline-offset: 3px; }
 .application-detail-cover { position: relative; display: grid; place-items: center; height: 210px; overflow: hidden; border: 1px solid #ffffff59; border-radius: 3px; background: #f5f4ef; color: #111; transition: border-color .2s,transform .2s; }

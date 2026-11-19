@@ -41,6 +41,22 @@ async function wrongPassword(c: any, id: string) {
 }
 
 export function register(app: App) {
+  app.get("/api/v1/share/quick/live", async (c) => {
+    await requireTeamMember(c);
+    if (c.req.header("origin") !== new URL(c.req.url).origin) fail(403, "origin_rejected");
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") fail(400, "websocket_required");
+    const stub = c.env.SHARE_ROOM.get(c.env.SHARE_ROOM.idFromName("team-quick-share"));
+    return stub.fetch(new Request("https://share.internal/connect-quick", {
+      headers: {
+        Upgrade: "websocket", "x-room-id": "team-quick-share",
+        "x-user-id": c.get("user").id,
+        "x-user-name": encodeURIComponent(`${c.get("user").first_name} ${c.get("user").last_name}`),
+        "x-session-expires": String(c.get("session").expires),
+        "x-session-hash": c.get("session").hash,
+      },
+    }));
+  });
+
   app.get("/api/v1/share/rooms", async (c) => {
     await requireTeamMember(c);
     const rows = await c.env.DB.prepare("SELECT r.id,r.name,r.owner_id ownerId,r.profile_target_id profileTargetId,r.password_hash passwordHash,r.locked,r.participant_count participantCount,r.created_at createdAt,u.first_name ownerFirstName,u.last_name ownerLastName FROM share_rooms r JOIN users u ON u.id=r.owner_id ORDER BY r.created_at DESC LIMIT 100").all<Room & { ownerFirstName: string; ownerLastName: string }>();

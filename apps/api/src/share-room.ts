@@ -16,6 +16,7 @@ export class ShareRoom {
     for (const { socket } of participants) {
       try { socket.send(JSON.stringify({ type: "members", members })); } catch { /* Socket closed during broadcast. */ }
     }
+    if (roomId === "team-quick-share") return;
     await this.env.DB.prepare("UPDATE share_rooms SET participant_count=? WHERE id=?").bind(new Set(members.map((member) => member.userId)).size, roomId).run();
     const hub = this.env.BOARD_HUB.get(this.env.BOARD_HUB.idFromName("team-directory"));
     await hub.fetch("https://board.internal/notify?type=share.rooms.changed", { method: "POST" });
@@ -50,18 +51,21 @@ export class ShareRoom {
       await this.publish(roomId);
       return new Response(null, { status: 204 });
     }
-    if (route !== "/connect" || request.headers.get("upgrade")?.toLowerCase() !== "websocket") return new Response("Not found", { status: 404 });
+    const quick = route === "/connect-quick" && roomId === "team-quick-share";
+    if ((!quick && route !== "/connect") || request.headers.get("upgrade")?.toLowerCase() !== "websocket") return new Response("Not found", { status: 404 });
     const userId = request.headers.get("x-user-id") ?? "";
     const name = decodeURIComponent(request.headers.get("x-user-name") ?? "");
     const expires = Number(request.headers.get("x-session-expires"));
     const sessionHash = request.headers.get("x-session-hash") ?? "";
     if (!userId || !name || !sessionHash || !Number.isFinite(expires) || expires <= Date.now() / 1000) return new Response("Unauthorized", { status: 403 });
-    const room = await this.env.DB.prepare("SELECT id,owner_id ownerId,locked FROM share_rooms WHERE id=?").bind(roomId).first<{ id: string; ownerId: string; locked: number }>();
-    if (!room) return new Response("Room missing", { status: 404 });
-    if (await this.env.DB.prepare("SELECT 1 FROM share_room_bans WHERE room_id=? AND user_id=?").bind(roomId, userId).first()) return new Response("Removed from room", { status: 403 });
-    if (room.locked && room.ownerId !== userId && !(await this.env.DB.prepare("SELECT 1 FROM share_room_invites WHERE room_id=? AND user_id=?").bind(roomId, userId).first())) return new Response("Room closed to new members", { status: 403 });
-    const admission = await this.env.DB.prepare("SELECT 1 FROM share_room_admissions WHERE room_id=? AND user_id=? AND expires_at>?").bind(roomId, userId, Date.now() / 1000).first();
-    if (!admission) return new Response("Join required", { status: 403 });
+    if (!quick) {
+      const room = await this.env.DB.prepare("SELECT id,owner_id ownerId,locked FROM share_rooms WHERE id=?").bind(roomId).first<{ id: string; ownerId: string; locked: number }>();
+      if (!room) return new Response("Room missing", { status: 404 });
+      if (await this.env.DB.prepare("SELECT 1 FROM share_room_bans WHERE room_id=? AND user_id=?").bind(roomId, userId).first()) return new Response("Removed from room", { status: 403 });
+      if (room.locked && room.ownerId !== userId && !(await this.env.DB.prepare("SELECT 1 FROM share_room_invites WHERE room_id=? AND user_id=?").bind(roomId, userId).first())) return new Response("Room closed to new members", { status: 403 });
+      const admission = await this.env.DB.prepare("SELECT 1 FROM share_room_admissions WHERE room_id=? AND user_id=? AND expires_at>?").bind(roomId, userId, Date.now() / 1000).first();
+      if (!admission) return new Response("Join required", { status: 403 });
+    }
     if (this.participants().filter(({ info }) => info.userId !== userId).length >= 24) return new Response("Room full", { status: 429 });
     for (const { socket, info } of this.participants()) {
       if (info.userId !== userId) continue;

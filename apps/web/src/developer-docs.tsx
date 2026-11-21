@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Button, Panel, TabBar, Disclosure } from "@stardrop/ui";
-import { Copy, Check, Download, ArrowLeft } from "lucide-react";
+import { Copy, Check, Download, ArrowLeft, ArrowUpRight } from "lucide-react";
+import "./developer-docs.css";
 function Code({ children }: { children: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
@@ -25,22 +26,23 @@ function Code({ children }: { children: string }) {
   );
 }
 export function DeveloperDocs() {
-  const [tab, setTab] = useState("start");
+  const [tab, setTab] = useState("architecture");
   const origin = location.origin;
   const config = `import { Starbase } from '@starbase/sdk';\n\n// src/lib/starbase.ts — uygulamada tek bir istemci\nexport const starbase = new Starbase({\n  baseUrl: '${origin}',\n  clientId: 'starlab-web',\n  redirectUri: location.origin + '/callback',\n  storage: sessionStorage\n});`;
   return (
     <article className="docs developer-docs">
-      <span className="eyebrow">STARBASE / GELİŞTİRİCİ MERKEZİ</span>
-      <h1>Takımına bağlan.</h1>
+      <span className="eyebrow">GELİŞTİRİCİLER / STARBASE</span>
+      <h1>Uygulamanı takıma bağla.</h1>
       <p>
-        Bir istemci, ortak hesap ve sunucuda doğrulanan izinler. Giriş/çıkış
-        kaydı otomatik tutulur.
+        Kimlik ve yetki tek merkezde. Uygulamanın çalışma verisi kendi sisteminde.
+        Önce parçaların ilişkisini gör, ardından ihtiyacın olan entegrasyon adımına geç.
       </p>
       <TabBar
         label="Dokümantasyon bölümleri"
         value={tab}
         onChange={setTab}
         items={[
+          { value: "architecture", label: "Sistem haritası" },
           { value: "start", label: "Başlangıç" },
           { value: "web", label: "Vite / React" },
           { value: "history", label: "Giriş ve çıkış" },
@@ -48,9 +50,42 @@ export function DeveloperDocs() {
           { value: "native", label: "Tauri" },
         ]}
       />
+      {tab === "architecture" && <div className="docs-architecture">
+        <section>
+          <span className="eyebrow">01 / BÜYÜK RESİM</span>
+          <h2>Hangi teknoloji ne yapıyor?</h2>
+          <p>Giriş uygulamada başlar, kimlik STARBASE'de doğrulanır. Belge, test ve proje gibi çalışma verileri ilgili uygulamada kalır.</p>
+          <div className="docs-system-map" role="img" aria-label="Vite veya Tauri uygulaması STARBASE Worker API ile konuşur. Worker, Firebase Auth ile kimliği, D1 ile üyelik ve izinleri yönetir. Uygulamanın kendi sunucusu erişim jetonunu STARBASE'de doğrular.">
+            <div className="docs-system-node"><small>İSTEMCİ</small><strong>Vite / Tauri</strong><span>SDK · giriş düğmesi · arayüz</span></div>
+            <span className="docs-system-join" aria-hidden="true">↔</span>
+            <div className="docs-system-node docs-system-node--core"><small>MERKEZ</small><strong>STARBASE</strong><span>Cloudflare Workers · API · oturum</span></div>
+            <span className="docs-system-join" aria-hidden="true">↔</span>
+            <div className="docs-system-node"><small>SERVİSLER</small><strong>Firebase + D1</strong><span>Parola · hesap · rol · izin</span></div>
+          </div>
+          <div className="docs-system-source"><span>Uygulamanın kendi API'si</span><span>Jetonu STARBASE ile doğrular; kendi verisini kendisi korur.</span></div>
+          <div className="docs-system-legend"><span><b>Firebase Auth</b> parola ve e-posta doğrulaması</span><span><b>Workers + D1</b> oturum, üyelik ve yetki</span><span><b>SDK</b> web ve masaüstü bağlantısı</span></div>
+        </section>
+        <section>
+          <span className="eyebrow">02 / GİRİŞ AKIŞI</span>
+          <h2>Tek giriş nasıl çalışıyor?</h2>
+          <ol className="docs-auth-flow">
+            <li><strong>Uygulama yönlendirir</strong><span>SDK kayıtlı uygulama kimliği ve istenen kapsamlarla STARBASE'i açar.</span></li>
+            <li><strong>STARBASE doğrular</strong><span>Firebase hesabı doğrular; STARBASE uygulama kaydını, takım üyeliğini ve erişimi kontrol eder.</span></li>
+            <li><strong>Güvenli dönüş yapılır</strong><span>Tek kullanımlık kod kayıtlı callback adresine döner; SDK state ve PKCE denetimini yapar.</span></li>
+            <li><strong>Uygulama devam eder</strong><span>Profil ve izinler alınır. Korunan veride uygulamanın sunucusu jetonu ayrıca doğrular.</span></li>
+          </ol>
+          <p className="docs-system-caution">Uygulama şifre toplamaz. Callback kodunu, jetonu veya şifreyi loglama. Arayüzde düğme saklamak sunucu yetkilendirmesinin yerini tutmaz.</p>
+        </section>
+        <section>
+          <span className="eyebrow">03 / NEREDEN BAŞLAMALI?</span>
+          <h2>Dört adımda bağlantı</h2>
+          <div className="docs-next-steps"><button type="button" onClick={() => setTab("start")}>01 · Uygulamayı kaydet ve SDK'yı kur <ArrowUpRight size={14} /></button><button type="button" onClick={() => setTab("web")}>02 · Giriş ve callback'i bağla <ArrowUpRight size={14} /></button><button type="button" onClick={() => setTab("web")}>03 · Kendi API'nde izni doğrula <ArrowUpRight size={14} /></button><button type="button" onClick={() => setTab("history")}>04 · Çıkışı ve oturumları yönet <ArrowUpRight size={14} /></button></div>
+        </section>
+      </div>}
       {tab === "start" && (
         <>
-          <h2>01 / Uygulamayı kaydet</h2>
+          <span className="eyebrow">01 / KAYIT</span>
+          <h2>Uygulamayı kaydet</h2>
           <p>
             Takım yöneticisi Uygulamalar ekranında bir kimlik, tam dönüş adresi
             ve uygulamanın originini tanımlar. Web ve masaüstü için ayrı kimlik
@@ -68,7 +103,8 @@ export function DeveloperDocs() {
               <dd>profile, organization</dd>
             </dl>
           </Panel>
-          <h2>02 / SDK’yı kur</h2>
+          <span className="eyebrow">02 / PAKET</span>
+          <h2>SDK’yı kur</h2>
           <a className="sd-button" href="/downloads/starbase-sdk.tgz" download>
             <Download size={16} /> SDK paketini indir
           </a>
@@ -78,7 +114,8 @@ export function DeveloperDocs() {
             SDK’sı veya contracts paketi gerekmez. React adaptörü isteğe
             bağlıdır.
           </p>
-          <h2>03 / İstemciyi oluştur</h2>
+          <span className="eyebrow">03 / İSTEMCİ</span>
+          <h2>İstemciyi oluştur</h2>
           <Code>{config}</Code>
           <p>
             Client secret gerekmez. Firebase servis hesabı ve özel anahtarlar
@@ -88,14 +125,15 @@ export function DeveloperDocs() {
       )}
       {tab === "web" && (
         <>
+          <span className="eyebrow">WEB / GİRİŞ</span>
           <h2>Giriş ve dönüş</h2>
           <Code>{`import { starbase } from './lib/starbase';\n\n// Giriş düğmesinin onClick işlemi\nawait starbase.login(['profile', 'organization']);\n\n// /callback sayfası — guard dışında tutulur\nconst profile = await starbase.handleCallback();\n// Router ile ana sayfaya geç. Callback kodunu loglama.\n\n// Uygulama yeniden açıldığında\nconst user = await starbase.getProfile();\n\n// Çıkış düğmesi\nawait starbase.logout();`}</Code>
           <h2>React bağlantısı</h2>
-          <Code>{`import { StarbaseProvider, useStarbase } from '@starbase/sdk/react';\nimport { starbase } from './lib/starbase';\n\n// Uygulama kökünde\n<StarbaseProvider client={starbase}>\n  <App />\n</StarbaseProvider>\n\n// Bir bileşende\nconst client = useStarbase();\n<button onClick={() => client.login(['profile'])}>Giriş yap</button>`}</Code>
+          <Code>{`import { StarbaseAuthProvider, useStarbaseAuth } from '@starbase/sdk/react';\nimport { starbase } from './lib/starbase';\n\n// Uygulama kökünde; callback ve oturum geri yükleme otomatik\n<StarbaseAuthProvider client={starbase} scopes={['profile']}>\n  <App />\n</StarbaseAuthProvider>;\n\nfunction Account() {\n  const { snapshot, login, logout } = useStarbaseAuth();\n  if (snapshot.status === 'checking') return <p>Kontrol ediliyor</p>;\n  if (snapshot.status === 'anonymous')\n    return <button onClick={() => void login()}>STARBASE ile giriş</button>;\n  return <button onClick={() => void logout()}>Çıkış yap</button>;\n}`}</Code>
           <p>
-            İstemciyi her render’da yeniden oluşturma. Callback aynı istemcide
-            iki kez çağrılırsa SDK tek kod değişimi yapar; React StrictMode ile
-            çalışır.
+            İstemciyi her render’da yeniden oluşturma. Provider kullanıyorsan
+            callback'i ayrıca handleCallback() ile işleme. Callback route'u giriş
+            zorunlu route guard'ının dışında olmalı.
           </p>
           <h2>Korunan API çağrısı</h2>
           <Code>{`const token = await starbase.getAccessToken();\nconst response = await fetch('/api/projects', {\n  headers: { Authorization: 'Bearer ' + token }\n});\n\n// Kendi API sunucunda\nimport { requireStarbasePermission } from '@starbase/sdk';\nconst user = await requireStarbasePermission(\n  process.env.STARBASE_URL,\n  bearerToken,\n  'starlab-web.projects.read'\n);`}</Code>
@@ -156,6 +194,7 @@ export function DeveloperDocs() {
       )}
       {tab === "api" && (
         <>
+          <span className="eyebrow">API / SÖZLEŞME</span>
           <h2>Sözleşme ve kapsamlar</h2>
           <a
             className="sd-button"
@@ -216,6 +255,13 @@ export function DeveloperDocs() {
             değildir. Tarihler UTC Unix saniyesidir; gösterimde yerel saate
             dönüştür.
           </p>
+          <h2>Uygulama sayfasının veri sınırı</h2>
+          <p>
+            Belge ve test gibi çalışma verileri ilgili uygulamanın kendi sisteminde
+            yaşar. Uygulama, izinli kaynak özetlerini STARBASE'e bildirirse üyenin
+            uygulama sayfasında son çalışmalar gösterilebilir. Kaynak özetinin
+            görünmesi dosyanın STARBASE'te yedeklendiği anlamına gelmez.
+          </p>
           <h2>Arşivlenmiş pano</h2>
           <p>Pano arayüzü ve API uçları kapalıdır. Kod ve mevcut notlar geri dönüş için korunur; eski sözleşme docs/board-notes.md dosyasında arşivlidir.</p>
           <h2>Sık karşılaşılan hatalar</h2>
@@ -256,6 +302,7 @@ export function DeveloperDocs() {
       )}
       {tab === "native" && (
         <>
+          <span className="eyebrow">MASAÜSTÜ / GİRİŞ</span>
           <h2>Tauri’de sistem tarayıcısı</h2>
           <p>
             WebView içinde şifre toplama. Native örnek sistem tarayıcısını açar;
